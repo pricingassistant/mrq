@@ -198,7 +198,7 @@ class Worker(object):
           break
 
     except StopRequested:
-      print "Stop requested"
+      pass
 
     finally:
 

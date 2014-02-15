@@ -1,3 +1,4 @@
+from gevent import GreenletExit
 
 
 # Inherits from BaseException to avoid being caught when not intended.
@@ -11,5 +12,5 @@ class RetryInterrupt(BaseException):
   pass
 
 
-class StopRequested(BaseException):
+class StopRequested(GreenletExit):
   pass

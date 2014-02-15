@@ -2,6 +2,9 @@ init:
 	docker build -t mrq/mrq_local .
 
 test: init
+	sh -c "docker run -rm -i -t -p 27017:27017 -p 6379:6379 -v `pwd`:/app:rw -w /app mrq/mrq_local py.test tests/ -s -v"
+
+shell: init
 	sh -c "docker run -rm -i -t -p 27017:27017 -p 6379:6379 -v `pwd`:/app:rw -w /app mrq/mrq_local bash"
 
 lint:

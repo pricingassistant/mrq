@@ -12,11 +12,12 @@ from mrq.utils import wait_for_net_service
 
 
 class ProcessFixture(object):
-  def __init__(self, request, cmdline=None, wait_port=None):
+  def __init__(self, request, cmdline=None, wait_port=None, quiet=False):
     self.request = request
     self.cmdline = cmdline
     self.process = None
     self.wait_port = wait_port
+    self.quiet = quiet
 
     self.request.addfinalizer(self.stop)
 
@@ -26,14 +27,20 @@ class ProcessFixture(object):
     if env is None:
       env = {}
 
-    self.process = subprocess.Popen(cmdline.split(" ") if type(cmdline) in [str, unicode] else cmdline, shell=False, close_fds=True, env=env, cwd=os.getcwd())
+    if self.quiet:
+      stdout = subprocess.PIPE
+    else:
+      stdout = None
+
+    self.process = subprocess.Popen(cmdline.split(" ") if type(cmdline) in [str, unicode] else cmdline,
+                                    shell=False, close_fds=True, env=env, cwd=os.getcwd(), stdout=stdout)
 
     if self.wait_port:
       wait_for_net_service("127.0.0.1", int(self.wait_port))
 
   def stop(self):
     if self.process is not None:
-      print "kill -2 %s" % self.process.pid
+      # print "kill -2 %s" % self.process.pid
       os.kill(self.process.pid, 2)
 
 
@@ -76,12 +83,12 @@ class WorkerFixture(ProcessFixture):
 
 @pytest.fixture(scope="function")
 def mongodb(request):
-  return ProcessFixture(request, "mongod", wait_port=27017)
+  return ProcessFixture(request, "mongod", wait_port=27017, quiet=True)
 
 
 @pytest.fixture(scope="function")
 def redis(request):
-  return ProcessFixture(request, "redis-server", wait_port=6379)
+  return ProcessFixture(request, "redis-server", wait_port=6379, quiet=True)
 
 
 @pytest.fixture(scope="function")
