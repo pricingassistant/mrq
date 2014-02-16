@@ -12,3 +12,13 @@ lint:
 
 linterrors:
 	pylint --errors-only --init-hook="import sys; sys.path.append('.')" -d E1103 --rcfile .pylintrc mrq
+
+virtualenv:
+	virtualenv venv --distribute
+
+deps:
+	pip install -r requirements.txt
+	pip install -r requirements-dev.txt
+
+clean:
+	find . -path ./venv -prune -o -name "*.pyc" -exec rm {} \;

@@ -203,7 +203,7 @@ class Worker(object):
           free_pool_slots = self.gevent_pool.free_count()
           if free_pool_slots > 0:
             break
-          gevent.sleep(0.01)
+          gevent.sleep(0)
 
         self.log.info('Listening on %s' % self.queues)
 
