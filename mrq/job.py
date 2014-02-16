@@ -17,7 +17,7 @@ class Job(object):
     RetryInterrupt
   ]
 
-  def __init__(self, job_id, worker=None, queue=None):
+  def __init__(self, job_id, worker=None, queue=None, start=False):
     self.worker = worker
     self.queue = queue
 
@@ -27,6 +27,9 @@ class Job(object):
     self.id = job_id
 
     self.task = None
+
+    if start:
+      self.fetch_and_start()
 
   def fetch_and_start(self):
     """ Get the current job data and flag it as started. """
@@ -43,11 +46,14 @@ class Job(object):
       "params": 1
     })
 
+    if self.data is None:
+      raise Exception("Job not found in MongoDB!")
+
   def _save(self, changes):
 
     self.collection.update({
       "_id": ObjectId(self.id)
-    }, {"$set": changes})
+    }, {"$set": changes}, w=1)
 
   def save_result(self, result=None):
 

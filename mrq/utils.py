@@ -20,6 +20,30 @@ def group_iter(iterator, n=2):
     yield accumulator
 
 
+# http://code.activestate.com/recipes/578231-probably-the-fastest-memoization-decorator-in-the-/
+def memoize(f):
+  """ Memoization decorator for a function taking one or more arguments. """
+  class memodict(dict):
+    def __getitem__(self, *key):
+      return dict.__getitem__(self, key)
+
+    def __missing__(self, key):
+      ret = self[key] = f(*key)
+      return ret
+
+  return memodict().__getitem__
+
+
+def memoize_single_argument(f):
+  """ Memoization decorator for a function taking a single argument """
+  class memodict(dict):
+    def __missing__(self, key):
+      ret = self[key] = f(key)
+      return ret
+  return memodict().__getitem__
+
+
+@memoize_single_argument
 def load_task_class(taskpath):
   """ Given a taskpath, returns the main task class. """
 

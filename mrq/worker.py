@@ -34,7 +34,6 @@ class Worker(object):
   job_class = Job
 
   stop_signals = [signal.SIGINT, signal.SIGTERM]
-  stop_requested = False
 
   def __init__(self, config):
 
@@ -60,7 +59,7 @@ class Worker(object):
     self.pool_size = self.config["pool_size"]
 
     from .logger import LogHandler
-    self.log_handler = LogHandler()
+    self.log_handler = LogHandler(quiet=self.config["quiet"])
     self.log = self.log_handler.get_logger(worker=self.id)
 
     self.log.info("Starting Gevent pool with %s worker greenlets (+ 1 monitoring)" % self.pool_size)
@@ -80,6 +79,13 @@ class Worker(object):
 
     self.log_handler.set_collection(self.mongodb_logs.mrq_logs)
 
+    self.profiler = None
+    if self.config["profile"]:
+      print "Starting profiler..."
+      import cProfile
+      self.profiler = cProfile.Profile()
+      self.profiler.enable()
+
   def make_name(self):
     """ Generate a human-readable name for this worker. """
     return "%s.%s" % (socket.gethostname().split(".")[0], os.getpid())
@@ -91,7 +97,7 @@ class Worker(object):
       urlparse.uses_netloc.append('redis')
       redis_url = urlparse.urlparse(redis)
 
-      self.log.info("Connecting to redis at %s..." % redis_url.hostname)
+      self.log.info("Connecting to Redis at %s..." % redis_url.hostname)
 
       redis_pool = pyredis.ConnectionPool(host=redis_url.hostname, port=redis_url.port, db=0, password=redis_url.password)
 
@@ -108,7 +114,7 @@ class Worker(object):
       (mongoAuth, mongoUsername, mongoPassword, mongoHosts, mongoDbName) = re.match(
         "mongodb://((\w+):(\w+)@)?([\w\.:,-]+)/([\w-]+)", mongodb).groups()
 
-      self.log.info("Connecting to MongDB at %s..." % mongoHosts)
+      self.log.info("Connecting to MongoDB at %s..." % mongoHosts)
 
       db = MongoClient(mongoHosts)[mongoDbName]
       if mongoUsername:
@@ -153,20 +159,30 @@ class Worker(object):
   def flush_logs(self):
     self.log_handler.flush()
 
-  def dequeue_job(self):
+  def dequeue_jobs(self, max_jobs=1):
 
-    # TODO piplelined brpops with the number of remaining free slots
+    self.log.debug("Fetching %s jobs from Redis" % max_jobs)
 
+    jobs = []
     queue, job_id = self.redis.blpop(self.queues, 0)
 
-    # From this point until fetch_and_start(), job is only local to this worker.
+    # From this point until job.fetch_and_start(), job is only local to this worker.
     # If we die here, job will be lost in redis without having been marked as "started".
 
-    job = self.job_class(job_id, worker=self, queue=queue)
+    jobs.append(self.job_class(job_id, worker=self, queue=queue, start=True))
 
-    job.fetch_and_start()
+    # Bulk-fetch other jobs from that queue to fill the pool.
+    if max_jobs > 1:
 
-    return job
+      with self.redis.pipeline(transaction=False) as pipe:
+        for _ in range(max_jobs - 1):
+          pipe.lpop(queue)
+        job_ids = pipe.execute()
+
+      jobs += [self.job_class(_job_id, worker=self, queue=queue, start=True)
+               for _job_id in job_ids if _job_id]
+
+    return jobs
 
   def work_loop(self):
     """Starts the work loop.
@@ -183,22 +199,24 @@ class Worker(object):
 
       while True:
 
-        while self.gevent_pool.free_count() == 0 and not self.stop_requested:
-          gevent.sleep(0.1)
-
-        if self.stop_requested:
-          self.log.info('Stopping on request.')
-          break
+        while True:
+          free_pool_slots = self.gevent_pool.free_count()
+          if free_pool_slots > 0:
+            break
+          gevent.sleep(0.01)
 
         self.log.info('Listening on %s' % self.queues)
 
-        job = self.dequeue_job()
+        jobs = self.dequeue_jobs(max_jobs=free_pool_slots)
 
-        self.gevent_pool.spawn(self.perform_job, job)
+        for job in jobs:
 
-        self.done_jobs += 1
+          self.gevent_pool.spawn(self.perform_job, job)
+
+          self.done_jobs += 1
+
         if self.max_jobs and self.max_jobs >= self.done_jobs:
-          self.log.info("Reached max_jobs=%s" % self.max_jobs)
+          self.log.info("Reached max_jobs=%s" % self.done_jobs)
           break
 
     except StopRequested:
@@ -214,6 +232,9 @@ class Worker(object):
 
       self.greenlets["monitoring"].kill(block=True)
       self.log.debug("Monitoring greenlet killed.")
+
+      if self.profiler:
+        self.profiler.print_stats(sort="cumulative")
 
   def perform_job(self, job):
     """ Wraps a job.perform() call with timeout logic and exception handlers.
@@ -250,7 +271,7 @@ class Worker(object):
     """ Graceful shutdown: waits for all the jobs to finish. """
 
     self.log.info("Graceful shutdown...")
-    self.stop_requested = True
+    raise StopRequested()
 
   def shutdown_now(self):
     """ Forced shutdown: interrupts all the jobs. """
@@ -266,13 +287,12 @@ class Worker(object):
       self.shutdown_now()
 
     def request_shutdown_graceful():  # signum, frame):
-      self.shutdown_graceful()
 
       # Second time, shutdown now
       for s in self.stop_signals:
         gevent.signal(s, request_shutdown_now)
 
-      raise StopRequested()
+      self.shutdown_graceful()
 
     # First time, try to shutdown gracefully
     for s in self.stop_signals:

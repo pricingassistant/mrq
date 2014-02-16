@@ -1,3 +1,5 @@
 pytest==2.5.1
 pylint==1.1.0
 psutil==1.2.1
+subprocess32==3.2.5
+#git+https://github.com/srlindsay/gevent-profiler@master#egg=gevent-profiler==0.2

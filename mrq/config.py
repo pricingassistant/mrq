@@ -19,7 +19,7 @@ def get_config(sources=("file", "env", "args"), env_prefix="MRQ_"):
                       help='Start objgraph to debug memory after each task')
 
   parser.add_argument('--profile', action='store_true', default=False,
-                      help='Run profiling')
+                      help='Run profiling on the whole worker')
 
   parser.add_argument('--mongodb_jobs', action='store', default="mongodb://127.0.0.1:27017/mrq",
                       help='MongoDB URI for the jobs database')
@@ -32,6 +32,9 @@ def get_config(sources=("file", "env", "args"), env_prefix="MRQ_"):
 
   parser.add_argument('--name', default=None, action='store',
                       help='Specify a different name')
+
+  parser.add_argument('--quiet', default=False, action='store_true',
+                      help='Don\'t output task logs')
 
   parser.add_argument('--config', '-c', default=None, action="store",
                       help='Path of a config file')

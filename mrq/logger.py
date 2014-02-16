@@ -42,9 +42,10 @@ class LogHandler(object):
       when creating lots of logger objects.
   """
 
-  def __init__(self, collection=None):
+  def __init__(self, collection=None, quiet=False):
     self.reset()
     self.set_collection(collection)
+    self.quiet = quiet
 
   def get_logger(self, worker=None, job=None):
     return LoggerInterface(self, worker=worker, job=job)
@@ -65,7 +66,8 @@ class LogHandler(object):
 
     formatted = "%s [%s] %s" % (datetime.datetime.utcnow(), level.upper(), " ".join([unicode(x) for x in args]))
 
-    print formatted
+    if not self.quiet:
+      print formatted
 
     if worker is not None:
       self.buffer["workers"][worker].append(formatted)

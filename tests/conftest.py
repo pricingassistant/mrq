@@ -1,6 +1,6 @@
 import pytest
 import os
-import subprocess
+import subprocess32 as subprocess
 import sys
 import psutil
 import time
@@ -31,13 +31,16 @@ class ProcessFixture(object):
       env = {}
 
     if self.quiet:
-      stdout = subprocess.PIPE
+      stdout = open(os.devnull, 'w')
     else:
       stdout = None
 
     self.cmdline = cmdline
     self.process = subprocess.Popen(cmdline.split(" ") if type(cmdline) in [str, unicode] else cmdline,
                                     shell=False, close_fds=True, env=env, cwd=os.getcwd(), stdout=stdout)
+
+    if self.quiet:
+      stdout.close()
 
     if self.wait_port:
       wait_for_net_service("127.0.0.1", int(self.wait_port))
@@ -122,7 +125,7 @@ def mongodb(request):
 
 @pytest.fixture(scope="function")
 def redis(request):
-  return ProcessFixture(request, "redis-server", wait_port=6379, quiet=True)
+  return ProcessFixture(request, "redis-server --save ''", wait_port=6379, quiet=True)
 
 
 @pytest.fixture(scope="function")
