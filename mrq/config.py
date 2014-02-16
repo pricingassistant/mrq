@@ -9,7 +9,7 @@ def get_config(sources=("file", "env", "args"), env_prefix="MRQ_"):
   parser.add_argument('--max_jobs', default=0, type=int, action='store',
                       help='Gevent: max number of jobs to do before quitting. Temp workaround for memory leaks')
 
-  parser.add_argument('--pool_size', default=1, type=int, action='store',
+  parser.add_argument('--pool_size', '-n', default=1, type=int, action='store',
                       help='Gevent: max number of greenlets')
 
   parser.add_argument('--mongodebug', action='store_true', default=False,

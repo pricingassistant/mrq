@@ -2,6 +2,8 @@ import pytest
 import os
 import subprocess
 import sys
+import psutil
+import time
 
 sys.path.append(os.getcwd())
 
@@ -18,6 +20,7 @@ class ProcessFixture(object):
     self.process = None
     self.wait_port = wait_port
     self.quiet = quiet
+    self.stopped = False
 
     self.request.addfinalizer(self.stop)
 
@@ -32,16 +35,36 @@ class ProcessFixture(object):
     else:
       stdout = None
 
+    self.cmdline = cmdline
     self.process = subprocess.Popen(cmdline.split(" ") if type(cmdline) in [str, unicode] else cmdline,
                                     shell=False, close_fds=True, env=env, cwd=os.getcwd(), stdout=stdout)
 
     if self.wait_port:
       wait_for_net_service("127.0.0.1", int(self.wait_port))
 
-  def stop(self):
+  def stop(self, force=False, timeout=None):
+
+    # Call this only one time.
+    if self.stopped:
+      return
+    self.stopped = True
+
     if self.process is not None:
-      # print "kill -2 %s" % self.process.pid
+      # print "kill -2 %s" % self.cmdline
       os.kill(self.process.pid, 2)
+
+      for _ in range(500):
+
+        try:
+          p = psutil.Process(self.process.pid)
+          if p.status == "zombie":
+            return
+        except psutil.NoSuchProcess:
+          return
+
+        time.sleep(0.01)
+
+      assert False, "Process '%s' was still in state %s after 5 seconds..." % (self.cmdline, p.status)
 
 
 class WorkerFixture(ProcessFixture):
@@ -56,13 +79,24 @@ class WorkerFixture(ProcessFixture):
 
   def start(self, **kwargs):
 
+    self.started = True
+
     self.mongodb.start()
     self.redis.start()
 
-    ProcessFixture.start(self, **kwargs)
+    cmdline = "python mrq/scripts/mrqworker.py %s high default low" % kwargs.get("flags", "")
+
+    ProcessFixture.start(self, cmdline=cmdline, env=kwargs.get("env"))
 
     # This is a local worker instance that should never be started but used for launching tasks.
     self.local_worker = Worker(get_config(sources=("env")))
+
+  def stop(self, **kwargs):
+
+    ProcessFixture.stop(self, **kwargs)
+
+    self.mongodb.stop(**kwargs)
+    self.redis.stop(**kwargs)
 
   def send_tasks(self, path, params_list, block=True, queue=None):
     if not self.started:
@@ -73,7 +107,7 @@ class WorkerFixture(ProcessFixture):
     if not block:
       return job_ids
 
-    results = [wait_for_result(job_id) for job_id in job_ids]
+    results = [wait_for_result(job_id, poll_interval=0.01) for job_id in job_ids]
 
     return results
 
@@ -94,5 +128,5 @@ def redis(request):
 @pytest.fixture(scope="function")
 def worker(request, mongodb, redis):
 
-  return WorkerFixture(request, cmdline="python mrq/scripts/mrqworker.py high default low", mongodb=mongodb, redis=redis)
+  return WorkerFixture(request, mongodb=mongodb, redis=redis)
 

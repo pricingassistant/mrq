@@ -14,7 +14,7 @@ def parse_args():
 
   parser.add_argument('--command', action='store', default=os.environ.get("SUPERVISORD_COMMAND", "python worker.py highpriority default lowpriority"), help='Command to start the worker')
   parser.add_argument('--template', action='store', default=os.environ.get("SUPERVISORD_TEMPLATE", "docker"), help='Name of supervisord template to use')
-  parser.add_argument('--processes', default=int(os.environ.get("SUPERVISORD_PROCESSES", 1)), type=int, action='store', help='Number of processes to start')
+  parser.add_argument('--processes', '-N', default=int(os.environ.get("SUPERVISORD_PROCESSES", 1)), type=int, action='store', help='Number of processes to start')
 
   add_standard_worker_arguments(parser)
 

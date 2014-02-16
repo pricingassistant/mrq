@@ -18,6 +18,7 @@ RUN echo 1 > /proc/sys/vm/overcommit_memory
 RUN mkdir -p /data/db
 VOLUME ["/data"]
 
+RUN apt-get install -y strace
 
 ADD requirements.txt requirements.txt
 RUN pip install --use-mirrors -r requirements.txt

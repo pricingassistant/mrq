@@ -5,6 +5,7 @@ import re
 import os
 import signal
 import datetime
+import time
 import socket
 import redis as pyredis
 from pymongo.mongo_client import MongoClient
@@ -126,9 +127,12 @@ class Worker(object):
      """
 
     while True:
+
+      # print "Monitoring..."
+
       self.report_worker()
       self.flush_logs()
-      gevent.sleep(10)
+      time.sleep(10)
 
   def report_worker(self):
 
@@ -202,11 +206,14 @@ class Worker(object):
 
     finally:
 
+      self.log.debug("Joining the greenlet pool...")
       self.status = "stopping"
 
       self.gevent_pool.join(timeout=None, raise_error=False)
+      self.log.debug("Joined.")
 
-      self.greenlets["monitoring"].kill()
+      self.greenlets["monitoring"].kill(block=True)
+      self.log.debug("Monitoring greenlet killed.")
 
   def perform_job(self, job):
     """ Wraps a job.perform() call with timeout logic and exception handlers.
