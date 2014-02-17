@@ -23,3 +23,7 @@ def test_performance_manytasks(worker):
 
   # ... and return correct results
   assert result == range(n_tasks)
+
+
+# TODO test with latency with http://www.linuxfoundation.org/collaborate/workgroups/networking/netem
+# or a local proxy

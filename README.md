@@ -26,3 +26,16 @@ Testing is done inside a Docker container for maximum repeatability.
 ```
 $ make test
 ```
+
+Credits
+=======
+
+Inspirations:
+ * RQ
+ * Celery
+
+Vendored:
+ * https://github.com/Jowin/Datatables-Bootstrap3/
+ * https://github.com/twbs/bootstrap
+
+... as well as all the modules in requirements.txt!

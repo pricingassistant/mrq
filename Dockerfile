@@ -26,5 +26,10 @@ RUN pip install --use-mirrors -r requirements.txt
 ADD requirements-dev.txt requirements-dev.txt
 RUN pip install --use-mirrors -r requirements-dev.txt
 
+ADD requirements-dashboard.txt requirements-dashboard.txt
+RUN pip install --use-mirrors -r requirements-dashboard.txt
+
+
 EXPOSE 6379
 EXPOSE 27017
+EXPOSE 5555
