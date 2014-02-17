@@ -7,6 +7,8 @@ import signal
 import datetime
 import time
 import socket
+import traceback
+import psutil
 import redis as pyredis
 from pymongo.mongo_client import MongoClient
 from bson import ObjectId
@@ -49,6 +51,8 @@ class Worker(object):
     self.queues = self.config["queues"]
     self.done_jobs = 0
     self.max_jobs = self.config["max_jobs"]
+
+    self.process = psutil.Process(os.getpid())
 
     self.id = ObjectId()
     if config["name"]:
@@ -138,22 +142,67 @@ class Worker(object):
 
       self.report_worker()
       self.flush_logs()
-      time.sleep(10)
+      time.sleep(1)
 
   def report_worker(self):
 
       greenlets = []
 
+      for greenlet in self.gevent_pool:
+        g = {}
+        short_stack = []
+        stack = traceback.format_stack(greenlet.gr_frame)
+        for s in stack[1:]:
+          if "/gevent/hub.py" in s:
+            break
+          short_stack.append(s)
+        g["stack"] = short_stack
+
+        job = GREENLET_JOBS_REGISTRY.get(id(greenlet))
+        if job:
+          if job.data:
+            g["path"] = job.data["path"]
+          g["datestarted"] = job.datestarted
+
+        greenlets.append(g)
+
+      cpu = self.process.get_cpu_times()
+
+      whitelisted_config = [
+        "max_jobs",
+        "pool_size",
+        "queues",
+        "name"
+      ]
+
       self.mongodb_logs.mrq_workers.update({
         "_id": ObjectId(self.id)
       }, {"$set": {
         "status": self.status,
-        "pool_size": self.pool_size,
+        "registry_size": len(GREENLET_JOBS_REGISTRY),
+        "config": {k: v for k, v in self.config.iteritems() if k in whitelisted_config},
         "done_jobs": self.done_jobs,
-        "max_jobs": self.max_jobs,
         "datestarted": self.datestarted,
         "datereported": datetime.datetime.utcnow(),
-        "greenlets": greenlets
+        "process": {
+          "pid": self.process.pid,
+          "cpu": {
+            "user": cpu.user,
+            "system": cpu.system,
+            "percent": self.process.get_cpu_percent(0)
+          },
+          "mem": {
+            "rss": self.process.get_memory_info().rss
+          }
+          # https://code.google.com/p/psutil/wiki/Documentation
+          # get_open_files
+          # get_connections
+          # get_num_ctx_switches
+          # get_num_fds
+          # get_io_counters
+          # get_nice
+        },
+        "jobs": greenlets
       }}, upsert=True, w=0)
 
   def flush_logs(self):
@@ -266,6 +315,8 @@ class Worker(object):
 
     finally:
       gevent_timeout.cancel()
+
+      GREENLET_JOBS_REGISTRY[id(gevent.getcurrent())] = None
 
   def shutdown_graceful(self):
     """ Graceful shutdown: waits for all the jobs to finish. """

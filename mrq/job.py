@@ -20,12 +20,14 @@ class Job(object):
   def __init__(self, job_id, worker=None, queue=None, start=False):
     self.worker = worker
     self.queue = queue
+    self.datestarted = datetime.datetime.utcnow()
 
     self.log = self.worker.log_handler.get_logger(job=self)
 
     self.collection = self.worker.mongodb_jobs.mrq_jobs
     self.id = job_id
 
+    self.data = None
     self.task = None
 
     if start:
