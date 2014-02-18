@@ -142,7 +142,7 @@ class Worker(object):
 
       self.report_worker()
       self.flush_logs()
-      time.sleep(1)
+      time.sleep(int(self.config["report_interval"]))
 
   def report_worker(self):
 
@@ -163,11 +163,12 @@ class Worker(object):
           if job.data:
             g["path"] = job.data["path"]
           g["datestarted"] = job.datestarted
-
+          g["id"] = job.id
         greenlets.append(g)
 
       cpu = self.process.get_cpu_times()
 
+      # Avoid sharing passwords or sensitive config!
       whitelisted_config = [
         "max_jobs",
         "pool_size",
@@ -184,6 +185,8 @@ class Worker(object):
         "done_jobs": self.done_jobs,
         "datestarted": self.datestarted,
         "datereported": datetime.datetime.utcnow(),
+        "name": self.name,
+        "id": self.id,
         "process": {
           "pid": self.process.pid,
           "cpu": {
@@ -221,6 +224,7 @@ class Worker(object):
     jobs.append(self.job_class(job_id, worker=self, queue=queue, start=True))
 
     # Bulk-fetch other jobs from that queue to fill the pool.
+    # We take the chance that if there was one job on that queue, there should be more.
     if max_jobs > 1:
 
       with self.redis.pipeline(transaction=False) as pipe:

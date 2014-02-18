@@ -36,6 +36,9 @@ def get_config(sources=("file", "env", "args"), env_prefix="MRQ_"):
   parser.add_argument('--quiet', default=False, action='store_true',
                       help='Don\'t output task logs')
 
+  parser.add_argument('--report_interval', default=10, action='store',
+                      help='Seconds between worker reports to MongoDB')
+
   parser.add_argument('--config', '-c', default=None, action="store",
                       help='Path of a config file')
 

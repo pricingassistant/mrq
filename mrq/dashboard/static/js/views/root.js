@@ -1,0 +1,117 @@
+/**
+ * @fileoverview Defines the view container view that contains all views
+ */
+define(["views/generic/page", "jquery"],function(Page, $) {
+
+  return Page.extend({
+
+    template:"#tpl-page-root",
+    events:{
+      "change .js-store-select":"changestore"
+    },
+
+    isTabVisible: true,
+
+    init: function() {
+
+      var self = this;
+      //this.app.user.on("change",this.renderHeader,this);
+
+      // http://stackoverflow.com/questions/1060008/is-there-a-way-to-detect-if-a-browser-window-is-not-currently-active
+      (function() {
+
+        var onchange = function(evt) {
+
+            var prevVisible = self.isTabVisible;
+            var v = true, h = false,
+                evtMap = {
+                    focus:v, focusin:v, pageshow:v, blur:h, focusout:h, pagehide:h
+                };
+
+            evt = evt || window.event;
+            if (evt.type in evtMap)
+                self.isTabVisible = evtMap[evt.type];
+            else
+                self.isTabVisible = this[hidden] ? false : true;
+
+            if (prevVisible != self.isTabVisible) {
+              self.trigger("visibilitychange");
+            }
+        };
+
+        var hidden = "hidden";
+
+        // Standards:
+        if (hidden in document)
+            document.addEventListener("visibilitychange", onchange);
+        else if ((hidden = "mozHidden") in document)
+            document.addEventListener("mozvisibilitychange", onchange);
+        else if ((hidden = "webkitHidden") in document)
+            document.addEventListener("webkitvisibilitychange", onchange);
+        else if ((hidden = "msHidden") in document)
+            document.addEventListener("msvisibilitychange", onchange);
+        // IE 9 and lower:
+        else if ('onfocusin' in document)
+            document.onfocusin = document.onfocusout = onchange;
+        // All others:
+        else
+            window.onpageshow = window.onpagehide = window.onfocus = window.onblur = onchange;
+
+      })();
+    },
+
+    setStore:function(/*store*/) {
+
+      // If needed, we reset the store view so that it can be bound to the new store
+      this.addChildPage('store', new StoreView());
+      return this;
+    },
+
+    /**
+     * Shows a non blocking message to the user during a certain amount of time.
+     *
+     * @param {String} type : Type of alert ("warning", "error", "success", "info")
+     * @param {String} message : Message to display
+     * @param {Number} [timeout=5000] : Milliseconds before the alert is closed, if negative, will never close
+     */
+    alert:function(type, message, timeout) {
+
+      if (type=="clear") {
+        $(".wizard-content .alert").alert('close');
+        return;
+      }
+
+      var html = '<div class="fade in alert alert-'+type+'">'+
+        '<a class="close" data-dismiss="alert">×</a>'+
+        '<p>'+message+'</p>'+
+      '</div>';
+
+      var $alert = $(".app-content").prepend(html).children().first();
+      $alert.alert();
+
+      if (timeout===undefined) {
+        timeout = 5000;
+      }
+      if (timeout>0) {
+        setTimeout(function() {
+          $alert.alert('close');
+        },timeout);
+      }
+    },
+
+    render: function() {
+
+      this.renderTemplate();
+
+      //TODO do these views get cleaned up if we re-render?
+
+      // this.addChildPage('login', new LoginView());
+      // this.addChildPage('stores', new StoresView());
+      // this.addChildPage('maintenance', new MaintenanceView());
+
+
+      return this;
+    }
+  });
+
+});

@@ -10,10 +10,7 @@ sys.path.append(os.getcwd())
 from mrq.worker import Worker
 from mrq.config import get_config
 
-app = Flask("dashboard")
-
-
-STATIC_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'static')
+app = Flask("dashboard", static_folder='mrq/dashboard/static')
 
 
 @app.route('/')
@@ -21,11 +18,11 @@ def root():
   return app.send_static_file("index.html")
 
 
-@app.route('/api/workers.json')
-def api_root():
-  return jsonify({
-    "workers": list(worker.mongodb_logs.mrq_workers.find({}))
-  })
+# @app.route('/api/workers.json')
+# def api_root():
+#   return jsonify({
+#     "workers": list(worker.mongodb_logs.mrq_workers.find({}))
+#   })
 
 
 if __name__ == '__main__':
