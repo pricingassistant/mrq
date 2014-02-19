@@ -11,7 +11,7 @@ import time
 sys.path.append(os.getcwd())
 
 from mrq.worker import Worker
-from mrq.queue import send_tasks, wait_for_result
+from mrq.queue import send_tasks, wait_for_job
 from mrq.config import get_config
 from mrq.utils import wait_for_net_service
 
@@ -86,8 +86,8 @@ class WorkerFixture(ProcessFixture):
   def __init__(self, request, **kwargs):
     ProcessFixture.__init__(self, request, cmdline=kwargs.get("cmdline"))
 
-    self.mongodb = kwargs["mongodb"]
-    self.redis = kwargs["redis"]
+    self.fixture_mongodb = kwargs["mongodb"]
+    self.fixture_redis = kwargs["redis"]
 
     self.started = False
 
@@ -95,8 +95,8 @@ class WorkerFixture(ProcessFixture):
 
     self.started = True
 
-    self.mongodb.start()
-    self.redis.start()
+    self.fixture_mongodb.start()
+    self.fixture_redis.start()
 
     cmdline = "python mrq/scripts/mrq-worker.py %s high default low" % kwargs.get("flags", "")
 
@@ -106,14 +106,18 @@ class WorkerFixture(ProcessFixture):
     self.local_worker = Worker(get_config(sources=("env")))
     self.local_worker.connect()
 
+    self.mongodb_jobs = self.local_worker.mongodb_jobs
+    self.mongodb_logs = self.local_worker.mongodb_logs
+    self.redis = self.local_worker.redis
+
   def stop(self, **kwargs):
 
     ProcessFixture.stop(self, **kwargs)
 
-    self.mongodb.stop(**kwargs)
-    self.redis.stop(**kwargs)
+    self.fixture_mongodb.stop(**kwargs)
+    self.fixture_redis.stop(**kwargs)
 
-  def send_tasks(self, path, params_list, block=True, queue=None):
+  def send_tasks(self, path, params_list, block=True, queue=None, accept_statuses=["success"]):
     if not self.started:
       self.start()
 
@@ -122,7 +126,13 @@ class WorkerFixture(ProcessFixture):
     if not block:
       return job_ids
 
-    results = [wait_for_result(job_id, poll_interval=0.01) for job_id in job_ids]
+    results = []
+
+    for job_id in job_ids:
+      job = wait_for_job(job_id, poll_interval=0.01)
+      assert job.get("status") in accept_statuses
+
+      results.append(job.get("result"))
 
     return results
 

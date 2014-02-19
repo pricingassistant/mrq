@@ -50,7 +50,7 @@ def send_tasks(path, params_list, queue=None, sync=False, batch_size=1000):
   return all_ids
 
 
-def wait_for_result(job_id, poll_interval=1, timeout=None):
+def wait_for_job(job_id, poll_interval=1, timeout=None):
 
   worker = get_current_worker()
   if not worker:
@@ -66,14 +66,15 @@ def wait_for_result(job_id, poll_interval=1, timeout=None):
 
     job_data = collection.find_one({
       "_id": ObjectId(job_id),
-      "status": "success"
+      "status": {"$in": ["success", "failed", "timeout", "retry"]}
     }, fields={
       "_id": 0,
-      "result": 1
+      "result": 1,
+      "status": 1
     })
 
     if job_data:
-      return job_data.get("result")
+      return job_data
 
     time.sleep(poll_interval)
 

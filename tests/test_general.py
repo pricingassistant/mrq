@@ -1,3 +1,5 @@
+from bson import ObjectId
+
 
 def test_general_simple_task_one(worker):
 
@@ -15,3 +17,8 @@ def test_general_simple_task_multiple(worker):
   ])
 
   assert result == [42, 42, 41]
+
+
+def test_general_exception_status(worker):
+
+  worker.send_task("mrq.basetasks.tests.general.RaiseException", {"message": "xxx"}, block=True, accept_statuses=["failed"])

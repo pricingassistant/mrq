@@ -336,8 +336,9 @@ class Worker(object):
       #self.handle_exception(job, *sys.exc_info())
 
     except Exception:
-      raise
-      #self.handle_exception(job, *sys.exc_info())
+      trace = traceback.format_exc()
+      self.log.error(trace)
+      job.save_error(traceback=trace)
 
     finally:
       gevent_timeout.cancel()
