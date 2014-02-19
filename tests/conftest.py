@@ -56,7 +56,7 @@ class ProcessFixture(object):
     if self.wait_port:
       wait_for_net_service("127.0.0.1", int(self.wait_port))
 
-  def stop(self, force=False, timeout=None):
+  def stop(self, force=False, timeout=None, block=True):
 
     # Call this only one time.
     if self.stopped:
@@ -66,6 +66,9 @@ class ProcessFixture(object):
     if self.process is not None:
       # print "kill -2 %s" % self.cmdline
       os.kill(self.process.pid, 2)
+
+      if not block:
+        return
 
       for _ in range(500):
 

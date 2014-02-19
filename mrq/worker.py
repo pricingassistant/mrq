@@ -317,7 +317,9 @@ class Worker(object):
         This is the first call happening inside the greenlet.
     """
 
-    GREENLET_JOBS_REGISTRY[id(gevent.getcurrent())] = job
+    self.greenlet_id = id(gevent.getcurrent())
+
+    GREENLET_JOBS_REGISTRY[self.greenlet_id] = job
 
     gevent_timeout = gevent.Timeout(job.timeout, JobTimeoutException(
       'Gevent Job exceeded maximum timeout  value (%d seconds).' % job.timeout
@@ -343,7 +345,7 @@ class Worker(object):
     finally:
       gevent_timeout.cancel()
 
-      GREENLET_JOBS_REGISTRY[id(gevent.getcurrent())] = None
+      GREENLET_JOBS_REGISTRY[self.greenlet_id] = None
 
   def shutdown_graceful(self):
     """ Graceful shutdown: waits for all the jobs to finish. """
