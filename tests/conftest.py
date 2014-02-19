@@ -1,6 +1,9 @@
 import pytest
 import os
-import subprocess32 as subprocess
+try:
+  import subprocess32 as subprocess
+except:
+  import subprocess
 import sys
 import psutil
 import time
@@ -11,6 +14,8 @@ from mrq.worker import Worker
 from mrq.queue import send_tasks, wait_for_result
 from mrq.config import get_config
 from mrq.utils import wait_for_net_service
+
+os.system("rm -rf dump.rdb")
 
 
 class ProcessFixture(object):
@@ -30,12 +35,18 @@ class ProcessFixture(object):
     if env is None:
       env = {}
 
+    # Kept from parent env
+    for env_key in ["PATH", "GEVENT_LOOP", "VIRTUAL_ENV"]:
+      if os.environ.get(env_key) and not env.get(env_key):
+        env[env_key] = os.environ.get(env_key)
+
     if self.quiet:
       stdout = open(os.devnull, 'w')
     else:
       stdout = None
 
     self.cmdline = cmdline
+    print cmdline
     self.process = subprocess.Popen(cmdline.split(" ") if type(cmdline) in [str, unicode] else cmdline,
                                     shell=False, close_fds=True, env=env, cwd=os.getcwd(), stdout=stdout)
 
@@ -87,12 +98,13 @@ class WorkerFixture(ProcessFixture):
     self.mongodb.start()
     self.redis.start()
 
-    cmdline = "python mrq/scripts/mrqworker.py %s high default low" % kwargs.get("flags", "")
+    cmdline = "python mrq/scripts/mrq-worker.py %s high default low" % kwargs.get("flags", "")
 
     ProcessFixture.start(self, cmdline=cmdline, env=kwargs.get("env"))
 
     # This is a local worker instance that should never be started but used for launching tasks.
     self.local_worker = Worker(get_config(sources=("env")))
+    self.local_worker.connect()
 
   def stop(self, **kwargs):
 
@@ -116,6 +128,11 @@ class WorkerFixture(ProcessFixture):
 
   def send_task(self, path, params, **kwargs):
     return self.send_tasks(path, [params], **kwargs)[0]
+
+
+@pytest.fixture(scope="function")
+def httpstatic(request):
+  return ProcessFixture(request, "/usr/sbin/nginx -c /app/tests/fixtures/httpstatic/nginx.conf", wait_port=8081)
 
 
 @pytest.fixture(scope="function")

@@ -5,6 +5,7 @@
     <title>MRQ Dashboard</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="/static/css/bootstrap-slate.min.css" media="screen">
+    <link rel="stylesheet" href="/static/css/datatables.css" media="screen">
   </head>
   <body>
 
@@ -20,33 +21,18 @@
         </div>
         <div class="navbar-collapse collapse" id="navbar-main">
           <ul class="nav navbar-nav">
-            <li class="dropdown">
-              <a class="dropdown-toggle" data-toggle="dropdown" href="#" id="themes">Themes <span class="caret"></span></a>
-              <ul class="dropdown-menu" aria-labelledby="themes">
-                <li><a href="../default/">Default</a></li>
-                <li class="divider"></li>
-                <li><a href="../amelia/">Amelia</a></li>
-                <li><a href="../cerulean/">Cerulean</a></li>
-                <li><a href="../cosmo/">Cosmo</a></li>
-                <li><a href="../cyborg/">Cyborg</a></li>
-                <li><a href="../flatly/">Flatly</a></li>
-                <li><a href="../journal/">Journal</a></li>
-                <li><a href="../lumen/">Lumen</a></li>
-                <li><a href="../readable/">Readable</a></li>
-                <li><a href="../simplex/">Simplex</a></li>
-                <li><a href="../slate/">Slate</a></li>
-                <li><a href="../spacelab/">Spacelab</a></li>
-                <li><a href="../superhero/">Superhero</a></li>
-                <li><a href="../united/">United</a></li>
-                <li><a href="../yeti/">Yeti</a></li>
-              </ul>
+
+            <li>
+              <a href="/#">Queues</a>
             </li>
             <li>
-              <a href="../help/">Help</a>
+              <a href="/#workers">Workers</a>
             </li>
             <li>
-              <a href="http://news.bootswatch.com">Blog</a>
+              <a href="/#jobs">Jobs</a>
             </li>
+
+            <!--
             <li class="dropdown">
               <a class="dropdown-toggle" data-toggle="dropdown" href="#" id="download">Download <span class="caret"></span></a>
               <ul class="dropdown-menu" aria-labelledby="download">
@@ -57,11 +43,11 @@
                 <li><a href="./bootswatch.less">bootswatch.less</a></li>
               </ul>
             </li>
+            -->
           </ul>
 
           <ul class="nav navbar-nav navbar-right">
-            <li><a href="http://builtwithbootstrap.com/" target="_blank">Built With Bootstrap</a></li>
-            <li><a href="https://wrapbootstrap.com/?ref=bsw" target="_blank">WrapBootstrap</a></li>
+            <li><a href="https://github.com/pricingassistant/mrq" target="_blank">Github</a></li>
           </ul>
 
         </div>
@@ -86,10 +72,72 @@
 
         <div class="js-page-queues"></div>
         <div class="js-page-workers"></div>
-        <div class="js-page-queue"></div>
+        <div class="js-page-worker"></div>
+        <div class="js-page-jobs"></div>
 
       </script>
 
+
+      <script id="tpl-page-queues" type="text/template">
+        <h1>Queues</h1>
+        <div class="container">
+          <table cellpadding="0" cellspacing="0" border="0" class="datatable table table-striped table-bordered js-datatable">
+          </table>
+        </div>
+      </script>
+
+      <script id="tpl-page-workers" type="text/template">
+        <h1>Workers</h1>
+        <div class="container">
+          <table cellpadding="0" cellspacing="0" border="0" class="datatable table table-striped table-bordered js-datatable">
+          </table>
+        </div>
+      </script>
+
+      <script id="tpl-page-jobs" type="text/template">
+
+          <form class="form-inline js-datatable-filters pull-right" role="form">
+            <br/>
+            <div class="form-group">
+              <label class="sr-only" for="jobs-form-queue">Queue</label>
+              <input type="text" class="form-control input-sm js-datatable-filters-queue" id="jobs-form-queue" placeholder="Queue" value="<%= filters.queue %>">
+            </div>
+            <div class="form-group">
+              <label class="sr-only" for="jobs-form-worker">Worker</label>
+              <input type="text" class="form-control input-sm js-datatable-filters-worker" id="jobs-form-worker" placeholder="Worker" value="<%= filters.worker %>">
+            </div>
+            <div class="form-group">
+              <label class="sr-only" for="jobs-form-path">Task</label>
+              <input type="text" class="form-control input-sm js-datatable-filters-path" id="jobs-form-path" placeholder="Task" value="<%= filters.path %>">
+            </div>
+            <div class="form-group">
+              <select class="form-control input-sm js-datatable-filters-status" id="jobs-form-status">
+                <option <%= filters.status==""?"selected='selected'":"" %> value="">queued</option>
+                <option <%= filters.status=="started"?"selected='selected'":"" %> value="">started</option>
+                <option <%= filters.status=="success"?"selected='selected'":"" %> value="">success</option>
+                <option <%= filters.status=="retry"?"selected='selected'":"" %> value="">retry</option>
+                <option <%= filters.status=="timeout"?"selected='selected'":"" %> value="">timeout</option>
+                <option <%= filters.status=="failed"?"selected='selected'":"" %> value="">failed</option>
+              </select>
+            </div>
+            <!--
+            <div class="checkbox">
+              <label>
+                <input type="checkbox"> Remember me
+              </label>
+            </div
+            -->
+            <button type="submit" class="btn btn-default js-datatable-filters-submit input-sm" style="padding:5px">OK</button>
+          </form>
+
+        <h1>Jobs</h1>
+        <div class="container">
+
+
+          <table cellpadding="0" cellspacing="0" border="0" class="datatable table table-striped table-bordered js-datatable">
+          </table>
+        </div>
+      </script>
 
 
       <footer>

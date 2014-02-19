@@ -18,7 +18,10 @@ RUN echo 1 > /proc/sys/vm/overcommit_memory
 RUN mkdir -p /data/db
 VOLUME ["/data"]
 
-RUN apt-get install -y strace git
+RUN apt-get install -y strace git software-properties-common libev-dev nginx
+RUN add-apt-repository -y ppa:pypy/ppa
+RUN apt-get update
+RUN apt-get install -y pypy pypy-dev
 
 ADD requirements.txt requirements.txt
 RUN pip install --use-mirrors -r requirements.txt

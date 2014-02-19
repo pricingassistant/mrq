@@ -9,6 +9,7 @@ import time
 import socket
 import traceback
 import psutil
+import sys
 import redis as pyredis
 from pymongo.mongo_client import MongoClient
 from bson import ObjectId
@@ -20,6 +21,16 @@ from .exceptions import JobTimeoutException, StopRequested
 GREENLET_JOBS_REGISTRY = {}
 
 WORKER = None
+
+
+# https://groups.google.com/forum/#!topic/gevent/EmZw9CVBC2g
+# if "__pypy__" in sys.builtin_module_names:
+#   def _reuse(self):
+#       self._sock._reuse()
+#   def _drop(self):
+#       self._sock._drop()
+#   gevent.socket.socket._reuse = _reuse
+#   gevent.socket.socket._drop = _drop
 
 
 def get_current_job():
@@ -52,6 +63,8 @@ class Worker(object):
     self.done_jobs = 0
     self.max_jobs = self.config["max_jobs"]
 
+    self.connected = False  # MongoDB + Redis
+
     self.process = psutil.Process(os.getpid())
 
     self.id = ObjectId()
@@ -73,6 +86,18 @@ class Worker(object):
     # Keep references to main greenlets
     self.greenlets = {}
 
+    self.profiler = None
+    if self.config["profile"]:
+      print "Starting profiler..."
+      import cProfile
+      self.profiler = cProfile.Profile()
+      self.profiler.enable()
+
+  def connect(self, force=False):
+
+    if self.connected and not force:
+      return
+
     self.connect_redis(self.config["redis"])
 
     self.mongodb_jobs = self.connect_mongodb("jobs", self.config["mongodb_jobs"])
@@ -83,12 +108,7 @@ class Worker(object):
 
     self.log_handler.set_collection(self.mongodb_logs.mrq_logs)
 
-    self.profiler = None
-    if self.config["profile"]:
-      print "Starting profiler..."
-      import cProfile
-      self.profiler = cProfile.Profile()
-      self.profiler.enable()
+    self.connected = True
 
   def make_name(self):
     """ Generate a human-readable name for this worker. """
@@ -133,12 +153,12 @@ class Worker(object):
   def greenlet_monitoring(self):
     """ This greenlet always runs in background to update current status in MongoDB every 10 seconds.
 
-    Caution: it might get delayed when doing long blocking operations.
+    Caution: it might get delayed when doing long blocking operations. Should we do this in a thread instead?
      """
 
     while True:
 
-      # print "Monitoring..."
+      print "Monitoring..."
 
       self.report_worker()
       self.flush_logs()
@@ -242,6 +262,8 @@ class Worker(object):
 
     """
 
+    self.connect()
+
     self.status = "started"
 
     self.greenlets["monitoring"] = gevent.spawn(self.greenlet_monitoring)
@@ -256,7 +278,7 @@ class Worker(object):
           free_pool_slots = self.gevent_pool.free_count()
           if free_pool_slots > 0:
             break
-          gevent.sleep(0)
+          gevent.sleep(0.01)
 
         self.log.info('Listening on %s' % self.queues)
 

@@ -3,19 +3,13 @@ require([
 
   //other plain-JS deps
 
-    "datatablesbs3", "bootstrap"
+    "datatablesbs3", "bootstrap", "backbonequeryparams"
 
   ],function(Backbone, _, $, app) {
 
 
   // Models come from mongodb
   Backbone.Model.prototype.idAttribute = '_id';
-
-  _.templateSettings = {
-    evaluate    : /<@([\s\S]+?)@>/g,
-    interpolate : /<@=([\s\S]+?)@>/g,
-    escape      : /<@-([\s\S]+?)@>/g
-  };
 
   // http://datatables.net/plug-ins/api#fnSetFilteringDelay
   $.fn.dataTableExt.oApi.fnSetFilteringDelay = function ( oSettings, iDelay ) {

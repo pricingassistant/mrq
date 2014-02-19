@@ -49,19 +49,8 @@ define([
 
       var self = this;
 
-      return;
-
-      this.login(null,null,function(err, loggedin) {
-
-        app.router = new Router(self);
-        Backbone.history.start();
-
-        if (loggedin) {
-
-
-
-        }
-      });
+      app.router = new Router(self);
+      Backbone.history.start();
 
     },
 

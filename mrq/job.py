@@ -49,7 +49,7 @@ class Job(object):
     })
 
     if self.data is None:
-      raise Exception("Job not found in MongoDB!")
+      raise Exception("Job %s not found in MongoDB!" % self.id)
 
   def _save(self, changes):
 

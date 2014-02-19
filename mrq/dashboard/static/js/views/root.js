@@ -1,7 +1,13 @@
 /**
  * @fileoverview Defines the view container view that contains all views
  */
-define(["views/generic/page", "jquery"],function(Page, $) {
+define(["views/generic/page", "jquery",
+        "views/queues", "views/workers", "views/jobs"],
+
+      function(
+        Page, $,
+        QueuesView, WorkersView, JobsView
+  ) {
 
   return Page.extend({
 
@@ -60,13 +66,6 @@ define(["views/generic/page", "jquery"],function(Page, $) {
       })();
     },
 
-    setStore:function(/*store*/) {
-
-      // If needed, we reset the store view so that it can be bound to the new store
-      this.addChildPage('store', new StoreView());
-      return this;
-    },
-
     /**
      * Shows a non blocking message to the user during a certain amount of time.
      *
@@ -103,12 +102,9 @@ define(["views/generic/page", "jquery"],function(Page, $) {
 
       this.renderTemplate();
 
-      //TODO do these views get cleaned up if we re-render?
-
-      // this.addChildPage('login', new LoginView());
-      // this.addChildPage('stores', new StoresView());
-      // this.addChildPage('maintenance', new MaintenanceView());
-
+      this.addChildPage('queues', new QueuesView());
+      this.addChildPage('workers', new WorkersView());
+      this.addChildPage('jobs', new JobsView());
 
       return this;
     }

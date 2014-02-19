@@ -16,9 +16,20 @@ linterrors:
 virtualenv:
 	virtualenv venv --distribute
 
+virtualenv_pypy:
+	virtualenv -p /usr/bin/pypy pypy --distribute
+
 deps:
 	pip install -r requirements.txt
 	pip install -r requirements-dev.txt
+	pip install -r requirements-dashboard.txt
+
+deps_pypy:
+	pip install git+git://github.com/schmir/gevent@pypy-hacks
+	pip install cffi
+	pip install git+git://github.com/gevent-on-pypy/pypycore
+	export GEVENT_LOOP=pypycore.loop
+	pip install -r requirements-pypy.txt
 
 clean:
 	find . -path ./venv -prune -o -name "*.pyc" -exec rm {} \;
@@ -28,3 +39,7 @@ dashboard:
 
 dashboard_dev:
 	python mrq/dashboard/app.py
+
+stack:
+	mongod &
+	redis-server &

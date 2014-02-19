@@ -10,6 +10,7 @@ require.config({
     jquery: "/static/js/vendor/jquery-2.1.0.min",
     underscore: "/static/js/vendor/underscore.min",
     backbone: "/static/js/vendor/backbone.min",
+    backbonequeryparams: "/static/js/vendor/backbone.queryparams",
     bootstrap: "/static/js/vendor/bootstrap.min",
     datatables: "/static/js/vendor/jquery.dataTables.min",
     datatablesbs3: "/static/js/vendor/datatables.bs3"
@@ -32,6 +33,9 @@ require.config({
     },
     datatablesbs3: {
       deps: ["datatables"]
+    },
+    backbonequeryparams: {
+      deps: ["backbone"]
     }
 
   }
