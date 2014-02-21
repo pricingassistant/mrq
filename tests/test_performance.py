@@ -57,9 +57,9 @@ def test_performance_httpstatic_internal(worker, httpstatic):
 
 def test_performance_httpstatic_external(worker):
 
-  n_tasks = 10000
+  n_tasks = 1000
   n_greenlets = 50
-  max_seconds = 150
+  max_seconds = 15
 
   url = "http://www.microsoft.com/favicon.ico"
   url = "http://ox-mockserver.herokuapp.com/ipheaders"

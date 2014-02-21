@@ -15,7 +15,7 @@ from pymongo.mongo_client import MongoClient
 from bson import ObjectId
 
 from .job import Job
-from .exceptions import JobTimeoutException, StopRequested
+from .exceptions import JobTimeoutException, StopRequested, JobInterrupt
 
 # greenletid => Job object
 GREENLET_JOBS_REGISTRY = {}
@@ -46,8 +46,6 @@ class Worker(object):
   # Allow easy overloading
   job_class = Job
 
-  stop_signals = [signal.SIGINT, signal.SIGTERM]
-
   def __init__(self, config):
 
     #queues, pool_size=1, max_jobs=None, redis=None, mongodb_jobs=None, mongodb_logs=None, name=None):
@@ -59,7 +57,7 @@ class Worker(object):
 
     self.datestarted = datetime.datetime.utcnow()
     self.status = "init"
-    self.queues = self.config["queues"]
+    self.queues = [x for x in self.config["queues"] if x]
     self.done_jobs = 0
     self.max_jobs = self.config["max_jobs"]
 
@@ -150,6 +148,17 @@ class Worker(object):
     else:
       return mongodb
 
+  def greenlet_scheduler(self):
+
+    from .scheduler import Scheduler
+    scheduler = Scheduler(self.mongodb_jobs.scheduled_jobs)
+
+    scheduler.sync_tasks()
+
+    while True:
+      scheduler.check()
+      time.sleep(int(self.config["scheduler_interval"]))
+
   def greenlet_monitoring(self):
     """ This greenlet always runs in background to update current status in MongoDB every 10 seconds.
 
@@ -158,7 +167,7 @@ class Worker(object):
 
     while True:
 
-      print "Monitoring..."
+      # print "Monitoring..."
 
       self.report_worker()
       self.flush_logs()
@@ -268,6 +277,9 @@ class Worker(object):
 
     self.greenlets["monitoring"] = gevent.spawn(self.greenlet_monitoring)
 
+    if self.config["scheduler"]:
+      self.greenlets["scheduler"] = gevent.spawn(self.greenlet_scheduler)
+
     self.install_signal_handlers()
 
     try:
@@ -299,14 +311,22 @@ class Worker(object):
 
     finally:
 
-      self.log.debug("Joining the greenlet pool...")
-      self.status = "stopping"
+      try:
 
-      self.gevent_pool.join(timeout=None, raise_error=False)
-      self.log.debug("Joined.")
+        self.log.debug("Joining the greenlet pool...")
+        self.status = "stopping"
 
-      self.greenlets["monitoring"].kill(block=True)
-      self.log.debug("Monitoring greenlet killed.")
+        self.gevent_pool.join(timeout=None, raise_error=False)
+        self.log.debug("Joined.")
+
+      except StopRequested:
+        pass
+
+      self.gevent_pool.kill(exception=JobInterrupt, block=True)
+
+      for g in self.greenlets:
+        self.greenlets[g].kill(block=True)
+        self.log.debug("Greenlet for %s killed." % g)
 
       if self.profiler:
         self.profiler.print_stats(sort="cumulative")
@@ -322,7 +342,7 @@ class Worker(object):
     GREENLET_JOBS_REGISTRY[self.greenlet_id] = job
 
     gevent_timeout = gevent.Timeout(job.timeout, JobTimeoutException(
-      'Gevent Job exceeded maximum timeout  value (%d seconds).' % job.timeout
+      'Gevent Job exceeded maximum timeout value (%d seconds).' % job.timeout
     ))
 
     gevent_timeout.start()
@@ -334,13 +354,20 @@ class Worker(object):
       job.retry()
 
     except JobTimeoutException:
-      raise
-      #self.handle_exception(job, *sys.exc_info())
+      trace = traceback.format_exc()
+      self.log.error("Job timeouted after %s seconds" % job.timeout)
+      self.log.error(trace)
+      job.save_timeout(traceback=trace)
+
+    except JobInterrupt:
+      trace = traceback.format_exc()
+      self.log.error(trace)
+      job.save_interrupt(traceback=trace)
 
     except Exception:
       trace = traceback.format_exc()
       self.log.error(trace)
-      job.save_error(traceback=trace)
+      job.save_failed(traceback=trace)
 
     finally:
       gevent_timeout.cancel()
@@ -359,22 +386,30 @@ class Worker(object):
     self.log.info("Forced shutdown...")
     self.status = "killing"
 
-    self.gevent_pool.kill(block=True, timeout=2)
+    self.gevent_pool.kill(exception=JobInterrupt, block=False)
+
+    raise StopRequested()
 
   def install_signal_handlers(self):
     """ Handle events like Ctrl-C from the command line. """
-    def request_shutdown_now():  # signum, frame):
+
+    self.graceful_stop = False
+
+    def request_shutdown_now():
       self.shutdown_now()
 
-    def request_shutdown_graceful():  # signum, frame):
+    def request_shutdown_graceful():
 
-      # Second time, shutdown now
-      for s in self.stop_signals:
-        gevent.signal(s, request_shutdown_now)
+      # Second time CTRL-C, shutdown now
+      if self.graceful_stop:
+        request_shutdown_now()
+      else:
+        self.graceful_stop = True
+        self.shutdown_graceful()
 
-      self.shutdown_graceful()
+    # First time CTRL-C, try to shutdown gracefully
+    gevent.signal(signal.SIGINT, request_shutdown_graceful)
 
-    # First time, try to shutdown gracefully
-    for s in self.stop_signals:
-      gevent.signal(s, request_shutdown_graceful)
+    # User (or Heroku) requests a stop now, just mark tasks as interrupted.
+    gevent.signal(signal.SIGTERM, request_shutdown_now)
 

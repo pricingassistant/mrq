@@ -13,4 +13,10 @@ class RetryInterrupt(BaseException):
 
 
 class StopRequested(GreenletExit):
+  """ Thrown in the mail greenlet to stop dequeuing jobs. """
+  pass
+
+
+class JobInterrupt(GreenletExit):
+  """ Interrupts that stop a job in its execution, e.g. when responding to a SIGTERM. """
   pass

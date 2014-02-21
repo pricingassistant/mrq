@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 
 
 def get_config(sources=("file", "env", "args"), env_prefix="MRQ_"):
@@ -36,7 +37,13 @@ def get_config(sources=("file", "env", "args"), env_prefix="MRQ_"):
   parser.add_argument('--quiet', default=False, action='store_true',
                       help='Don\'t output task logs')
 
-  parser.add_argument('--report_interval', default=10, action='store',
+  parser.add_argument('--scheduler', default=False, action='store_true',
+                      help='Run the scheduler')
+
+  parser.add_argument('--scheduler_interval', default=60, action='store', type=int,
+                      help='Seconds between scheduler checks')
+
+  parser.add_argument('--report_interval', default=10, action='store', type=int,
                       help='Seconds between worker reports to MongoDB')
 
   parser.add_argument('--config', '-c', default=None, action="store",
@@ -50,11 +57,21 @@ def get_config(sources=("file", "env", "args"), env_prefix="MRQ_"):
   else:
     from_args = parser.parse_args([])
 
+  config_module = None
+  if "file" in sources and from_args.config:
+    sys.path.append(os.path.dirname(from_args.config))
+    config_module = __import__(os.path.basename(from_args.config.replace(".py", "")))
+    sys.path.pop(-1)
+
   # Get defaults
   merged_config = from_args.__dict__
 
+  # Keys that can't be passed from the command line
+  merged_config["tasks"] = {}
+  merged_config["scheduled_tasks"] = {}
+
   for part in sources:
-    for name, arg_value in from_args.__dict__.iteritems():
+    for name, arg_value in merged_config.iteritems():
 
       value = None
       if part == "env":
@@ -62,7 +79,7 @@ def get_config(sources=("file", "env", "args"), env_prefix="MRQ_"):
       elif part == "args":
         value = arg_value
       elif part == "file":
-        pass
+        value = getattr(config_module, name.upper(), None)
 
       if value is not None:
         merged_config[name] = value

@@ -17,13 +17,13 @@ def send_tasks(path, params_list, queue=None, sync=False, batch_size=1000):
     task_class = load_task_class(path)
     return [task_class().run(params) for params in params_list]
 
-  if queue is None:
-    queue = "default"
-    # ROUTES[task]["queue"]
-
   worker = get_current_worker()
   if not worker:
     raise Exception("Can't queue task if worker is not initialized.")
+
+  if queue is None:
+    task_def = worker.config.get("tasks", {}).get(path) or {}
+    queue = task_def.get("queue", "default")
 
   all_ids = []
 

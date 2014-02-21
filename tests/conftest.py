@@ -56,16 +56,16 @@ class ProcessFixture(object):
     if self.wait_port:
       wait_for_net_service("127.0.0.1", int(self.wait_port))
 
-  def stop(self, force=False, timeout=None, block=True):
+  def stop(self, force=False, timeout=None, block=True, sig=2):
 
     # Call this only one time.
-    if self.stopped:
+    if self.stopped and not force:
       return
     self.stopped = True
 
     if self.process is not None:
       # print "kill -2 %s" % self.cmdline
-      os.kill(self.process.pid, 2)
+      os.kill(self.process.pid, sig)
 
       if not block:
         return
@@ -113,12 +113,16 @@ class WorkerFixture(ProcessFixture):
     self.mongodb_logs = self.local_worker.mongodb_logs
     self.redis = self.local_worker.redis
 
-  def stop(self, **kwargs):
+  def stop(self, deps=True, sig=2, **kwargs):
 
-    ProcessFixture.stop(self, **kwargs)
+    ProcessFixture.stop(self, sig=sig, **kwargs)
 
-    self.fixture_mongodb.stop(**kwargs)
-    self.fixture_redis.stop(**kwargs)
+    if deps:
+      self.stop_deps(**kwargs)
+
+  def stop_deps(self, **kwargs):
+     self.fixture_mongodb.stop(sig=2, **kwargs)
+     self.fixture_redis.stop(sig=2, **kwargs)
 
   def send_tasks(self, path, params_list, block=True, queue=None, accept_statuses=["success"]):
     if not self.started:

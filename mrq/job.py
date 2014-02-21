@@ -50,6 +50,9 @@ class Job(object):
 
     if self.data is None:
       raise Exception("Job %s not found in MongoDB!" % self.id)
+    else:
+      task_def = self.worker.config.get("tasks", {}).get(self.data["path"]) or {}
+      self.timeout = task_def.get("timeout", self.timeout)
 
   def _save(self, changes):
 
@@ -65,7 +68,7 @@ class Job(object):
       "status": "success"
     })
 
-  def save_error(self, traceback=None):
+  def save_failed(self, traceback=None):
 
     self._save({
       "traceback": traceback,
@@ -73,9 +76,18 @@ class Job(object):
       "datefinished": datetime.datetime.utcnow()
     })
 
-  def save_timeout(self):
+  def save_interrupt(self, traceback=None):
 
     self._save({
+      "traceback": traceback,
+      "status": "interrupt",
+      "datefinished": datetime.datetime.utcnow()
+    })
+
+  def save_timeout(self, traceback=None):
+
+    self._save({
+      "traceback": traceback,
       "status": "timeout",
       "datefinished": datetime.datetime.utcnow()
     })

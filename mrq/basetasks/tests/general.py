@@ -18,6 +18,10 @@ class Add(Task):
     return res
 
 
+class TimeoutFromConfig(Add):
+  pass
+
+
 class Fetch(Task):
   def run(self, params):
 

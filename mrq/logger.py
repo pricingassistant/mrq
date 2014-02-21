@@ -2,8 +2,6 @@
 from collections import defaultdict
 import datetime
 
-from .worker import get_current_job, get_current_worker
-
 
 class LoggerInterface(object):
   """ This object acts as a logger from python's logging module. """
@@ -16,6 +14,9 @@ class LoggerInterface(object):
   def handler(self):
     if self._handler:
       return self._handler
+
+    # Import here to avoid import loop
+    from .worker import get_current_worker
     return get_current_worker().log_handler
 
   def info(self, *args):
@@ -47,6 +48,10 @@ class LogHandler(object):
     self.set_collection(collection)
     self.quiet = quiet
 
+    # Import here to avoid import loop
+    from .worker import get_current_job
+    self.get_current_job = get_current_job
+
   def get_logger(self, worker=None, job=None):
     return LoggerInterface(self, worker=worker, job=job)
 
@@ -73,7 +78,7 @@ class LogHandler(object):
       self.buffer["workers"][worker].append(formatted)
     else:
       if job == "current":
-        job_object = get_current_job()
+        job_object = self.get_current_job()
         if job_object:
           self.buffer["jobs"][job_object.id].append(formatted)
       else:
