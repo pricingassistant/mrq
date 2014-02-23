@@ -9,13 +9,10 @@ from bson import ObjectId
 
 sys.path.append(os.getcwd())
 
-from mrq.worker import Worker
-from mrq.config import get_config
-from mrq.queue import send_task
+from mrq.queue import send_task, Queue
+from mrq.context import connections
 
 app = Flask("dashboard", static_folder='mrq/dashboard/static')
-
-worker = None
 
 
 @app.route('/')
@@ -26,14 +23,14 @@ def root():
 @app.route('/api/datatables/<unit>')
 def api_datatables(unit):
 
-
   collection = None
 
   if unit == "queues":
     # TODO MongoDB distinct?
-    queues = [{"name": k} for k in worker.redis.keys()]
-    for q in queues:
-      q["count"] = worker.redis.llen(q["name"])
+    queues = [{
+      "name": queue.id,
+      "count": queue.size()
+    } for queue in Queue.all()]
 
     data = {
       "aaData": queues,
@@ -43,7 +40,7 @@ def api_datatables(unit):
   if unit == "workers":
     fields = None
     query = {}
-    collection = worker.mongodb_logs.mrq_workers
+    collection = connections.mongodb_logs.mrq_workers
   elif unit == "jobs":
     fields = None
     query = {}
@@ -57,7 +54,7 @@ def api_datatables(unit):
     # Add a string index?
     # if request.args.get("sSearch"):
     #   query.update(json.loads(request.args.get("sSearch")))
-    collection = worker.mongodb_logs.mrq_jobs
+    collection = connections.mongodb_logs.mrq_jobs
 
   if collection is not None:
     data = {
@@ -72,7 +69,7 @@ def api_datatables(unit):
 
 @app.route('/api/job/<job_id>/result')
 def api_job_result(job_id):
-  collection = worker.mongodb_jobs.mrq_jobs
+  collection = connections.mongodb_jobs.mrq_jobs
 
   job_data = collection.find_one({"_id": ObjectId(job_id)}, fields=["result"])
   if not job_data:
@@ -92,7 +89,7 @@ def api_job_action():
 
 @app.route('/api/logs')
 def api_logs():
-  collection = worker.mongodb_logs.mrq_logs
+  collection = connections.mongodb_logs.mrq_logs
 
   if request.args.get("job"):
     query = {"job": ObjectId(request.args.get("job"))}
@@ -114,9 +111,6 @@ def api_logs():
   return jsonify(data)
 
 if __name__ == '__main__':
-
-  worker = Worker(get_config(sources=("args", "env")))
-  worker.connect()
 
   app.debug = True
   app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 5555)))

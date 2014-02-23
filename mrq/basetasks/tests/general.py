@@ -1,6 +1,6 @@
 from time import sleep
 from mrq.task import Task
-from mrq.context import log
+from mrq.context import log, retry_current_job
 import urllib2
 
 
@@ -38,7 +38,7 @@ class Retry(Task):
 
     log.info("Retrying in %s on %s" % (params.get("countdown"), params.get("queue")))
 
-    self.job.retry(queue=params.get("queue"), countdown=params.get("countdown"))
+    retry_current_job(queue=params.get("queue"), countdown=params.get("countdown"))
 
     raise Exception("Should not be reached")
 

@@ -1,7 +1,5 @@
-import urlparse
 import gevent
 import gevent.pool
-import re
 import os
 import signal
 import datetime
@@ -10,14 +8,12 @@ import socket
 import traceback
 import psutil
 import sys
-import redis as pyredis
-from pymongo.mongo_client import MongoClient
 from bson import ObjectId
 
 from .job import Job
 from .exceptions import JobTimeoutException, StopRequested, JobInterrupt
 from .context import set_current_worker, set_current_job, get_current_job, connections
-from .utils import lazyproperty
+from .queue import Queue
 
 # https://groups.google.com/forum/#!topic/gevent/EmZw9CVBC2g
 # if "__pypy__" in sys.builtin_module_names:
@@ -44,6 +40,7 @@ class Worker(object):
     self.datestarted = datetime.datetime.utcnow()
     self.status = "init"
     self.queues = [x for x in self.config["queues"] if x]
+    self.redis_queues = [Queue(x).redis_key for x in self.queues]
     self.done_jobs = 0
     self.max_jobs = self.config["max_jobs"]
 
@@ -187,11 +184,12 @@ class Worker(object):
     self.log_handler.flush(w=w)
 
   def dequeue_jobs(self, max_jobs=1):
+    """ Fetch a maximum of max_jobs from this worker's queues. """
 
     self.log.debug("Fetching %s jobs from Redis" % max_jobs)
 
     jobs = []
-    queue, job_id = self.redis.blpop(self.queues, 0)
+    queue, job_id = self.redis.blpop(self.redis_queues, 0)
 
     # From this point until job.fetch_and_start(), job is only local to this worker.
     # If we die here, job will be lost in redis without having been marked as "started".

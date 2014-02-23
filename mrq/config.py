@@ -31,6 +31,9 @@ def get_config(sources=("file", "env", "args"), env_prefix="MRQ_", defaults=None
   parser.add_argument('--redis', action='store', default="redis://127.0.0.1:6379",
                       help='Redis URI')
 
+  parser.add_argument('--redis_prefix', action='store', default="mrq",
+                      help='Redis key prefix')
+
   parser.add_argument('--name', default=None, action='store',
                       help='Specify a different name')
 

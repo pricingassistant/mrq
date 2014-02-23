@@ -1,7 +1,36 @@
-from .utils import load_task_class, group_iter
+from .utils import load_class_by_path, group_iter
 from .context import connections, get_current_config
 import time
 from bson import ObjectId
+
+
+class Queue(object):
+
+  def __init__(self, queue_id):
+    if isinstance(queue_id, Queue):
+      return queue_id
+    self.id = queue_id
+
+  @property
+  def redis_key(self):
+    return "%s:q:%s" % (get_current_config()["redis_prefix"], self.id)
+
+  def enqueue_job_ids(self, job_ids):
+    connections.redis.rpush(self.redis_key, *job_ids)
+
+  def size(self):
+    return connections.redis.llen(self.redis_key)
+
+  @classmethod
+  def all(cls):
+    # TODO MongoDB distinct?
+    prefix = get_current_config()["redis_prefix"]
+    queues = []
+    for key in connections.redis.keys():
+      if key.startswith(prefix):
+        queues.append(Queue(key[len(prefix) + 3:]))
+
+    return queues
 
 
 def send_task(path, params, **kwargs):
@@ -14,7 +43,7 @@ def send_tasks(path, params_list, queue=None, sync=False, batch_size=1000):
     return []
 
   if sync:
-    task_class = load_task_class(path)
+    task_class = load_class_by_path(path)
     return [task_class().run(params) for params in params_list]
 
   if queue is None:
@@ -26,7 +55,6 @@ def send_tasks(path, params_list, queue=None, sync=False, batch_size=1000):
   for params_group in group_iter(params_list, n=batch_size):
 
     collection = connections.mongodb_jobs.mrq_jobs
-    redis = connections.redis
 
     job_ids = collection.insert([{
       "path": path,
@@ -39,39 +67,12 @@ def send_tasks(path, params_list, queue=None, sync=False, batch_size=1000):
     # This is the same as dequeueing a task from Redis and being stopped before updating the "started"
     # flag in MongoDB.
 
-    # TODO prefix
-    redis.rpush(queue, *[str(x) for x in job_ids])
+    Queue(queue).enqueue_job_ids([str(x) for x in job_ids])
 
     all_ids += job_ids
 
   return all_ids
 
-
-def wait_for_job(job_id, poll_interval=1, timeout=None, full_data=False):
-
-  collection = connections.mongodb_jobs.mrq_jobs
-
-  end_time = None
-  if timeout:
-    end_time = time.time() + timeout
-
-  while (end_time is None or time.time() < end_time):
-
-    job_data = collection.find_one({
-      "_id": ObjectId(job_id),
-      "status": {"$nin": ["started", "queued"]}
-    }, fields=({
-      "_id": 0,
-      "result": 1,
-      "status": 1
-    } if not full_data else None))
-
-    if job_data:
-      return job_data
-
-    time.sleep(poll_interval)
-
-  raise Exception("Waited for job result for %ss seconds, timeout." % timeout)
 
     # # Cf code in send_task
     # if kwargs.get("uniquestarted") or kwargs.get("uniquequeued"):

@@ -1,4 +1,4 @@
-from mrq.queue import wait_for_job
+from mrq.job import Job
 
 
 def test_cancel_by_path(worker):
@@ -16,11 +16,11 @@ def test_cancel_by_path(worker):
 
   job_id2 = worker.send_task("mrq.basetasks.tests.general.Add", {"a": 41, "b": 2}, block=False)
 
-  wait_for_job(job_id2)
+  Job(job_id2).wait(poll_interval=0.01)
   worker.stop(deps=False)
 
-  job1 = worker.mongodb_jobs.mrq_jobs.find_one({"_id": job_id1})
-  job2 = worker.mongodb_jobs.mrq_jobs.find_one({"_id": job_id2})
+  job1 = Job(job_id1).fetch().data
+  job2 = Job(job_id2).fetch().data
 
   assert job1["status"] == "success"
   assert job1["result"] == 42

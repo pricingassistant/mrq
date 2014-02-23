@@ -1,4 +1,5 @@
 import time
+from mrq.job import Job
 
 
 def test_interrupt_worker_gracefully(worker):
@@ -10,7 +11,7 @@ def test_interrupt_worker_gracefully(worker):
 
   time.sleep(1)
 
-  job = worker.mongodb_jobs.mrq_jobs.find_one({"_id": job_id})
+  job = Job(job_id).fetch().data
   assert job["status"] == "started"
 
   # Stop the worker gracefully. first job should still finish!
@@ -23,16 +24,16 @@ def test_interrupt_worker_gracefully(worker):
 
   time.sleep(1)
 
-  job = worker.mongodb_jobs.mrq_jobs.find_one({"_id": job_id2})
+  job = Job(job_id2).fetch().data
   assert job.get("status") == "queued"
 
   time.sleep(4)
 
-  job = worker.mongodb_jobs.mrq_jobs.find_one({"_id": job_id})
+  job = Job(job_id).fetch().data
   assert job["status"] == "success"
   assert job["result"] == 42
 
-  job = worker.mongodb_jobs.mrq_jobs.find_one({"_id": job_id2})
+  job = Job(job_id2).fetch().data
   assert job.get("status") == "queued"
 
 
@@ -47,7 +48,7 @@ def test_interrupt_worker_double_sigint(worker):
 
   time.sleep(1)
 
-  job = worker.mongodb_jobs.mrq_jobs.find_one({"_id": job_id})
+  job = Job(job_id).fetch().data
   assert job["status"] == "started"
 
   # Stop the worker gracefully. first job should still finish!
@@ -60,7 +61,7 @@ def test_interrupt_worker_double_sigint(worker):
 
   time.sleep(1)
 
-  job = worker.mongodb_jobs.mrq_jobs.find_one({"_id": job_id2})
+  job = Job(job_id2).fetch().data
   assert job.get("status") == "queued"
 
   # Sending a second kill -2 should make it stop
@@ -68,7 +69,7 @@ def test_interrupt_worker_double_sigint(worker):
 
   time.sleep(1)
 
-  job = worker.mongodb_jobs.mrq_jobs.find_one({"_id": job_id})
+  job = Job(job_id).fetch().data
   assert job["status"] == "interrupt"
 
   assert time.time() - start_time < 8
@@ -92,7 +93,7 @@ def test_interrupt_worker_sigterm(worker):
 
   time.sleep(1)
 
-  job = worker.mongodb_jobs.mrq_jobs.find_one({"_id": job_id})
+  job = Job(job_id).fetch().data
   assert job["status"] == "interrupt"
 
   assert time.time() - start_time < 5
@@ -116,7 +117,7 @@ def test_interrupt_worker_sigkill(worker):
 
   time.sleep(1)
 
-  job = worker.mongodb_jobs.mrq_jobs.find_one({"_id": job_id})
+  job = Job(job_id).fetch().data
   assert job["status"] == "started"
 
   assert time.time() - start_time < 5

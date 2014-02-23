@@ -10,7 +10,8 @@ import time
 
 sys.path.append(os.getcwd())
 
-from mrq.queue import send_tasks, wait_for_job
+from mrq.job import Job
+from mrq.queue import send_tasks
 from mrq.config import get_config
 from mrq.utils import wait_for_net_service
 from mrq.context import connections, set_current_config
@@ -145,7 +146,7 @@ class WorkerFixture(ProcessFixture):
     results = []
 
     for job_id in job_ids:
-      job = wait_for_job(job_id, poll_interval=0.01)
+      job = Job(job_id).wait(poll_interval=0.01)
       assert job.get("status") in accept_statuses
 
       results.append(job.get("result"))

@@ -1,7 +1,6 @@
 import re
 import importlib
 import time
-from collections import MutableMapping
 
 
 def group_iter(iterator, n=2):
@@ -45,7 +44,7 @@ def memoize_single_argument(f):
 
 
 @memoize_single_argument
-def load_task_class(taskpath):
+def load_class_by_path(taskpath):
   """ Given a taskpath, returns the main task class. """
 
   return getattr(importlib.import_module(re.sub(r"\.[^.]+$", "", taskpath)), re.sub(r"^.*\.", "", taskpath))

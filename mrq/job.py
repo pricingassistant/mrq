@@ -1,10 +1,11 @@
 import datetime
 from bson import ObjectId
 import pymongo
+import time
 from .exceptions import RetryInterrupt
-from .utils import load_task_class
-from .queue import send_task
-from .context import get_current_worker, log
+from .utils import load_class_by_path
+from .queue import Queue
+from .context import get_current_worker, log, connections, get_current_config
 
 
 class Job(object):
@@ -28,27 +29,29 @@ class Job(object):
     self.queue = queue
     self.datestarted = datetime.datetime.utcnow()
 
-    self.collection = self.worker.mongodb_jobs.mrq_jobs
+    self.collection = connections.mongodb_jobs.mrq_jobs
     self.id = ObjectId(job_id)
 
     self.data = None
     self.task = None
 
     if start:
-      self.fetch(start=True)
+      self.fetch(start=True, full_data=False)
     elif fetch:
-      self.fetch(start=False)
+      self.fetch(start=False, full_data=False)
 
-  def fetch(self, start=False):
+  def fetch(self, start=False, full_data=True):
     """ Get the current job data and possibly flag it as started. """
 
-    fields = {
-      "_id": 0,
-      "path": 1,
-      "params": 1,
-      "status": 1,
-      "_id": 1
-    }
+    if full_data:
+      fields = None
+    else:
+      fields = {
+        "_id": 0,
+        "path": 1,
+        "params": 1,
+        "status": 1
+      }
 
     if start:
       self.data = self.collection.find_and_modify({
@@ -67,9 +70,11 @@ class Job(object):
     if self.data is None:
       log.info("Job %s not found in MongoDB or status was cancelled!" % self.id)
     else:
-      task_def = self.worker.config.get("tasks", {}).get(self.data["path"]) or {}
+      task_def = get_current_config().get("tasks", {}).get(self.data["path"]) or {}
       self.timeout = task_def.get("timeout", self.timeout)
       self.result_ttl = task_def.get("result_ttl", self.result_ttl)
+
+    return self
 
   def save_status(self, status, result=None, traceback=None, w=1):
 
@@ -124,8 +129,7 @@ class Job(object):
   def requeue(self, queue=None):
     self.save_status(None)
 
-    # TODO factor elsewhere
-    self.worker.redis.rpush(queue or self.data["queue"], str(self.id))
+    Queue(queue or self.data["queue"]).enqueue_job_ids([str(self.id)])
 
   def perform(self):
     """ Loads and starts the main task for this job, the saves the result. """
@@ -133,10 +137,37 @@ class Job(object):
     if self.data is None:
       return
 
-    task_class = load_task_class(self.data["path"])
+    task_class = load_class_by_path(self.data["path"])
 
     self.task = task_class(job=self)
 
     result = self.task.run(self.data["params"])
 
     self.save_status("success", result)
+
+  def wait(self, poll_interval=1, timeout=None, full_data=False):
+    """ Wait for this job to finish. """
+
+    collection = connections.mongodb_jobs.mrq_jobs
+
+    end_time = None
+    if timeout:
+      end_time = time.time() + timeout
+
+    while (end_time is None or time.time() < end_time):
+
+      job_data = collection.find_one({
+        "_id": ObjectId(self.id),
+        "status": {"$nin": ["started", "queued"]}
+      }, fields=({
+        "_id": 0,
+        "result": 1,
+        "status": 1
+      } if not full_data else None))
+
+      if job_data:
+        return job_data
+
+      time.sleep(poll_interval)
+
+    raise Exception("Waited for job result for %ss seconds, timeout." % timeout)

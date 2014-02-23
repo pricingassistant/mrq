@@ -84,7 +84,7 @@ class _connections_class(object):
       else:
         value = config_obj
 
-    elif attr.startswith("mongodb_"):
+    elif attr.startswith("mongodb"):
 
       if type(config_obj) in [str, unicode]:
 
