@@ -16,7 +16,8 @@ from bson import ObjectId
 
 from .job import Job
 from .exceptions import JobTimeoutException, StopRequested, JobInterrupt
-from .context import set_current_worker, set_current_job, get_current_job
+from .context import set_current_worker, set_current_job, get_current_job, connections
+from .utils import lazyproperty
 
 # https://groups.google.com/forum/#!topic/gevent/EmZw9CVBC2g
 # if "__pypy__" in sys.builtin_module_names:
@@ -35,10 +36,10 @@ class Worker(object):
 
   def __init__(self, config):
 
+    self.config = config
+
     set_current_worker(self)
     #queues, pool_size=1, max_jobs=None, redis=None, mongodb_jobs=None, mongodb_logs=None, name=None):
-
-    self.config = config
 
     self.datestarted = datetime.datetime.utcnow()
     self.status = "init"
@@ -81,13 +82,10 @@ class Worker(object):
     if self.connected and not force:
       return
 
-    self.connect_redis(self.config["redis"])
-
-    self.mongodb_jobs = self.connect_mongodb("jobs", self.config["mongodb_jobs"])
-    if self.config["mongodb_logs"] == self.config["mongodb_jobs"]:
-      self.mongodb_logs = self.mongodb_jobs
-    else:
-      self.mongodb_logs = self.connect_mongodb("logs", self.config["mongodb_logs"])
+    # Accessing connections attributes will automatically connect
+    self.redis = connections.redis
+    self.mongodb_jobs = connections.mongodb_jobs
+    self.mongodb_logs = connections.mongodb_logs
 
     self.log_handler.set_collection(self.mongodb_logs.mrq_logs)
 
@@ -96,42 +94,6 @@ class Worker(object):
   def make_name(self):
     """ Generate a human-readable name for this worker. """
     return "%s.%s" % (socket.gethostname().split(".")[0], os.getpid())
-
-  def connect_redis(self, redis):
-
-    if type(redis) in [str, unicode]:
-
-      urlparse.uses_netloc.append('redis')
-      redis_url = urlparse.urlparse(redis)
-
-      self.log.info("Connecting to Redis at %s..." % redis_url.hostname)
-
-      redis_pool = pyredis.ConnectionPool(host=redis_url.hostname, port=redis_url.port, db=0, password=redis_url.password)
-
-      self.redis = pyredis.StrictRedis(connection_pool=redis_pool)
-
-    # Let's just assume we got a StrictRedis-like object!
-    else:
-      self.redis = redis
-
-  def connect_mongodb(self, name, mongodb):
-
-    if type(mongodb) in [str, unicode]:
-
-      (mongoAuth, mongoUsername, mongoPassword, mongoHosts, mongoDbName) = re.match(
-        "mongodb://((\w+):(\w+)@)?([\w\.:,-]+)/([\w-]+)", mongodb).groups()
-
-      self.log.info("Connecting to MongoDB at %s..." % mongoHosts)
-
-      db = MongoClient(mongoHosts)[mongoDbName]
-      if mongoUsername:
-        db.authenticate(mongoUsername, mongoPassword)
-
-      return db
-
-    # Let's just assume we got a MongoDB-like object!
-    else:
-      return mongodb
 
   def greenlet_scheduler(self):
 

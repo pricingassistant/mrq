@@ -1,6 +1,7 @@
 import re
 import importlib
 import time
+from collections import MutableMapping
 
 
 def group_iter(iterator, n=2):
@@ -50,6 +51,17 @@ def load_task_class(taskpath):
   return getattr(importlib.import_module(re.sub(r"\.[^.]+$", "", taskpath)), re.sub(r"^.*\.", "", taskpath))
 
 
+def lazyproperty(fn):
+  attr_name = '_lazy_' + fn.__name__
+
+  @property
+  def _lazyprop(self):
+    if not hasattr(self, attr_name):
+      setattr(self, attr_name, fn(self))
+    return getattr(self, attr_name)
+  return _lazyprop
+
+
 # http://code.activestate.com/recipes/576655-wait-for-network-service-to-appear/
 def wait_for_net_service(server, port, timeout=None):
   """ Wait for network service to appear
@@ -91,3 +103,4 @@ def wait_for_net_service(server, port, timeout=None):
       s.close()
       return True
     time.sleep(0.1)
+

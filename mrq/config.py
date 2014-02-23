@@ -3,7 +3,7 @@ import os
 import sys
 
 
-def get_config(sources=("file", "env", "args"), env_prefix="MRQ_"):
+def get_config(sources=("file", "env", "args"), env_prefix="MRQ_", defaults=None):
 
   parser = argparse.ArgumentParser(description='Starts an RQ worker')
 
@@ -57,14 +57,16 @@ def get_config(sources=("file", "env", "args"), env_prefix="MRQ_"):
   else:
     from_args = parser.parse_args([])
 
-  config_module = None
-  if "file" in sources and from_args.config:
-    sys.path.append(os.path.dirname(from_args.config))
-    config_module = __import__(os.path.basename(from_args.config.replace(".py", "")))
-    sys.path.pop(-1)
-
   # Get defaults
   merged_config = from_args.__dict__
+  if defaults is not None:
+    merged_config.update(defaults)
+
+  config_module = None
+  if "file" in sources and merged_config["config"]:
+    sys.path.append(os.path.dirname(merged_config["config"]))
+    config_module = __import__(os.path.basename(merged_config["config"].replace(".py", "")))
+    sys.path.pop(-1)
 
   # Keys that can't be passed from the command line
   merged_config["tasks"] = {}

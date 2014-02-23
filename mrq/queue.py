@@ -1,5 +1,5 @@
 from .utils import load_task_class, group_iter
-from .context import get_current_worker
+from .context import connections, get_current_config
 import time
 from bson import ObjectId
 
@@ -17,20 +17,16 @@ def send_tasks(path, params_list, queue=None, sync=False, batch_size=1000):
     task_class = load_task_class(path)
     return [task_class().run(params) for params in params_list]
 
-  worker = get_current_worker()
-  if not worker:
-    raise Exception("Can't queue task if worker is not initialized.")
-
   if queue is None:
-    task_def = worker.config.get("tasks", {}).get(path) or {}
+    task_def = get_current_config().get("tasks", {}).get(path) or {}
     queue = task_def.get("queue", "default")
 
   all_ids = []
 
   for params_group in group_iter(params_list, n=batch_size):
 
-    collection = worker.mongodb_jobs.mrq_jobs
-    redis = worker.redis
+    collection = connections.mongodb_jobs.mrq_jobs
+    redis = connections.redis
 
     job_ids = collection.insert([{
       "path": path,
@@ -53,11 +49,7 @@ def send_tasks(path, params_list, queue=None, sync=False, batch_size=1000):
 
 def wait_for_job(job_id, poll_interval=1, timeout=None, full_data=False):
 
-  worker = get_current_worker()
-  if not worker:
-    raise Exception("Can't wait for task if worker is not initialized.")
-
-  collection = worker.mongodb_jobs.mrq_jobs
+  collection = connections.mongodb_jobs.mrq_jobs
 
   end_time = None
   if timeout:

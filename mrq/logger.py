@@ -3,35 +3,6 @@ from collections import defaultdict
 import datetime
 
 
-class LoggerInterface(object):
-  """ This object acts as a logger from python's logging module. """
-
-  def __init__(self, handler, **kwargs):
-    self._handler = handler
-    self.kwargs = kwargs
-
-  @property
-  def handler(self):
-    if self._handler:
-      return self._handler
-
-    # Import here to avoid import loop
-    from .context import get_current_worker
-    return get_current_worker().log_handler
-
-  def info(self, *args):
-    self.handler.log("info", *args, **self.kwargs)
-
-  def warning(self, *args):
-    self.handler.log("warning", *args, **self.kwargs)
-
-  def error(self, *args):
-    self.handler.log("error", *args, **self.kwargs)
-
-  def debug(self, *args):
-    self.handler.log("debug", *args, **self.kwargs)
-
-
 class LogHandler(object):
   """ Job/Worker-aware log handler.
 
@@ -72,7 +43,7 @@ class LogHandler(object):
 
     if worker is not None:
       self.buffer["workers"][worker].append(formatted)
-    else:
+    elif job is not None:
       if job == "current":
         job_object = self.get_current_job()
         if job_object:
@@ -98,3 +69,38 @@ class LogHandler(object):
 
     if len(inserts) > 0:
       self.collection.insert(inserts, w=w)
+
+
+class LoggerInterface(object):
+  """ This object acts as a logger from python's logging module. """
+
+  def __init__(self, handler, **kwargs):
+    self._handler = handler
+    self.kwargs = kwargs
+
+  @property
+  def handler(self):
+    if self._handler:
+      return self._handler
+
+    # Import here to avoid import loop
+    from .context import get_current_worker
+    worker = get_current_worker()
+
+    if worker:
+      return worker.log_handler
+    else:
+      return LogHandler()
+
+  def info(self, *args):
+    self.handler.log("info", *args, **self.kwargs)
+
+  def warning(self, *args):
+    self.handler.log("warning", *args, **self.kwargs)
+
+  def error(self, *args):
+    self.handler.log("error", *args, **self.kwargs)
+
+  def debug(self, *args):
+    self.handler.log("debug", *args, **self.kwargs)
+

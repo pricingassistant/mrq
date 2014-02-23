@@ -56,6 +56,7 @@ TODO
  * Scheduler test
  * Scheduler dailytime
  * Base cleaning/retry tasks: interrupted, move
+ * uniquestarted/uniquequeued
 
 **beta**
 

@@ -10,10 +10,12 @@ import time
 
 sys.path.append(os.getcwd())
 
-from mrq.worker import Worker
 from mrq.queue import send_tasks, wait_for_job
 from mrq.config import get_config
 from mrq.utils import wait_for_net_service
+from mrq.context import connections, set_current_config
+
+set_current_config(get_config(sources=("env")))
 
 os.system("rm -rf dump.rdb")
 
@@ -101,13 +103,11 @@ class WorkerFixture(ProcessFixture):
     self.fixture_mongodb.start()
     self.fixture_redis.start()
 
-    # This is a local worker instance that should never be started but used for launching tasks.
-    self.local_worker = Worker(get_config(sources=("env")))
-    self.local_worker.connect()
-
-    self.mongodb_jobs = self.local_worker.mongodb_jobs
-    self.mongodb_logs = self.local_worker.mongodb_logs
-    self.redis = self.local_worker.redis
+    # Will auto-connect
+    connections.reset()
+    self.mongodb_jobs = connections.mongodb_jobs
+    self.mongodb_logs = connections.mongodb_logs
+    self.redis = connections.redis
 
     if reset:
 
