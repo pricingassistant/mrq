@@ -3,20 +3,27 @@ MRQ
 
 Mongo Redis Queue - A distributed worker task queue in Python
 
+/!\ MRQ is not yet ready for public use. Soon!
+
 Why?
 ====
 
-MRQ is an opinionated task queue, heavily inspired by http://python-rq.org from @nvie.
+MRQ is an opinionated task queue. It aims to be simple and beautiful like http://python-rq.org while having performance close to http://celeryproject.org
 
-It has most of the good stuff from RQ, plus some features originally needed for its usage at http://pricingassistant.com
+MRQ was first developed at http://pricingassistant.com and its initial feature set matches the needs of worker queues with heterogenous jobs (IO-bound & CPU-bound, lots of small tasks & a few large ones).
 
-These new features may be useful to others and we think most of them are best practices but we clearly don't expect MRQ to be an easy replacement option for existing RQ users.
+The main features of MRQ are:
 
- * MongoDB for log storage & dashboard
- * Focus on speed for bulk inserts
- * Focus on tooling and visibility on the tasks
- * gevent worker by default
- * Python 2.7+ only
+ * **Simple code:** We originally switched from Celery to MRQ because Celery's code was incredibly complex and obscure ( [Slides](http://www.slideshare.net/sylvinus/why-and-how-pricing-assistant-migrated-from-celery-to-rq-parispy-2) ). MRQ should be as easy to understand as RQ and even easier to extend.
+ * **Great dashboard:** Have visibility and control on everything: queued jobs, current jobs, worker status, ...
+ * **Per-job logs:** Get the log output of each task separately in the dashboard
+ * **Gevent worker:** IO-bound tasks can be done in parallel for maximum throughput
+ * **Supervisord integration:** CPU-bound tasks can be split across several UNIX processes with a single command-line flag
+ * **Job management:** You can retry, requeue, cancel jobs from the code or the dashboard.
+ * **Performance:** Bulk job queueing, easy job profiling
+ * **Easy configuration:** Every aspect of MRQ is configurable through command-line flags or a configuration file
+ * **Job routing:** Like Celery, jobs can have default queues, timeout and ttl values.
+ * **Thorough testing:** Edge-cases like worker interrupts, Redis failures, ... are tested inside a Docker container.
 
 Performance
 ===========
