@@ -13,7 +13,8 @@ require.config({
     backbonequeryparams: "/static/js/vendor/backbone.queryparams",
     bootstrap: "/static/js/vendor/bootstrap.min",
     datatables: "/static/js/vendor/jquery.dataTables.min",
-    datatablesbs3: "/static/js/vendor/datatables.bs3"
+    datatablesbs3: "/static/js/vendor/datatables.bs3",
+    moment: "/static/js/vendor/moment.min"
   },
 
   urlArgs: "bust=" +  (new Date()).getTime(),

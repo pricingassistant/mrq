@@ -14,7 +14,7 @@ MRQ was first developed at http://pricingassistant.com and its initial feature s
 
 The main features of MRQ are:
 
- * **Simple code:** We originally switched from Celery to MRQ because Celery's code was incredibly complex and obscure ( [Slides](http://www.slideshare.net/sylvinus/why-and-how-pricing-assistant-migrated-from-celery-to-rq-parispy-2) ). MRQ should be as easy to understand as RQ and even easier to extend.
+ * **Simple code:** We originally switched from Celery to RQ because Celery's code was incredibly complex and obscure ([Slides](http://www.slideshare.net/sylvinus/why-and-how-pricing-assistant-migrated-from-celery-to-rq-parispy-2)). MRQ should be as easy to understand as RQ and even easier to extend.
  * **Great dashboard:** Have visibility and control on everything: queued jobs, current jobs, worker status, ...
  * **Per-job logs:** Get the log output of each task separately in the dashboard
  * **Gevent worker:** IO-bound tasks can be done in parallel for maximum throughput
@@ -39,6 +39,13 @@ Testing is done inside a Docker container for maximum repeatability. We don't us
 $ make test
 ```
 
+You can also open a shell inside the docker (just like you would enter in a virtualenv) with:
+
+```
+$ make shell
+```
+
+
 TODO
 ====
 
@@ -48,11 +55,11 @@ TODO
  * MongoDB/Redis interrupt tests
  * Scheduler test
  * Scheduler dailytime
- * More worker info in dashboard
  * Base cleaning/retry tasks: interrupted, move
 
 **beta**
 
+ * Current greenlet traces in dashboard
  * Scheduled statuses in dashboard
  * Full linting
  * Code coverage

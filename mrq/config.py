@@ -49,7 +49,7 @@ def get_config(sources=("file", "env", "args"), env_prefix="MRQ_"):
   parser.add_argument('--config', '-c', default=None, action="store",
                       help='Path of a config file')
 
-  parser.add_argument('queues', nargs='*',
+  parser.add_argument('queues', nargs='*', default=["default"],
                       help='The queues to listen on (default: \'default\')')
 
   if "args" in sources:

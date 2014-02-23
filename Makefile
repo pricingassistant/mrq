@@ -44,3 +44,4 @@ dashboard_dev:
 stack:
 	mongod &
 	redis-server &
+	python mrq/dashboard/app.py &

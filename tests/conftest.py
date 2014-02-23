@@ -118,7 +118,7 @@ class WorkerFixture(ProcessFixture):
 
       self.redis.flushdb()
 
-    cmdline = "python mrq/scripts/mrq-worker.py %s high default low" % kwargs.get("flags", "")
+    cmdline = "python mrq/bin/mrq-worker.py %s high default low" % kwargs.get("flags", "")
 
     ProcessFixture.start(self, cmdline=cmdline, env=kwargs.get("env"))
 
