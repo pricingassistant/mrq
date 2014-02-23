@@ -79,19 +79,28 @@ define(["backbone", "underscore", "jquery"],function(Backbone, _, $) {
       }
     },
 
+    setNavbar:function(id) {
+      $("#navbar-main li").removeClass("active");
+      $("#navbar-main li.js-nav-"+id).addClass("active");
+    },
+
     queues: function() {
+      this.setNavbar("queues");
       this.app.rootView.showChildPage('queues');
     },
 
     workers: function() {
+      this.setNavbar("workers");
       this.app.rootView.showChildPage('workers');
     },
 
     jobs: function(params) {
+      this.setNavbar("jobs");
       this.app.rootView.showChildPage('jobs', {"options": {"params": params || {}}});
     },
 
     worker: function(id) {
+      this.setNavbar("workers");
       this.app.rootView.showChildPage('worker', {"options": {"id": id}});
     }
 

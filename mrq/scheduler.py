@@ -1,5 +1,5 @@
-from mrq.logger import log
-from mrq.queue import send_task
+from .context import log
+from .queue import send_task
 import datetime
 
 

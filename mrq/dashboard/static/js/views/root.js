@@ -98,6 +98,11 @@ define(["views/generic/page", "jquery",
       }
     },
 
+    setNavbar:function(id) {
+      $("#navbar-main li").removeClass("active");
+      $("#navbar-main li.js-nav-"+id).addClass("active");
+    },
+
     render: function() {
 
       this.renderTemplate();

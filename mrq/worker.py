@@ -16,12 +16,7 @@ from bson import ObjectId
 
 from .job import Job
 from .exceptions import JobTimeoutException, StopRequested, JobInterrupt
-
-# greenletid => Job object
-GREENLET_JOBS_REGISTRY = {}
-
-WORKER = None
-
+from .context import set_current_worker, set_current_job, get_current_job
 
 # https://groups.google.com/forum/#!topic/gevent/EmZw9CVBC2g
 # if "__pypy__" in sys.builtin_module_names:
@@ -33,14 +28,6 @@ WORKER = None
 #   gevent.socket.socket._drop = _drop
 
 
-def get_current_job():
-  return GREENLET_JOBS_REGISTRY.get(id(gevent.getcurrent()))
-
-
-def get_current_worker():
-  return WORKER
-
-
 class Worker(object):
 
   # Allow easy overloading
@@ -48,10 +35,8 @@ class Worker(object):
 
   def __init__(self, config):
 
+    set_current_worker(self)
     #queues, pool_size=1, max_jobs=None, redis=None, mongodb_jobs=None, mongodb_logs=None, name=None):
-
-    global WORKER
-    WORKER = self
 
     self.config = config
 
@@ -170,10 +155,10 @@ class Worker(object):
       # print "Monitoring..."
 
       self.report_worker()
-      self.flush_logs()
+      self.flush_logs(w=0)
       time.sleep(int(self.config["report_interval"]))
 
-  def report_worker(self):
+  def report_worker(self, w=0):
 
       greenlets = []
 
@@ -187,7 +172,7 @@ class Worker(object):
           short_stack.append(s)
         g["stack"] = short_stack
 
-        job = GREENLET_JOBS_REGISTRY.get(id(greenlet))
+        job = get_current_job(id(greenlet))
         if job:
           if job.data:
             g["path"] = job.data["path"]
@@ -209,7 +194,6 @@ class Worker(object):
         "_id": ObjectId(self.id)
       }, {"$set": {
         "status": self.status,
-        "registry_size": len(GREENLET_JOBS_REGISTRY),
         "config": {k: v for k, v in self.config.iteritems() if k in whitelisted_config},
         "done_jobs": self.done_jobs,
         "datestarted": self.datestarted,
@@ -235,10 +219,10 @@ class Worker(object):
           # get_nice
         },
         "jobs": greenlets
-      }}, upsert=True, w=0)
+      }}, upsert=True, w=w)
 
-  def flush_logs(self):
-    self.log_handler.flush()
+  def flush_logs(self, w=0):
+    self.log_handler.flush(w=w)
 
   def dequeue_jobs(self, max_jobs=1):
 
@@ -328,6 +312,9 @@ class Worker(object):
         self.greenlets[g].kill(block=True)
         self.log.debug("Greenlet for %s killed." % g)
 
+      self.report_worker(w=1)
+      self.flush_logs(w=1)
+
       if self.profiler:
         self.profiler.print_stats(sort="cumulative")
 
@@ -337,9 +324,7 @@ class Worker(object):
         This is the first call happening inside the greenlet.
     """
 
-    self.greenlet_id = id(gevent.getcurrent())
-
-    GREENLET_JOBS_REGISTRY[self.greenlet_id] = job
+    set_current_job(job)
 
     gevent_timeout = gevent.Timeout(job.timeout, JobTimeoutException(
       'Gevent Job exceeded maximum timeout value (%d seconds).' % job.timeout
@@ -351,28 +336,27 @@ class Worker(object):
       job.perform()
 
     except job.retry_on_exceptions:
-      job.retry()
+      job.save_retry(sys.exc_info()[1], traceback=traceback.format_exc())
 
     except JobTimeoutException:
       trace = traceback.format_exc()
       self.log.error("Job timeouted after %s seconds" % job.timeout)
       self.log.error(trace)
-      job.save_timeout(traceback=trace)
+      job.save_status("timeout", traceback=trace)
 
     except JobInterrupt:
       trace = traceback.format_exc()
       self.log.error(trace)
-      job.save_interrupt(traceback=trace)
+      job.save_status("interrupt", traceback=trace)
 
     except Exception:
       trace = traceback.format_exc()
       self.log.error(trace)
-      job.save_failed(traceback=trace)
+      job.save_status("failed", traceback=trace)
 
     finally:
       gevent_timeout.cancel()
-
-      GREENLET_JOBS_REGISTRY[self.greenlet_id] = None
+      set_current_job(None)
 
   def shutdown_graceful(self):
     """ Graceful shutdown: waits for all the jobs to finish. """

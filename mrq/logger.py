@@ -16,7 +16,7 @@ class LoggerInterface(object):
       return self._handler
 
     # Import here to avoid import loop
-    from .worker import get_current_worker
+    from .context import get_current_worker
     return get_current_worker().log_handler
 
   def info(self, *args):
@@ -32,10 +32,6 @@ class LoggerInterface(object):
     self.handler.log("debug", *args, **self.kwargs)
 
 
-# Global log object, usable from all tasks
-log = LoggerInterface(None, job="current")
-
-
 class LogHandler(object):
   """ Job/Worker-aware log handler.
 
@@ -49,7 +45,7 @@ class LogHandler(object):
     self.quiet = quiet
 
     # Import here to avoid import loop
-    from .worker import get_current_job
+    from .context import get_current_job
     self.get_current_job = get_current_job
 
   def get_logger(self, worker=None, job=None):
@@ -84,7 +80,7 @@ class LogHandler(object):
       else:
         self.buffer["jobs"][job].append(formatted)
 
-  def flush(self):
+  def flush(self, w=0):
 
     # We may log some stuff before we are even connected to Mongo!
     if self.collection is None:
@@ -101,4 +97,4 @@ class LogHandler(object):
     self.reset()
 
     if len(inserts) > 0:
-      self.collection.insert(inserts, w=0)
+      self.collection.insert(inserts, w=w)

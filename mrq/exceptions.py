@@ -8,8 +8,8 @@ class JobTimeoutException(BaseException):
 
 # Inherits from BaseException to avoid being caught when not intended.
 class RetryInterrupt(BaseException):
-  eta = 24 * 3600
-  pass
+  countdown = None
+  queue = None
 
 
 class StopRequested(GreenletExit):

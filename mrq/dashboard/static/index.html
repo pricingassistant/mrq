@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="/static/css/bootstrap-slate.min.css" media="screen">
     <link rel="stylesheet" href="/static/css/datatables.css" media="screen">
+    <link rel="stylesheet" href="/static/css/mrq-dashboard.css" media="screen">
   </head>
   <body>
 
@@ -22,13 +23,13 @@
         <div class="navbar-collapse collapse" id="navbar-main">
           <ul class="nav navbar-nav">
 
-            <li>
+            <li class="js-nav-queues">
               <a href="/#">Queues</a>
             </li>
-            <li>
+            <li class="js-nav-workers">
               <a href="/#workers">Workers</a>
             </li>
-            <li>
+            <li class="js-nav-jobs">
               <a href="/#jobs">Jobs</a>
             </li>
 
@@ -57,7 +58,6 @@
 
     <div class="container" style="margin-top:52px;">
 
-
       <div id="app-container">
 
         <div class="ox-loader">
@@ -79,7 +79,7 @@
 
 
       <script id="tpl-page-queues" type="text/template">
-        <h1>Queues</h1>
+
         <div class="container">
           <table cellpadding="0" cellspacing="0" border="0" class="datatable table table-striped table-bordered js-datatable">
           </table>
@@ -87,7 +87,7 @@
       </script>
 
       <script id="tpl-page-workers" type="text/template">
-        <h1>Workers</h1>
+
         <div class="container">
           <table cellpadding="0" cellspacing="0" border="0" class="datatable table table-striped table-bordered js-datatable">
           </table>
@@ -96,8 +96,28 @@
 
       <script id="tpl-page-jobs" type="text/template">
 
-          <form class="form-inline js-datatable-filters pull-right" role="form">
+        <div class="modal js-jobs-modal" tabindex="-1" role="dialog">
+          <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+              <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                <h4 class="modal-title"></h4>
+              </div>
+              <div class="modal-body">
+                <textarea class="js-jobs-modal-content"></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="container" style="margin-bottom:0px;">
+
+          <form class="form-inline js-datatable-filters pull-left" role="form">
             <br/>
+            <div class="form-group">
+              <label class="sr-only" for="jobs-form-id">ID</label>
+              <input type="text" class="form-control input-sm js-datatable-filters-id" id="jobs-form-id" placeholder="Job ID" value="<%= filters.id %>">
+            </div>
             <div class="form-group">
               <label class="sr-only" for="jobs-form-queue">Queue</label>
               <input type="text" class="form-control input-sm js-datatable-filters-queue" id="jobs-form-queue" placeholder="Queue" value="<%= filters.queue %>">
@@ -112,13 +132,11 @@
             </div>
             <div class="form-group">
               <select class="form-control input-sm js-datatable-filters-status" id="jobs-form-status">
-                <option <%= filters.status==""?"selected='selected'":"" %> value="">queued</option>
-                <option <%= filters.status=="started"?"selected='selected'":"" %> value="">started</option>
-                <option <%= filters.status=="success"?"selected='selected'":"" %> value="">success</option>
-                <option <%= filters.status=="retry"?"selected='selected'":"" %> value="">retry</option>
-                <option <%= filters.status=="timeout"?"selected='selected'":"" %> value="">timeout</option>
-                <option <%= filters.status=="interrupt"?"selected='interrupt'":"" %> value="">interrupt</option>
-                <option <%= filters.status=="failed"?"selected='selected'":"" %> value="">failed</option>
+
+                <option <%= filters.status==""?"selected='selected'":"" %> value="">-statuses-</option>
+                <% _.each(["queued", "started", "success", "retry", "timeout", "interrupt", "cancel", "failed"], function(k) { %>
+                  <option <%= filters.status==k?"selected='selected'":"" %> value="<%= k %>"><%= k %></option>
+                <% }) %>
               </select>
             </div>
             <!--
@@ -129,9 +147,18 @@
             </div
             -->
             <button type="submit" class="btn btn-default js-datatable-filters-submit input-sm" style="padding:5px">OK</button>
+
           </form>
 
-        <h1>Jobs</h1>
+          <div class="pull-right js-jobs-groupactions">
+            <br/>
+            <button type="submit" class="btn btn-warning input-sm js-jobs-groupaction" data-action="requeue" style="padding:5px"><span class='glyphicon glyphicon-refresh'></span> Requeue these jobs</button>
+            &nbsp;
+            <button type="submit" class="btn btn-danger input-sm js-jobs-groupaction" data-action="cancel" style="padding:5px"><span class='glyphicon glyphicon-remove-circle'></span> Cancel these jobs</button>
+          </div>
+
+        </div>
+
         <div class="container">
 
 

@@ -18,14 +18,44 @@ These new features may be useful to others and we think most of them are best pr
  * gevent worker by default
  * Python 2.7+ only
 
+Performance
+===========
+
+On a MacbookPro, we see 1300 jobs/second with very simple jobs that store results, to measure the overhead of MRQ. However what we are really measuring there is MongoDB's write performance.
+
 Tests
 =====
 
-Testing is done inside a Docker container for maximum repeatability.
+Testing is done inside a Docker container for maximum repeatability. We don't use Travis-CI or friends because we need to be able to kill our process dependencies (MongoDB, Redis, ...) on demand.
 
 ```
 $ make test
 ```
+
+TODO
+====
+
+**alpha**
+
+ * Max Retries
+ * MongoDB/Redis interrupt tests
+ * Scheduler test
+ * Scheduler dailytime
+ * More worker info in dashboard
+ * Base cleaning/retry tasks: interrupted, move
+
+**beta**
+
+ * Scheduled statuses in dashboard
+ * Full linting
+ * Code coverage
+ * Public docs
+ * PyPI
+ * Move monitoring in a thread?
+ * Bulk queues
+ * Tasksets
+ * Search in dashboard
+
 
 Credits
 =======

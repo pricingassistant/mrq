@@ -146,7 +146,7 @@ define(["backbone", "underscore", "jquery"],function(Backbone, _, $) {
 
       //console.log(el,this.$el,app.templates[tpl || this.template]);
       (el||this.$el).html(_.template($(this.template).html())(_.defaults(options||{},{
-        store: this.app.currentStore,
+        _: _,
         app: this.app
       })));
     },

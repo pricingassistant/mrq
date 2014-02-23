@@ -1,5 +1,5 @@
 from .utils import load_task_class, group_iter
-from .worker import get_current_worker
+from .context import get_current_worker
 import time
 from bson import ObjectId
 
@@ -35,7 +35,8 @@ def send_tasks(path, params_list, queue=None, sync=False, batch_size=1000):
     job_ids = collection.insert([{
       "path": path,
       "params": params,
-      "queue": queue
+      "queue": queue,
+      "status": "queued"
     } for params in params_group], w=1)
 
     # Between these 2 calls, a task can be inserted in MongoDB but not queued in Redis.
@@ -50,7 +51,7 @@ def send_tasks(path, params_list, queue=None, sync=False, batch_size=1000):
   return all_ids
 
 
-def wait_for_job(job_id, poll_interval=1, timeout=None):
+def wait_for_job(job_id, poll_interval=1, timeout=None, full_data=False):
 
   worker = get_current_worker()
   if not worker:
@@ -66,12 +67,12 @@ def wait_for_job(job_id, poll_interval=1, timeout=None):
 
     job_data = collection.find_one({
       "_id": ObjectId(job_id),
-      "status": {"$in": ["success", "failed", "timeout", "retry"]}
-    }, fields={
+      "status": {"$nin": ["started", "queued"]}
+    }, fields=({
       "_id": 0,
       "result": 1,
       "status": 1
-    })
+    } if not full_data else None))
 
     if job_data:
       return job_data

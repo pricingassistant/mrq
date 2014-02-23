@@ -1,0 +1,67 @@
+
+#app-container .modal-content textarea, #app-container .col-jobs-params pre {
+  font-family:monospace;
+  background-color:#1c1e22;
+  color:white;
+  border:1px solid black;
+  width:100%;
+  font-size:12px;
+}
+
+#app-container .modal-content textarea {
+  height:500px;
+}
+
+.col-jobs-status {
+  width:80px;
+}
+
+.col-jobs-queue {
+  width:100px;
+}
+
+.col-jobs-worker {
+  width:140px;
+}
+
+.col-jobs-action {
+  width:200px;
+}
+
+.container {
+  width:inherit;
+}
+
+.spin {
+  -webkit-animation: spin 1s infinite linear;
+  -moz-animation: spin 1s infinite linear;
+  -o-animation: spin 1s infinite linear;
+  animation: spin 1s infinite linear;
+}
+
+@-moz-keyframes spin {
+  from {
+    -moz-transform: rotate(0deg);
+  }
+  to {
+    -moz-transform: rotate(360deg);
+  }
+}
+
+@-webkit-keyframes spin {
+  from {
+    -webkit-transform: rotate(0deg);
+  }
+  to {
+    -webkit-transform: rotate(360deg);
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

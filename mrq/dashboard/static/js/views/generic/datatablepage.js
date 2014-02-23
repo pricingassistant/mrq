@@ -31,7 +31,7 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
         },
         //"bLengthChange":false,
         //"aLengthMenu": [[25, 50, 100], [25, 50, 100]],
-        "sDom":"rftipl",
+        "sDom":"rtipl",
         "oLanguage":{
           "sSearch":"",
           "sInfo": "Showing _START_ to _END_ of _TOTAL_ "+unit_name,

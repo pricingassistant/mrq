@@ -46,7 +46,7 @@ class ProcessFixture(object):
       stdout = None
 
     self.cmdline = cmdline
-    print cmdline
+    # print cmdline
     self.process = subprocess.Popen(cmdline.split(" ") if type(cmdline) in [str, unicode] else cmdline,
                                     shell=False, close_fds=True, env=env, cwd=os.getcwd(), stdout=stdout)
 
@@ -94,16 +94,12 @@ class WorkerFixture(ProcessFixture):
 
     self.started = False
 
-  def start(self, **kwargs):
+  def start(self, reset=True, **kwargs):
 
     self.started = True
 
     self.fixture_mongodb.start()
     self.fixture_redis.start()
-
-    cmdline = "python mrq/scripts/mrq-worker.py %s high default low" % kwargs.get("flags", "")
-
-    ProcessFixture.start(self, cmdline=cmdline, env=kwargs.get("env"))
 
     # This is a local worker instance that should never be started but used for launching tasks.
     self.local_worker = Worker(get_config(sources=("env")))
@@ -112,6 +108,19 @@ class WorkerFixture(ProcessFixture):
     self.mongodb_jobs = self.local_worker.mongodb_jobs
     self.mongodb_logs = self.local_worker.mongodb_logs
     self.redis = self.local_worker.redis
+
+    if reset:
+
+      for mongodb in (self.mongodb_jobs, self.mongodb_logs):
+        for c in mongodb.collection_names():
+          if not c.startswith("system."):
+            mongodb.drop_collection(c)
+
+      self.redis.flushdb()
+
+    cmdline = "python mrq/scripts/mrq-worker.py %s high default low" % kwargs.get("flags", "")
+
+    ProcessFixture.start(self, cmdline=cmdline, env=kwargs.get("env"))
 
   def stop(self, deps=True, sig=2, **kwargs):
 
@@ -154,12 +163,18 @@ def httpstatic(request):
 
 @pytest.fixture(scope="function")
 def mongodb(request):
-  return ProcessFixture(request, "mongod", wait_port=27017, quiet=True)
+  cmd = "mongod"
+  if os.environ.get("STACK_STARTED"):
+    cmd = "sleep 1h"
+  return ProcessFixture(request, cmd, wait_port=27017, quiet=True)
 
 
 @pytest.fixture(scope="function")
 def redis(request):
-  return ProcessFixture(request, "redis-server --save ''", wait_port=6379, quiet=True)
+  cmd = "redis-server"
+  if os.environ.get("STACK_STARTED"):
+    cmd = "sleep 1h"
+  return ProcessFixture(request, cmd, wait_port=6379, quiet=True)
 
 
 @pytest.fixture(scope="function")

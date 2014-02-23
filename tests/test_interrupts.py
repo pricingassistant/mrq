@@ -24,7 +24,7 @@ def test_interrupt_worker_gracefully(worker):
   time.sleep(1)
 
   job = worker.mongodb_jobs.mrq_jobs.find_one({"_id": job_id2})
-  assert job.get("status") is None
+  assert job.get("status") == "queued"
 
   time.sleep(4)
 
@@ -33,7 +33,7 @@ def test_interrupt_worker_gracefully(worker):
   assert job["result"] == 42
 
   job = worker.mongodb_jobs.mrq_jobs.find_one({"_id": job_id2})
-  assert job.get("status") is None
+  assert job.get("status") == "queued"
 
 
 def test_interrupt_worker_double_sigint(worker):
@@ -61,7 +61,7 @@ def test_interrupt_worker_double_sigint(worker):
   time.sleep(1)
 
   job = worker.mongodb_jobs.mrq_jobs.find_one({"_id": job_id2})
-  assert job.get("status") is None
+  assert job.get("status") == "queued"
 
   # Sending a second kill -2 should make it stop
   worker.stop(block=False, deps=False, force=True)

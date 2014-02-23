@@ -48,7 +48,7 @@ def test_performance_httpstatic_internal(worker, httpstatic):
 
   result, total_time = benchmark_task(worker,
                                       "mrq.basetasks.tests.general.Fetch",
-                                      [{"url": "http://localhost:8081/"} for _ in range(n_tasks)],
+                                      [{"url": "http://127.0.0.1:8081/"} for _ in range(n_tasks)],
                                       tasks=n_tasks,
                                       greenlets=n_greenlets,
                                       max_seconds=max_seconds,
@@ -59,7 +59,7 @@ def test_performance_httpstatic_external(worker):
 
   n_tasks = 1000
   n_greenlets = 50
-  max_seconds = 15
+  max_seconds = 25
 
   url = "http://www.microsoft.com/favicon.ico"
   url = "http://ox-mockserver.herokuapp.com/ipheaders"
