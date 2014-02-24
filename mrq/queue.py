@@ -21,6 +21,9 @@ class Queue(object):
   def size(self):
     return connections.redis.llen(self.redis_key)
 
+  def list_job_ids(self, skip=0, limit=20):
+    return connections.redis.lrange(self.redis_key, skip, skip + limit - 1)
+
   @classmethod
   def all(cls):
     # TODO MongoDB distinct?

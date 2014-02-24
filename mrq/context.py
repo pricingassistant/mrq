@@ -2,8 +2,13 @@ from .logger import LoggerInterface
 import gevent
 import urlparse
 import redis as pyredis
-import pymongo
 import re
+
+try:
+  # MongoKit's Connection object is just a wrapped MongoClient.
+  from mongokit import Connection as MongoClient
+except:
+  from pymongo import MongoClient
 
 
 # greenletid => Job object
@@ -93,7 +98,7 @@ class _connections_class(object):
 
         log.info("Connecting to MongoDB at %s..." % mongoHosts)
 
-        value = pymongo.MongoClient(mongoHosts)[mongoDbName]
+        value = MongoClient(mongoHosts)[mongoDbName]
         if mongoUsername:
           value.authenticate(mongoUsername, mongoPassword)
 

@@ -52,6 +52,9 @@ def get_config(sources=("file", "env", "args"), env_prefix="MRQ_", defaults=None
   parser.add_argument('--config', '-c', default=None, action="store",
                       help='Path of a config file')
 
+  parser.add_argument('--admin_port', default=0, action="store", type=int,
+                      help='Start an admin server on this port. If none, no admin server.')
+
   parser.add_argument('queues', nargs='*', default=["default"],
                       help='The queues to listen on (default: \'default\')')
 

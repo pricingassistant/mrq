@@ -8,7 +8,9 @@ import socket
 import traceback
 import psutil
 import sys
+import json
 from bson import ObjectId
+from gevent.pywsgi import WSGIServer
 
 from .job import Job
 from .exceptions import JobTimeoutException, StopRequested, JobInterrupt
@@ -179,6 +181,18 @@ class Worker(object):
         },
         "jobs": greenlets
       }}, upsert=True, w=w)
+
+  def greenlet_admin(self):
+    """ This greenlet is used to get status information about the worker when -admin_port was given
+    """
+    def application(environ, start_response):
+      print environ
+      start_response("200 OK", [
+        ('Content-Type', 'application/json')
+      ])
+      return json.dumps({})
+
+    WSGIServer(('', self.config["admin_port"]), application).serve_forever()
 
   def flush_logs(self, w=0):
     self.log_handler.flush(w=w)
