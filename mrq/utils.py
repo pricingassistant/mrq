@@ -103,3 +103,27 @@ def wait_for_net_service(server, port, timeout=None):
       return True
     time.sleep(0.1)
 
+
+class LazyObject(object):
+  """ Lazy-connection class. Connections will only be initialized when first used. """
+
+  _factories = []
+  _attributes_via_factories = []
+
+  def add_factory(self, factory):
+    self._factories.append(factory)
+
+  # This will be called only once, when the attribute is still missing
+  def __getattr__(self, attr):
+
+    for factory in self._factories:
+      value = factory(attr)
+      if value:
+        self._attributes_via_factories.append(attr)
+        self.__dict__[attr] = value
+        return value
+
+  def reset(self):
+    # TODO proper connection close?
+    for attr in self._attributes_via_factories:
+      del self.__dict__[attr]
