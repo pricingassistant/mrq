@@ -55,11 +55,12 @@ TODO
  * MongoDB/Redis interrupt tests
  * Scheduler test
  * Scheduler dailytime
- * Base cleaning/retry tasks: interrupted, move
  * uniquestarted/uniquequeued
+ * mongo indexes
 
 **beta**
 
+ * Base cleaning/retry tasks: move
  * Current greenlet traces in dashboard
  * Scheduled statuses in dashboard
  * Full linting

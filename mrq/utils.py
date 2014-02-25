@@ -127,3 +127,4 @@ class LazyObject(object):
     # TODO proper connection close?
     for attr in self._attributes_via_factories:
       del self.__dict__[attr]
+    self._attributes_via_factories = []
