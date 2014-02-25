@@ -137,6 +137,7 @@ class Job(object):
     if self.data is None:
       return
 
+    log.debug("Starting %s(%s)" % (self.data["path"], self.data["params"]))
     task_class = load_class_by_path(self.data["path"])
 
     self.task = task_class(job=self)

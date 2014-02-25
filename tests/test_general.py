@@ -1,4 +1,6 @@
 from bson import ObjectId
+import urllib2
+import json
 
 
 def test_general_simple_task_one(worker):
@@ -11,6 +13,13 @@ def test_general_simple_task_one(worker):
   assert len(db_workers) == 1
   assert db_workers[0]["status"] == "started"
 
+  # Test the HTTP admin API
+  admin_worker = json.load(urllib2.urlopen("http://localhost:20000"))
+
+  assert admin_worker["id"] == str(db_workers[0]["id"])
+  assert admin_worker["status"] == "started"
+
+  # Stop the worker gracefully
   worker.stop(deps=False)
 
   db_jobs = list(worker.mongodb_jobs.mrq_jobs.find())

@@ -96,11 +96,12 @@ class _connections_class(object):
         (mongoAuth, mongoUsername, mongoPassword, mongoHosts, mongoDbName) = re.match(
           "mongodb://((\w+):(\w+)@)?([\w\.:,-]+)/([\w-]+)", config_obj).groups()
 
-        log.info("Connecting to MongoDB at %s..." % mongoHosts)
+        log.debug("Connecting to MongoDB at %s/%s..." % (mongoHosts, mongoDbName))
 
         value = MongoClient(mongoHosts)[mongoDbName]
         if mongoUsername:
           value.authenticate(mongoUsername, mongoPassword)
+        log.debug("Connected.")
 
       # Let's just assume we got a MongoDB-like object!
       else:

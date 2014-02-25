@@ -2,10 +2,10 @@ init:
 	docker build -t mrq/mrq_local .
 
 test: init
-	sh -c "docker run -rm -i -t -p 27017:27017 -p 6379:6379 -p 5555:5555 -v `pwd`:/app:rw -w /app mrq/mrq_local py.test tests/ -s -v"
+	sh -c "docker run -rm -i -t -p 27017:27017 -p 6379:6379 -p 5555:5555 -p 20000:20000 -v `pwd`:/app:rw -w /app mrq/mrq_local py.test tests/ -s -v"
 
 shell: init
-	sh -c "docker run -rm -i -t -p 27017:27017 -p 6379:6379 -p 5555:5555 -v `pwd`:/app:rw -w /app mrq/mrq_local bash"
+	sh -c "docker run -rm -i -t -p 27017:27017 -p 6379:6379 -p 5555:5555 -p 20000:20000 -v `pwd`:/app:rw -w /app mrq/mrq_local bash"
 
 lint:
 	pylint --init-hook="import sys; sys.path.append('.')" --rcfile .pylintrc mrq

@@ -119,80 +119,88 @@ class Worker(object):
       self.flush_logs(w=0)
       time.sleep(int(self.config["report_interval"]))
 
+  def get_worker_report(self):
+
+    greenlets = []
+
+    for greenlet in self.gevent_pool:
+      g = {}
+      short_stack = []
+      stack = traceback.format_stack(greenlet.gr_frame)
+      for s in stack[1:]:
+        if "/gevent/hub.py" in s:
+          break
+        short_stack.append(s)
+      g["stack"] = short_stack
+
+      job = get_current_job(id(greenlet))
+      if job:
+        if job.data:
+          g["path"] = job.data["path"]
+        g["datestarted"] = job.datestarted
+        g["id"] = job.id
+      greenlets.append(g)
+
+    cpu = self.process.get_cpu_times()
+
+    # Avoid sharing passwords or sensitive config!
+    whitelisted_config = [
+      "max_jobs",
+      "pool_size",
+      "queues",
+      "name"
+    ]
+
+    return {
+      "status": self.status,
+      "config": {k: v for k, v in self.config.iteritems() if k in whitelisted_config},
+      "done_jobs": self.done_jobs,
+      "datestarted": self.datestarted,
+      "datereported": datetime.datetime.utcnow(),
+      "name": self.name,
+      "id": self.id,
+      "process": {
+        "pid": self.process.pid,
+        "cpu": {
+          "user": cpu.user,
+          "system": cpu.system,
+          "percent": self.process.get_cpu_percent(0)
+        },
+        "mem": {
+          "rss": self.process.get_memory_info().rss
+        }
+        # https://code.google.com/p/psutil/wiki/Documentation
+        # get_open_files
+        # get_connections
+        # get_num_ctx_switches
+        # get_num_fds
+        # get_io_counters
+        # get_nice
+      },
+      "jobs": greenlets
+    }
+
   def report_worker(self, w=0):
-
-      greenlets = []
-
-      for greenlet in self.gevent_pool:
-        g = {}
-        short_stack = []
-        stack = traceback.format_stack(greenlet.gr_frame)
-        for s in stack[1:]:
-          if "/gevent/hub.py" in s:
-            break
-          short_stack.append(s)
-        g["stack"] = short_stack
-
-        job = get_current_job(id(greenlet))
-        if job:
-          if job.data:
-            g["path"] = job.data["path"]
-          g["datestarted"] = job.datestarted
-          g["id"] = job.id
-        greenlets.append(g)
-
-      cpu = self.process.get_cpu_times()
-
-      # Avoid sharing passwords or sensitive config!
-      whitelisted_config = [
-        "max_jobs",
-        "pool_size",
-        "queues",
-        "name"
-      ]
 
       self.mongodb_logs.mrq_workers.update({
         "_id": ObjectId(self.id)
-      }, {"$set": {
-        "status": self.status,
-        "config": {k: v for k, v in self.config.iteritems() if k in whitelisted_config},
-        "done_jobs": self.done_jobs,
-        "datestarted": self.datestarted,
-        "datereported": datetime.datetime.utcnow(),
-        "name": self.name,
-        "id": self.id,
-        "process": {
-          "pid": self.process.pid,
-          "cpu": {
-            "user": cpu.user,
-            "system": cpu.system,
-            "percent": self.process.get_cpu_percent(0)
-          },
-          "mem": {
-            "rss": self.process.get_memory_info().rss
-          }
-          # https://code.google.com/p/psutil/wiki/Documentation
-          # get_open_files
-          # get_connections
-          # get_num_ctx_switches
-          # get_num_fds
-          # get_io_counters
-          # get_nice
-        },
-        "jobs": greenlets
-      }}, upsert=True, w=w)
+      }, {"$set": self.get_worker_report()}, upsert=True, w=w)
 
   def greenlet_admin(self):
-    """ This greenlet is used to get status information about the worker when -admin_port was given
+    """ This greenlet is used to get status information about the worker when --admin_port was given
     """
-    def application(environ, start_response):
-      print environ
-      start_response("200 OK", [
-        ('Content-Type', 'application/json')
-      ])
-      return json.dumps({})
 
-    WSGIServer(('', self.config["admin_port"]), application).serve_forever()
+    from flask import Flask
+    from mrq.dashboard.utils import jsonify
+    app = Flask("admin")
+
+    @app.route('/')
+    def route_index():
+      return jsonify(self.get_worker_report())
+
+    self.log.debug("Starting admin server on port %s" % self.config["admin_port"])
+    server = WSGIServer(("0.0.0.0", self.config["admin_port"]), app)
+    server.serve_forever()
 
   def flush_logs(self, w=0):
     self.log_handler.flush(w=w)
@@ -203,7 +211,9 @@ class Worker(object):
     self.log.debug("Fetching %s jobs from Redis" % max_jobs)
 
     jobs = []
+    self.status = "idle"
     queue, job_id = self.redis.blpop(self.redis_queues, 0)
+    self.status = "started"
 
     # From this point until job.fetch_and_start(), job is only local to this worker.
     # If we die here, job will be lost in redis without having been marked as "started".
@@ -238,6 +248,9 @@ class Worker(object):
     if self.config["scheduler"]:
       self.greenlets["scheduler"] = gevent.spawn(self.greenlet_scheduler)
 
+    if self.config["admin_port"]:
+      self.greenlets["admin"] = gevent.spawn(self.greenlet_admin)
+
     self.install_signal_handlers()
 
     try:
@@ -247,7 +260,9 @@ class Worker(object):
         while True:
           free_pool_slots = self.gevent_pool.free_count()
           if free_pool_slots > 0:
+            self.status = "started"
             break
+          self.status = "idle"
           gevent.sleep(0.01)
 
         self.log.info('Listening on %s' % self.queues)
