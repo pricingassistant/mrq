@@ -97,7 +97,7 @@ class WorkerFixture(ProcessFixture):
 
     self.started = False
 
-  def start(self, reset=True, deps=True, **kwargs):
+  def start(self, flush=True, deps=True, **kwargs):
 
     self.started = True
 
@@ -111,14 +111,9 @@ class WorkerFixture(ProcessFixture):
     self.mongodb_logs = connections.mongodb_logs
     self.redis = connections.redis
 
-    if reset:
-
-      for mongodb in (self.mongodb_jobs, self.mongodb_logs):
-        for c in mongodb.collection_names():
-          if not c.startswith("system."):
-            mongodb.drop_collection(c)
-
-      self.redis.flushdb()
+    if flush and deps:
+      self.fixture_mongodb.flush()
+      self.fixture_redis.flush()
 
     cmdline = "python mrq/bin/mrq-worker.py --admin_port=20000 %s %s" % (
       kwargs.get("flags", ""),
@@ -161,6 +156,19 @@ class WorkerFixture(ProcessFixture):
     return self.send_tasks(path, [params], **kwargs)[0]
 
 
+class RedisFixture(ProcessFixture):
+  def flush(self):
+    connections.redis.flushdb()
+
+
+class MongoFixture(ProcessFixture):
+  def flush(self):
+    for mongodb in (connections.mongodb_jobs, connections.mongodb_logs):
+      for c in mongodb.collection_names():
+        if not c.startswith("system."):
+          mongodb.drop_collection(c)
+
+
 @pytest.fixture(scope="function")
 def httpstatic(request):
   return ProcessFixture(request, "/usr/sbin/nginx -c /app/tests/fixtures/httpstatic/nginx.conf", wait_port=8081)
@@ -171,7 +179,7 @@ def mongodb(request):
   cmd = "mongod"
   if os.environ.get("STACK_STARTED"):
     cmd = "sleep 1h"
-  return ProcessFixture(request, cmd, wait_port=27017, quiet=True)
+  return MongoFixture(request, cmd, wait_port=27017, quiet=True)
 
 
 @pytest.fixture(scope="function")
@@ -179,7 +187,7 @@ def redis(request):
   cmd = "redis-server"
   if os.environ.get("STACK_STARTED"):
     cmd = "sleep 1h"
-  return ProcessFixture(request, cmd, wait_port=6379, quiet=True)
+  return RedisFixture(request, cmd, wait_port=6379, quiet=True)
 
 
 @pytest.fixture(scope="function")

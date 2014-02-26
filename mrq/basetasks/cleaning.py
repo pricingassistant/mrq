@@ -63,9 +63,16 @@ class RequeueLostJobs(Task):
     # jobs are still queued.
     max_queue_items = params.get("max_queue_items", 1000)
 
+    stats = {
+      "fetched": 0,
+      "requeued": 0
+    }
+
     for job_data in self.collection.find({
       "status": "queued"
-    }, fields={"_id": 1, "queue": 1}).sort([{"_id": 1}]).batch_size(100):
+    }, fields={"_id": 1, "queue": 1}).sort([("_id", 1)]).batch_size(100):
+
+      stats["fetched"] += 1
 
       queue = Queue(job_data["queue"])
       queue_size = queue.size()
@@ -84,10 +91,11 @@ class RequeueLostJobs(Task):
 
       # At this point, this job is not on the queue and we're sure the queue is less than max_queue_items
       # We can safely requeue the job.
-      log.info("Requeueing %s on %s" % (job_data["_id"], queue))
+      log.info("Requeueing %s on %s" % (job_data["_id"], queue.id))
 
+      stats["requeued"] += 1
       job = Job(job_data["_id"])
       job.requeue(queue=job_data["queue"])
 
-
+    return stats
 

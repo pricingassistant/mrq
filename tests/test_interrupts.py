@@ -80,7 +80,7 @@ def test_interrupt_worker_double_sigint(worker):
 
   assert Queue("default").size() == 1
 
-  worker.start(queues="cleaning", deps=False, reset=False)
+  worker.start(queues="cleaning", deps=False, flush=False)
 
   res = worker.send_task("mrq.basetasks.cleaning.RequeueInterruptedJobs", {}, block=True, queue="cleaning")
 
@@ -151,7 +151,7 @@ def test_interrupt_worker_sigkill(worker):
 
   assert Queue("default").size() == 0
 
-  worker.start(queues="cleaning", deps=False, reset=False)
+  worker.start(queues="cleaning", deps=False, flush=False)
 
   res = worker.send_task("mrq.basetasks.cleaning.RequeueStartedJobs", {"timeout": 110}, block=True, queue="cleaning")
 
@@ -176,4 +176,48 @@ def test_interrupt_worker_sigkill(worker):
   job = Job(job_id).fetch().data
   assert job["status"] == "queued"
   assert job["queue"] == "default"
+
+
+def test_interrupt_redis_flush(worker):
+  """ Test what happens when we flush redis after queueing jobs.
+
+      The RequeueLostJobs task should put them back in redis.
+  """
+
+  worker.start(queues="cleaning", deps=True, flush=True)
+
+  job_id1 = worker.send_task("mrq.basetasks.tests.general.Add", {"a": 41, "b": 1, "sleep": 10}, block=False, queue="default")
+  job_id2 = worker.send_task("mrq.basetasks.tests.general.Add", {"a": 41, "b": 1, "sleep": 10}, block=False, queue="default")
+  job_id3 = worker.send_task("mrq.basetasks.tests.general.Add", {"a": 41, "b": 1, "sleep": 10}, block=False, queue="otherq")
+
+  assert Queue("default").size() == 2
+  assert Queue("otherq").size() == 1
+
+  res = worker.send_task("mrq.basetasks.cleaning.RequeueLostJobs", {}, block=True, queue="cleaning")
+
+  # We should try the first job only, and when seeing it's there we should stop.
+  assert res["fetched"] == 1
+  assert res["requeued"] == 0
+
+  assert Queue("default").size() == 2
+  assert Queue("otherq").size() == 1
+
+  # Then flush redis!
+  worker.fixture_redis.flush()
+
+  # Assert the queues are empty.
+  assert Queue("default").size() == 0
+  assert Queue("otherq").size() == 0
+
+  res = worker.send_task("mrq.basetasks.cleaning.RequeueLostJobs", {}, block=True, queue="cleaning")
+
+  assert res["fetched"] == 3
+  assert res["requeued"] == 3
+
+  assert Queue("default").size() == 2
+  assert Queue("otherq").size() == 1
+
+  assert Queue("default").list_job_ids() == [str(job_id1), str(job_id2)]
+  assert Queue("otherq").list_job_ids() == [str(job_id3)]
+
 
