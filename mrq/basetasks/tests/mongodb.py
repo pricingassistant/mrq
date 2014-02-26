@@ -1,6 +1,6 @@
 from time import sleep
 from mrq.task import Task
-from mrq.logger import log, connections
+from mrq.context import log, connections
 import urllib2
 
 

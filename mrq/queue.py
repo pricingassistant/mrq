@@ -1,15 +1,14 @@
 from .utils import load_class_by_path, group_iter
 from .context import connections, get_current_config
-import time
-from bson import ObjectId
 
 
 class Queue(object):
 
   def __init__(self, queue_id):
     if isinstance(queue_id, Queue):
-      return queue_id
-    self.id = queue_id
+      self.id = queue_id.id  # TODO use __new__?
+    else:
+      self.id = queue_id
 
   @property
   def redis_key(self):

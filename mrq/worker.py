@@ -96,14 +96,15 @@ class Worker(object):
 
   def greenlet_scheduler(self):
 
-    from .scheduler import Scheduler
-    scheduler = Scheduler(self.mongodb_jobs.scheduled_jobs)
+    pass
+    # from .scheduler import Scheduler
+    # scheduler = Scheduler(self.mongodb_jobs.scheduled_jobs)
 
-    scheduler.sync_tasks()
+    # scheduler.sync_tasks()
 
-    while True:
-      scheduler.check()
-      time.sleep(int(self.config["scheduler_interval"]))
+    # while True:
+    #   scheduler.check()
+    #   time.sleep(int(self.config["scheduler_interval"]))
 
   def greenlet_monitoring(self):
     """ This greenlet always runs in background to update current status in MongoDB every 10 seconds.

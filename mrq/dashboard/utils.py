@@ -5,7 +5,7 @@ from werkzeug import Response
 
 
 class MongoJsonEncoder(json.JSONEncoder):
-  def default(self, obj):
+  def default(self, obj):  # pylint: disable-msg=E0202
     if isinstance(obj, (datetime.datetime, datetime.date)):
       return obj.isoformat()
     elif isinstance(obj, ObjectId):
