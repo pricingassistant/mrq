@@ -1,7 +1,7 @@
 from mrq.task import Task
 from mrq.job import Job
 from bson import ObjectId
-from mrq.context import log
+from mrq.context import log, connections
 
 
 class JobAction(Task):
@@ -9,11 +9,11 @@ class JobAction(Task):
   def run(self, params):
 
     self.params = params
-    self.collection = self.job.worker.mongodb_jobs.mrq_jobs
+    self.collection = connections.mongodb_jobs.mrq_jobs
 
     query = self.build_query()
     jobs = self.fetch_jobs(query)
-    self.perform_action(self.params.get("action"), jobs)
+    return self.perform_action(self.params.get("action"), jobs)
 
   def build_query(self):
     query = {}
@@ -31,10 +31,21 @@ class JobAction(Task):
 
   def perform_action(self, action, jobs):
 
+    stats = {
+      "requeued": 0,
+      "cancelled": 0,
+      "fetched": 0
+    }
+
     for job_data in jobs:
-      job = Job(job_data["_id"])
+      stats["fetched"] += 1
+      job = Job(job_data["_id"], fetch=True)
 
       if action == "requeue":
+        stats["requeued"] += 1
         job.requeue()
       elif action == "cancel":
+        stats["cancelled"] += 1
         job.cancel()
+
+    return stats

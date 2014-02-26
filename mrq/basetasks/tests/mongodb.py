@@ -1,6 +1,6 @@
 from time import sleep
 from mrq.task import Task
-from mrq.logger import log
+from mrq.logger import log, connections
 import urllib2
 
 
@@ -8,7 +8,7 @@ class MongoTimeout(Task):
 
   def run(self, params):
 
-    res = self.job.worker.mongodb_jobs.eval("""
+    res = connections.mongodb_jobs.eval("""
       function() {
         var a;
         for (i=0;i<10000000;i++) { 

@@ -97,12 +97,13 @@ class WorkerFixture(ProcessFixture):
 
     self.started = False
 
-  def start(self, reset=True, **kwargs):
+  def start(self, reset=True, deps=True, **kwargs):
 
     self.started = True
 
-    self.fixture_mongodb.start()
-    self.fixture_redis.start()
+    if deps:
+      self.fixture_mongodb.start()
+      self.fixture_redis.start()
 
     # Will auto-connect
     connections.reset()
@@ -119,7 +120,10 @@ class WorkerFixture(ProcessFixture):
 
       self.redis.flushdb()
 
-    cmdline = "python mrq/bin/mrq-worker.py --admin_port=20000 %s high default low" % kwargs.get("flags", "")
+    cmdline = "python mrq/bin/mrq-worker.py --admin_port=20000 %s %s" % (
+      kwargs.get("flags", ""),
+      kwargs.get("queues", "high default low")
+    )
 
     ProcessFixture.start(self, cmdline=cmdline, env=kwargs.get("env"))
 

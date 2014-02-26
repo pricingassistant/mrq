@@ -127,7 +127,10 @@ class Job(object):
     self.save_status("cancel")
 
   def requeue(self, queue=None):
-    self.save_status(None)
+    self.save_status("queued")
+
+    if not self.data or not self.data.get("queue"):
+      self.fetch(full_data=True)  # TODO only fetch queue?
 
     Queue(queue or self.data["queue"]).enqueue_job_ids([str(self.id)])
 
@@ -140,7 +143,7 @@ class Job(object):
     log.debug("Starting %s(%s)" % (self.data["path"], self.data["params"]))
     task_class = load_class_by_path(self.data["path"])
 
-    self.task = task_class(job=self)
+    self.task = task_class()
 
     result = self.task.run(self.data["params"])
 

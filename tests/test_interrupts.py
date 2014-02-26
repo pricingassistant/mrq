@@ -1,5 +1,7 @@
-import time
+import time, datetime
 from mrq.job import Job
+from mrq.queue import Queue
+from bson import ObjectId
 
 
 def test_interrupt_worker_gracefully(worker):
@@ -65,7 +67,7 @@ def test_interrupt_worker_double_sigint(worker):
   assert job.get("status") == "queued"
 
   # Sending a second kill -2 should make it stop
-  worker.stop(block=False, deps=False, force=True)
+  worker.stop(block=True, deps=False, force=True)
 
   time.sleep(1)
 
@@ -73,6 +75,24 @@ def test_interrupt_worker_double_sigint(worker):
   assert job["status"] == "interrupt"
 
   assert time.time() - start_time < 8
+
+  # Then try the cleaning task that requeues interrupted jobs
+
+  assert Queue("default").size() == 1
+
+  worker.start(queues="cleaning", deps=False, reset=False)
+
+  res = worker.send_task("mrq.basetasks.cleaning.RequeueInterruptedJobs", {}, block=True, queue="cleaning")
+
+  assert res["requeued"] == 1
+
+  assert Queue("default").size() == 2
+
+  Queue("default").list_job_ids() == [str(job_id2), str(job_id)]
+
+  job = Job(job_id).fetch().data
+  assert job["status"] == "queued"
+  assert job["queue"] == "default"
 
 
 def test_interrupt_worker_sigterm(worker):
@@ -121,3 +141,39 @@ def test_interrupt_worker_sigkill(worker):
   assert job["status"] == "started"
 
   assert time.time() - start_time < 5
+
+  # Then try the cleaning task that requeues started jobs
+
+  # We need to fake the datestarted
+  worker.mongodb_jobs.mrq_jobs.update({"_id": ObjectId(job_id)}, {"$set": {
+    "datestarted": datetime.datetime.utcnow() - datetime.timedelta(seconds=400)
+  }})
+
+  assert Queue("default").size() == 0
+
+  worker.start(queues="cleaning", deps=False, reset=False)
+
+  res = worker.send_task("mrq.basetasks.cleaning.RequeueStartedJobs", {"timeout": 110}, block=True, queue="cleaning")
+
+  assert res["requeued"] == 0
+  assert res["started"] == 2  # current job should count too
+
+  assert Queue("default").size() == 0
+
+  job = Job(job_id).fetch().data
+  assert job["status"] == "started"
+  assert job["queue"] == "default"
+
+  # Now do it again with a small enough timeout
+  res = worker.send_task("mrq.basetasks.cleaning.RequeueStartedJobs", {"timeout": 90}, block=True, queue="cleaning")
+
+  assert res["requeued"] == 1
+  assert res["started"] == 2  # current job should count too
+  assert Queue("default").size() == 1
+
+  Queue("default").list_job_ids() == [str(job_id)]
+
+  job = Job(job_id).fetch().data
+  assert job["status"] == "queued"
+  assert job["queue"] == "default"
+
