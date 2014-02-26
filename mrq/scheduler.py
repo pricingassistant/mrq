@@ -11,7 +11,7 @@ class Scheduler(object):
     self.refresh()
 
   def refresh(self):
-    self.all_tasks = self.collection.find()
+    self.all_tasks = list(self.collection.find())
 
   def hash_task(self, task):
 
@@ -27,12 +27,15 @@ class Scheduler(object):
         del tasks_by_hash[task["hash"]]
       else:
         self.collection.remove({"_id": task["_id"]})
-        log.info("Scheduler: deleted %s" % task["hash"])
+        log.debug("Scheduler: deleted %s" % task["hash"])
 
     for h, task in tasks_by_hash.iteritems():
       task["hash"] = h
+      task["datelastqueued"] = datetime.datetime.fromtimestamp(0)
       self.collection.insert(task)
-      log.info("Scheduler: added %s" % task["hash"])
+      log.debug("Scheduler: added %s" % task["hash"])
+
+    self.refresh()
 
       # # Ajust the time
       # if "dailytime" in SCHEDULE[k]:
@@ -47,19 +50,22 @@ class Scheduler(object):
 
   def check(self):
 
+    log.debug("Scheduler checking for out-of-date scheduled tasks (%s scheduled)..." % len(self.all_tasks))
     for task in self.all_tasks:
 
-      next_time = task.get("datelastqueued", datetime.datetime.fromtimestamp(0)) + datetime.timedelta(seconds=task["interval"])
+      interval = datetime.timedelta(seconds=task["interval"])
+
+      last_time = datetime.datetime.utcnow() - interval
 
       task_data = self.collection.find_and_modify({
         "_id": task["_id"],
-        "datelastqueued": {"$gte": next_time}
+        "datelastqueued": {"$lt": last_time}
       }, {"$set": {
         "datelastqueued": datetime.datetime.utcnow()
       }})
 
       if task_data:
-        send_task(task_data["path"], task_data["params"])
-        log.info("Scheduler: queued %s" % task_data)
+        send_task(task_data["path"], task_data["params"], queue=task.get("queue"))
+        log.debug("Scheduler: queued %s" % task_data)
 
         self.refresh()

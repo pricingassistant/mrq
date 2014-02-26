@@ -1,6 +1,6 @@
 from time import sleep
 from mrq.task import Task
-from mrq.context import log, retry_current_job
+from mrq.context import log, retry_current_job, connections
 import urllib2
 
 
@@ -59,3 +59,13 @@ class ReturnParams(Task):
     sleep(params.get("sleep", 0))
 
     return params
+
+
+class MongoInsert(Task):
+
+  def run(self, params):
+
+    connections.mongodb_logs.tests_inserts.insert(params)
+
+
+MongoInsert2 = MongoInsert

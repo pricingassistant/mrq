@@ -42,7 +42,8 @@ $ make test
 You can also open a shell inside the docker (just like you would enter in a virtualenv) with:
 
 ```
-$ make shell
+$ make docker (if it wasn't build before)
+$ make ssh
 ```
 
 
@@ -53,7 +54,6 @@ TODO
 
  * Max Retries
  * MongoDB/Redis interrupt tests
- * Scheduler test
  * Scheduler dailytime
  * uniquestarted/uniquequeued
  * mongo indexes
