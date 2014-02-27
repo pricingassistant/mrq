@@ -145,12 +145,20 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
         "aoColumns": [
 
           {
-            "sTitle": "Name",
+            "sTitle": "Path &amp; ID",
             "sClass": "col-jobs-path",
             "mDataProp": "path",
             "fnRender": function ( o /*, val */) {
               return "<a href='/#jobs?path="+o.aData.path+"'>"+o.aData.path+"</a>"+
                 "<br/><br/><a href='/#jobs?id="+o.aData._id+"'><small>"+o.aData._id+"</small></a>";
+            }
+          },
+          {
+            "sTitle": "Params",
+            "sClass": "col-jobs-params",
+            "mDataProp": "params",
+            "fnRender": function ( o /*, val */) {
+              return "<pre>"+JSON.stringify(o.aData.params, null, 2)+"</pre>";
             }
           },
           {
@@ -213,14 +221,6 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
               } else {
                 return source.worker || "";
               }
-            }
-          },
-          {
-            "sTitle": "Params",
-            "sClass": "col-jobs-params",
-            "mDataProp": "params",
-            "fnRender": function ( o /*, val */) {
-              return "<pre>"+JSON.stringify(o.aData.params, null, 2)+"</pre>";
             }
           },
           {
