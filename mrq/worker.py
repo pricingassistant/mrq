@@ -99,13 +99,13 @@ class Worker(object):
       self.mongodb_logs.command("convertToCapped", "mrq_logs", size=self.config["logs_size"])
     except:
       pass
-    # self.mongodb_logs.mrq_logs.ensure_index([("job", 1)], background=True)
-    # self.mongodb_logs.mrq_logs.ensure_index([("worker", 1)], background=True, sparse=True)
+    self.mongodb_logs.mrq_logs.ensure_index([("job", 1)], background=True)
+    self.mongodb_logs.mrq_logs.ensure_index([("worker", 1)], background=True, sparse=True)
 
-    # self.mongodb_jobs.mrq_jobs.ensure_index([("status", 1)], background=True)
-    # self.mongodb_jobs.mrq_jobs.ensure_index([("path", 1)], background=True)
-    # self.mongodb_jobs.mrq_jobs.ensure_index([("worker", 1)], background=True)
-    # self.mongodb_jobs.mrq_jobs.ensure_index([("queue", 1)], background=True)
+    self.mongodb_jobs.mrq_jobs.ensure_index([("status", 1)], background=True)
+    self.mongodb_jobs.mrq_jobs.ensure_index([("path", 1)], background=True)
+    self.mongodb_jobs.mrq_jobs.ensure_index([("worker", 1)], background=True)
+    self.mongodb_jobs.mrq_jobs.ensure_index([("queue", 1)], background=True)
 
   def make_name(self):
     """ Generate a human-readable name for this worker. """
