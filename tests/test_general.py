@@ -5,7 +5,7 @@ import json
 
 def test_general_simple_task_one(worker):
 
-  result = worker.send_task("mrq.basetasks.tests.general.Add", {"a": 41, "b": 1})
+  result = worker.send_task("mrq.basetasks.tests.general.Add", {"a": 41, "b": 1, "sleep": 1})
 
   assert result == 42
 
@@ -29,9 +29,13 @@ def test_general_simple_task_one(worker):
   assert db_jobs[0]["queue"] == "default"
   assert db_jobs[0]["worker"]
   assert db_jobs[0]["datestarted"]
+  assert db_jobs[0]["dateupdated"]
+  assert db_jobs[0]["totaltime"] > 1
   assert db_jobs[0]["_id"]
-  assert db_jobs[0]["params"] == {"a": 41, "b": 1}
+  assert db_jobs[0]["params"] == {"a": 41, "b": 1, "sleep": 1}
   assert db_jobs[0]["path"] == "mrq.basetasks.tests.general.Add"
+  assert db_jobs[0]["time"] < 0.1
+  assert db_jobs[0]["switches"] >= 1
 
   db_workers = list(worker.mongodb_logs.mrq_workers.find())
   assert len(db_workers) == 1
@@ -50,6 +54,15 @@ def test_general_simple_task_one(worker):
   # Worker logs
   db_logs = list(worker.mongodb_logs.mrq_logs.find({"worker": db_workers[0]["_id"]}))
   assert len(db_logs) >= 1
+
+
+def test_general_simple_no_trace(worker):
+
+  worker.start(trace=False)
+
+  result = worker.send_task("mrq.basetasks.tests.general.Add", {"a": 41, "b": 1})
+
+  assert result == 42
 
 
 def test_general_simple_task_multiple(worker):

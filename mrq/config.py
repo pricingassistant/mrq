@@ -19,6 +19,9 @@ def get_config(sources=("file", "env", "args"), env_prefix="MRQ_", defaults=None
   parser.add_argument('--objgraph', action='store_true', default=False,
                       help='Start objgraph to debug memory after each task')
 
+  parser.add_argument('--trace_greenlets', action='store_true', default=False,
+                      help='Collect stats about each greenlet execution time and switches.')
+
   parser.add_argument('--profile', action='store_true', default=False,
                       help='Run profiling on the whole worker')
 

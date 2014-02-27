@@ -24,6 +24,8 @@ The main features of MRQ are:
  * **Easy configuration:** Every aspect of MRQ is configurable through command-line flags or a configuration file
  * **Job routing:** Like Celery, jobs can have default queues, timeout and ttl values.
  * **Thorough testing:** Edge-cases like worker interrupts, Redis failures, ... are tested inside a Docker container.
+ * **Builtin scheduler:** Schedule tasks by interval or by time of the day
+
 
 Performance
 ===========
@@ -57,6 +59,7 @@ TODO
 
 **beta**
 
+ * ETAs / Lag stats for each queue
  * uniquestarted/uniquequeued via bulk sets?
  * Base cleaning/retry tasks: move
  * Current greenlet traces in dashboard

@@ -3,6 +3,7 @@ import gevent
 import urlparse
 import redis as pyredis
 import re
+import time
 from .utils import LazyObject
 
 try:
@@ -24,7 +25,11 @@ log = LoggerInterface(None, job="current")
 
 
 def set_current_job(job):
-  _GREENLET_JOBS_REGISTRY[id(gevent.getcurrent())] = job
+  current = gevent.getcurrent()
+  _GREENLET_JOBS_REGISTRY[id(current)] = job
+
+  current.__dict__["_trace_time"] = 0
+  current.__dict__["_trace_switches"] = 0
 
 
 def get_current_job(greenlet_id=None):
@@ -109,3 +114,31 @@ connections = LazyObject()
 connections.add_factory(_connections_factory)
 del _connections_factory
 
+
+def enable_greenlet_tracing():
+
+  # Tracing seems to cause a 2-5% performance loss.
+
+  import greenlet
+  greenlet.GREENLET_USE_TRACING = True
+
+  def trace(*args):
+
+    time_since_last_switch = time.time() - trace.last_switch
+
+    # Record the time of the current switch
+    trace.last_switch = time.time()
+
+    if args[0] == "switch":
+      # We are switching from the greenlet args[1][0] to the greenlet args[1][1]
+      args[1][0].__dict__.setdefault("_trace_time", 0)
+      args[1][0].__dict__["_trace_time"] += time_since_last_switch
+      args[1][0].__dict__.setdefault("_trace_switches", 0)
+      args[1][0].__dict__["_trace_switches"] += 1
+
+    elif args[0] == "throw":
+      pass
+
+  trace.last_switch = time.time()
+
+  greenlet.settrace(trace)

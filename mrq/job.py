@@ -6,6 +6,7 @@ from .exceptions import RetryInterrupt
 from .utils import load_class_by_path
 from .queue import Queue
 from .context import get_current_worker, log, connections, get_current_config
+import gevent
 
 
 class Job(object):
@@ -27,13 +28,14 @@ class Job(object):
   def __init__(self, job_id, worker=None, queue=None, start=False, fetch=False):
     self.worker = get_current_worker()
     self.queue = queue
-    self.datestarted = datetime.datetime.utcnow()
 
     self.collection = connections.mongodb_jobs.mrq_jobs
     self.id = ObjectId(job_id)
 
     self.data = None
     self.task = None
+    self.greenlet_switches = 0
+    self.greenlet_time = 0
 
     if start:
       self.fetch(start=True, full_data=False)
@@ -54,12 +56,13 @@ class Job(object):
       }
 
     if start:
+      self.datestarted = datetime.datetime.utcnow()
       self.data = self.collection.find_and_modify({
         "_id": self.id,
         "status": {"$nin": ["cancel"]}
       }, {"$set": {
         "status": "started",
-        "datestarted": datetime.datetime.utcnow(),
+        "datestarted": self.datestarted,
         "worker": self.worker.name
       }}, fields=fields)
     else:
@@ -76,24 +79,36 @@ class Job(object):
 
     return self
 
-  def save_status(self, status, result=None, traceback=None, w=1):
+  def save_status(self, status, result=None, traceback=None, dateretry=None, queue=None, w=1):
 
+    now = datetime.datetime.utcnow()
     updates = {
       "status": status,
-      "dateupdated": datetime.datetime.utcnow()
+      "dateupdated": now,
+      "totaltime": (now - self.datestarted).total_seconds()
     }
     if result is not None:
       updates["result"] = result
     if traceback is not None:
       updates["traceback"] = traceback
+    if dateretry is not None:
+      updates["dateretry"] = dateretry
+    if queue is not None:
+      updates["queue"] = queue
+    if get_current_config().get("trace_greenlets"):
+      current_greenlet = gevent.getcurrent()
+      updates["time"] = current_greenlet._trace_time
+      updates["switches"] = current_greenlet._trace_switches
 
     # Make the job document expire
     if status in ("success", "cancel"):
-      updates["dateexpires"] = datetime.datetime.utcnow() + datetime.timedelta(seconds=self.result_ttl)
+      updates["dateexpires"] = now + datetime.timedelta(seconds=self.result_ttl)
 
     self.collection.update({
       "_id": self.id
     }, {"$set": updates}, w=w)
+
+    self.data.update(updates)
 
   def save_retry(self, exc, traceback=None):
 
@@ -102,19 +117,16 @@ class Job(object):
     if isinstance(exc, RetryInterrupt) and exc.countdown:
       countdown = exc.countdown
 
-    update = {
-      "traceback": traceback,
-      "status": "retry",
-      "dateupdated": datetime.datetime.utcnow(),
-      "dateretry": datetime.datetime.utcnow() + datetime.timedelta(seconds=countdown)
-    }
-
+    queue = None
     if isinstance(exc, RetryInterrupt) and exc.queue:
-      update["queue"] = exc.queue
+      queue = exc.queue
 
-    self.collection.update({
-      "_id": self.id
-    }, {"$set": update}, w=1)
+    self.save_status(
+      "retry",
+      traceback=traceback,
+      dateretry=datetime.datetime.utcnow() + datetime.timedelta(seconds=countdown),
+      queue=queue
+    )
 
   def retry(self, queue=None, countdown=None, max_retries=None):
 
@@ -148,6 +160,24 @@ class Job(object):
     result = self.task.run(self.data["params"])
 
     self.save_status("success", result)
+
+    if get_current_config().get("trace_greenlets"):
+
+      # TODO: this is not the exact greenlet_time measurement because it doesn't
+      # take into account the last switch's time. This is why we force a last switch.
+      # This does cause a performance overhead. Instead, we should print the
+      # last timing directly from the trace() function in context?
+
+      gevent.sleep(0)
+      current_greenlet = gevent.getcurrent()
+      log.debug("Job %s success: %0.6fs total, %0.6fs in greenlet, %s switches" % (
+        self.id, (datetime.datetime.utcnow() - self.datestarted).total_seconds(),
+        current_greenlet._trace_time, current_greenlet._trace_switches - 1)
+      )
+    else:
+      log.debug("Job %s success: %0.6fs total" % (
+        self.id, (datetime.datetime.utcnow() - self.datestarted).total_seconds()
+      ))
 
   def wait(self, poll_interval=1, timeout=None, full_data=False):
     """ Wait for this job to finish. """

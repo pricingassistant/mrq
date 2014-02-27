@@ -8,13 +8,12 @@ import socket
 import traceback
 import psutil
 import sys
-import json
 from bson import ObjectId
 from gevent.pywsgi import WSGIServer
 
 from .job import Job
 from .exceptions import JobTimeoutException, StopRequested, JobInterrupt
-from .context import set_current_worker, set_current_job, get_current_job, connections
+from .context import set_current_worker, set_current_job, get_current_job, connections, enable_greenlet_tracing
 from .queue import Queue
 
 # https://groups.google.com/forum/#!topic/gevent/EmZw9CVBC2g
@@ -37,7 +36,9 @@ class Worker(object):
     self.config = config
 
     set_current_worker(self)
-    #queues, pool_size=1, max_jobs=None, redis=None, mongodb_jobs=None, mongodb_logs=None, name=None):
+
+    if self.config.get("trace_greenlets"):
+      enable_greenlet_tracing()
 
     self.datestarted = datetime.datetime.utcnow()
     self.status = "init"
@@ -49,6 +50,7 @@ class Worker(object):
     self.connected = False  # MongoDB + Redis
 
     self.process = psutil.Process(os.getpid())
+    self.greenlet = gevent.getcurrent()
 
     self.id = ObjectId()
     if config["name"]:
@@ -156,6 +158,8 @@ class Worker(object):
           g["path"] = job.data["path"]
         g["datestarted"] = job.datestarted
         g["id"] = job.id
+        g["time"] = getattr(greenlet, "_trace_time", 0)
+        g["switches"] = getattr(greenlet, "_trace_switches", None)
       greenlets.append(g)
 
     cpu = self.process.get_cpu_times()
@@ -288,6 +292,7 @@ class Worker(object):
 
         for job in jobs:
 
+          # TODO investigate spawn_raw?
           self.gevent_pool.spawn(self.perform_job, job)
 
           self.done_jobs += 1
@@ -315,14 +320,20 @@ class Worker(object):
       self.gevent_pool.kill(exception=JobInterrupt, block=True)
 
       for g in self.greenlets:
+        g_time = getattr(self.greenlets[g], "_trace_time", 0)
+        g_switches = getattr(self.greenlets[g], "_trace_switches", None)
         self.greenlets[g].kill(block=True)
-        self.log.debug("Greenlet for %s killed." % g)
+        self.log.debug("Greenlet for %s killed (%0.5fs, %s switches)." % (g, g_time, g_switches))
 
       self.report_worker(w=1)
       self.flush_logs(w=1)
 
       if self.profiler:
         self.profiler.print_stats(sort="cumulative")
+
+      g_time = getattr(self.greenlet, "_trace_time", 0)
+      g_switches = getattr(self.greenlet, "_trace_switches", None)
+      self.log.debug("Exiting main worker greenlet (%0.5fs, %s switches)." % (g_time, g_switches))
 
   def perform_job(self, job):
     """ Wraps a job.perform() call with timeout logic and exception handlers.

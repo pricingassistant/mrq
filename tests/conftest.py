@@ -97,7 +97,7 @@ class WorkerFixture(ProcessFixture):
 
     self.started = False
 
-  def start(self, flush=True, deps=True, **kwargs):
+  def start(self, flush=True, deps=True, trace=True, **kwargs):
 
     self.started = True
 
@@ -115,7 +115,8 @@ class WorkerFixture(ProcessFixture):
       self.fixture_mongodb.flush()
       self.fixture_redis.flush()
 
-    cmdline = "python mrq/bin/mrq-worker.py --admin_port=20000 %s %s" % (
+    cmdline = "python mrq/bin/mrq-worker.py --admin_port=20000 %s %s %s" % (
+      "--trace_greenlets" if trace else "",
       kwargs.get("flags", ""),
       kwargs.get("queues", "high default low")
     )
