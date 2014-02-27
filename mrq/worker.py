@@ -116,7 +116,7 @@ class Worker(object):
   def greenlet_scheduler(self):
 
     from .scheduler import Scheduler
-    scheduler = Scheduler(self.mongodb_jobs.scheduled_jobs)
+    scheduler = Scheduler(self.mongodb_jobs.mrq_scheduled_jobs)
 
     scheduler.sync_tasks(self.config.get("scheduler_tasks") or [])
 

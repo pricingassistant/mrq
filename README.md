@@ -17,7 +17,7 @@ The main features of MRQ are:
  * **Simple code:** We originally switched from Celery to RQ because Celery's code was incredibly complex and obscure ([Slides](http://www.slideshare.net/sylvinus/why-and-how-pricing-assistant-migrated-from-celery-to-rq-parispy-2)). MRQ should be as easy to understand as RQ and even easier to extend.
  * **Great dashboard:** Have visibility and control on everything: queued jobs, current jobs, worker status, ...
  * **Per-job logs:** Get the log output of each task separately in the dashboard
- * **Gevent worker:** IO-bound tasks can be done in parallel for maximum throughput
+ * **Gevent worker:** IO-bound tasks can be done in parallel in the same UNIX process for maximum throughput
  * **Supervisord integration:** CPU-bound tasks can be split across several UNIX processes with a single command-line flag
  * **Job management:** You can retry, requeue, cancel jobs from the code or the dashboard.
  * **Performance:** Bulk job queueing, easy job profiling
@@ -25,12 +25,12 @@ The main features of MRQ are:
  * **Job routing:** Like Celery, jobs can have default queues, timeout and ttl values.
  * **Thorough testing:** Edge-cases like worker interrupts, Redis failures, ... are tested inside a Docker container.
  * **Builtin scheduler:** Schedule tasks by interval or by time of the day
-
+ * **Greenlet tracing:** See how much time was spent in each greenlets to debug CPU-intensive jobs.
 
 Performance
 ===========
 
-On a MacbookPro, we see 1300 jobs/second with very simple jobs that store results, to measure the overhead of MRQ. However what we are really measuring there is MongoDB's write performance.
+On a MacbookPro, we see 1300 jobs/second in a single worker process with very simple jobs that store results, to measure the overhead of MRQ. However what we are really measuring there is MongoDB's write performance.
 
 Tests
 =====

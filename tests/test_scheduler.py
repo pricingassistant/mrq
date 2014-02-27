@@ -8,7 +8,7 @@ def test_scheduler_simple(worker):
   worker.start(flags="--scheduler --config tests/fixtures/config-scheduler1.py")
 
   collection = worker.mongodb_logs.tests_inserts
-  scheduled_jobs = worker.mongodb_jobs.scheduled_jobs
+  scheduled_jobs = worker.mongodb_jobs.mrq_scheduled_jobs
 
   time.sleep(2)
 

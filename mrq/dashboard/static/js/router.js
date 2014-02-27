@@ -6,7 +6,8 @@ define(["backbone", "underscore", "jquery"],function(Backbone, _, $) {
 
       '': 'queues',
       'workers': 'workers',
-      'jobs': 'jobs'
+      'jobs': 'jobs',
+      'scheduledjobs': 'scheduledjobs'
     },
 
     /**
@@ -92,6 +93,11 @@ define(["backbone", "underscore", "jquery"],function(Backbone, _, $) {
     workers: function() {
       this.setNavbar("workers");
       this.app.rootView.showChildPage('workers');
+    },
+
+    scheduledjobs: function() {
+      this.setNavbar("scheduledjobs");
+      this.app.rootView.showChildPage('scheduledjobs');
     },
 
     jobs: function(params) {
