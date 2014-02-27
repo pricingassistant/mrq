@@ -41,3 +41,22 @@ def test_scheduler_simple(worker):
   # Only 3 should have been replaced and ran immediately again because they have different config.
   inserts = list(collection.find())
   assert len(inserts) == 3
+
+
+def test_scheduler_dailytime(worker):
+
+  # Task is scheduled in 3 seconds
+  worker.start(flags="--scheduler --config tests/fixtures/config-scheduler3.py")
+
+  # It will be done a first time immediately
+
+  time.sleep(1)
+
+  collection = worker.mongodb_logs.tests_inserts
+
+  assert collection.find().count() == 1
+
+  # Then a second time once the dailytime passes
+  time.sleep(4)
+
+  assert collection.find().count() == 2

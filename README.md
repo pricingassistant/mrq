@@ -54,12 +54,11 @@ TODO
 
  * Max Retries
  * MongoDB/Redis interrupt tests
- * Scheduler dailytime
- * uniquestarted/uniquequeued
  * mongo indexes
 
 **beta**
 
+ * uniquestarted/uniquequeued via bulk sets?
  * Base cleaning/retry tasks: move
  * Current greenlet traces in dashboard
  * Scheduled statuses in dashboard

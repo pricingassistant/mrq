@@ -14,8 +14,7 @@ class Scheduler(object):
     self.all_tasks = list(self.collection.find())
 
   def hash_task(self, task):
-
-    return "%s %s %s" % (task["path"], task["params"], task.get("interval", 0))
+    return " ".join([str(task.get(x)) for x in ["path", "params", "interval", "dailytime", "queue"]])
 
   def sync_tasks(self, tasks):
     """ Performs the first sync of a list of tasks, often defined in the config file. """
@@ -32,30 +31,37 @@ class Scheduler(object):
     for h, task in tasks_by_hash.iteritems():
       task["hash"] = h
       task["datelastqueued"] = datetime.datetime.fromtimestamp(0)
+      if task.get("dailytime"):
+        # Because MongoDB can store datetimes but not times, we add today's date to the dailytime.
+        # The date part will be discarded in check()
+        task["dailytime"] = datetime.datetime.combine(datetime.datetime.utcnow(), task["dailytime"])
+        task["interval"] = 3600 * 24
       self.collection.insert(task)
       log.debug("Scheduler: added %s" % task["hash"])
 
     self.refresh()
-
-      # # Ajust the time
-      # if "dailytime" in SCHEDULE[k]:
-      #   now = datetime.utcnow()
-      #   if now.time() < SCHEDULE[k]["dailytime"]:
-      #     newtime = datetime.combine(now.date(), SCHEDULE[k]["dailytime"])
-      #   else:
-      #     newtime = datetime.combine(now.date() + timedelta(hours=24), SCHEDULE[k]["dailytime"])
-
-      #   print "Updating execution time of %s to %s" % (k, newtime)
-      #   scheduler.change_execution_time(job, newtime)
 
   def check(self):
 
     log.debug("Scheduler checking for out-of-date scheduled tasks (%s scheduled)..." % len(self.all_tasks))
     for task in self.all_tasks:
 
+      now = datetime.datetime.utcnow()
       interval = datetime.timedelta(seconds=task["interval"])
 
-      last_time = datetime.datetime.utcnow() - interval
+      last_time = now - interval
+
+      if task.get("dailytime"):
+
+        dailytime = task.get("dailytime").time()
+
+        if task.get("datelastqueued") and task.get("datelastqueued").time().isoformat()[0:8] != dailytime.isoformat()[0:8]:
+          log.debug("Adjusting the time of scheduled task %s to %s" % (task["_id"], dailytime))
+
+          self.collection.update({"_id": task["_id"]}, {"$set": {
+            "datelastqueued": datetime.datetime.combine(task.get("datelastqueued").date() - datetime.timedelta(days=1), dailytime)
+          }})
+          self.refresh()
 
       task_data = self.collection.find_and_modify({
         "_id": task["_id"],
