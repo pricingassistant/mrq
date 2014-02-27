@@ -104,10 +104,14 @@ class Worker(object):
     self.mongodb_logs.mrq_logs.ensure_index([("job", 1)], background=True)
     self.mongodb_logs.mrq_logs.ensure_index([("worker", 1)], background=True, sparse=True)
 
+    self.mongodb_logs.mrq_workers.ensure_index([("status", 1)], background=True)
+    self.mongodb_logs.mrq_workers.ensure_index([("datereported", 1)], background=True, expireAfterSeconds=3600)
+
     self.mongodb_jobs.mrq_jobs.ensure_index([("status", 1)], background=True)
     self.mongodb_jobs.mrq_jobs.ensure_index([("path", 1)], background=True)
     self.mongodb_jobs.mrq_jobs.ensure_index([("worker", 1)], background=True)
     self.mongodb_jobs.mrq_jobs.ensure_index([("queue", 1)], background=True)
+    self.mongodb_jobs.mrq_jobs.ensure_index([("dateexpires", 1)], sparse=True, background=True, expireAfterSeconds=0)
 
   def make_name(self):
     """ Generate a human-readable name for this worker. """
@@ -179,7 +183,7 @@ class Worker(object):
       "datestarted": self.datestarted,
       "datereported": datetime.datetime.utcnow(),
       "name": self.name,
-      "id": self.id,
+      "_id": self.id,
       "process": {
         "pid": self.process.pid,
         "cpu": {

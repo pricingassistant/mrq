@@ -99,3 +99,9 @@ class RequeueLostJobs(Task):
 
     return stats
 
+
+# class CleanupStoppedWorkers(Task):
+#   """ Remove stopped or timeouted workers from mongodb.mrq_workers. """
+
+#   def run(self, params):
+
