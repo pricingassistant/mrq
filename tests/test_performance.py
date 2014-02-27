@@ -52,7 +52,7 @@ def test_performance_httpstatic_internal(worker, httpstatic):
                                       tasks=n_tasks,
                                       greenlets=n_greenlets,
                                       max_seconds=max_seconds,
-                                      profile=True)
+                                      profile=False)
 
 
 def test_performance_httpstatic_external(worker):

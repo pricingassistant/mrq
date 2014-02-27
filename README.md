@@ -53,8 +53,7 @@ TODO
 **alpha**
 
  * Max Retries
- * MongoDB/Redis interrupt tests
- * mongo indexes
+ * MongoDB/Redis disconnect tests in more contexts (long-running queries, ...)
 
 **beta**
 

@@ -90,6 +90,23 @@ class Worker(object):
 
     self.connected = True
 
+    # Be mindful that this is done each time a worker starts
+    self.ensure_indexes()
+
+  def ensure_indexes(self):
+
+    try:
+      self.mongodb_logs.command("convertToCapped", "mrq_logs", size=self.config["logs_size"])
+    except:
+      pass
+    # self.mongodb_logs.mrq_logs.ensure_index([("job", 1)], background=True)
+    # self.mongodb_logs.mrq_logs.ensure_index([("worker", 1)], background=True, sparse=True)
+
+    # self.mongodb_jobs.mrq_jobs.ensure_index([("status", 1)], background=True)
+    # self.mongodb_jobs.mrq_jobs.ensure_index([("path", 1)], background=True)
+    # self.mongodb_jobs.mrq_jobs.ensure_index([("worker", 1)], background=True)
+    # self.mongodb_jobs.mrq_jobs.ensure_index([("queue", 1)], background=True)
+
   def make_name(self):
     """ Generate a human-readable name for this worker. """
     return "%s.%s" % (socket.gethostname().split(".")[0], os.getpid())

@@ -55,6 +55,9 @@ def get_config(sources=("file", "env", "args"), env_prefix="MRQ_", defaults=None
   parser.add_argument('--admin_port', default=0, action="store", type=int,
                       help='Start an admin server on this port. If none, no admin server.')
 
+  parser.add_argument('--logs_size', default=1024 * 1024 * 1024 * 15, action="store", type=int,
+                      help='Size (in bytes) of the capped collection for logs in MongoDB.')
+
   parser.add_argument('queues', nargs='*', default=["default"],
                       help='The queues to listen on (default: \'default\')')
 
