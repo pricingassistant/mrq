@@ -12,7 +12,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
       "click button.js-jobs-groupaction": "groupaction"
     },
 
-    init: function() {
+    initFilters: function() {
 
       this.filters = {
         "worker": this.options.params.worker||"",
@@ -26,7 +26,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
 
     setOptions:function(options) {
       this.options = options;
-      this.init();
+      this.initFilters();
       this.flush();
     },
 
@@ -37,12 +37,11 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
       $.ajax("/api/logs?job="+job_id+"&last_log_id="+self.last_log_id, {
         "type": "GET",
         "success": function(data) {
-          self.$(".js-jobs-modal .js-jobs-modal-content").html(data.logs);
+          if (!self.last_log_id) {
+            self.$(".js-jobs-modal .js-jobs-modal-content").html("");
+          }
+          self.$(".js-jobs-modal .js-jobs-modal-content")[0].innerHTML += data.logs;
           self.last_log_id = data.last_log_id;
-
-          self.log_refresh_timeout = setTimeout(function() {
-            self.log_refresh_timeout(job_id);
-          }, 5000);
         },
         "error": function(xhr, status, error) {
           alert("Error: "+error);
@@ -98,10 +97,12 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
         self.$(".js-jobs-modal .js-jobs-modal-content").html("Loading...");
         self.$(".js-jobs-modal h4").html("Job logs");
         self.$(".js-jobs-modal").modal({});
-        self.refresh_logs(job_id);
-        self.$(".js-jobs-modal").on('hidden.bs.modal', function (e) {
-          clearTimeout(self.log_refresh_timeout);
+
+        // These poll events are sent by the generic datatable refresh() method
+        self.$(".js-jobs-modal").on("poll", function() {
+          self.refresh_logs(job_id);
         });
+        self.refresh_logs(job_id);
 
       } else {
 

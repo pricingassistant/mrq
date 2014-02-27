@@ -12,10 +12,26 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
 
       this.filters = {};
 
-      this.delegateEvents( {
+      this.delegateEvents(_.extend({
         "click .js-datatable-filters-submit": "filterschanged"
-      });
+      }, this.events));
 
+      this.on("show", function() {
+        this.listenTo(this.app.rootView, "visibilitychange", this.refreshDataTable);
+      }, this);
+
+      this.on("hide", function() {
+        this.stopListening();
+      }, this);
+
+      this.initFilters();
+
+      this.refreshDataTable(true);
+
+    },
+
+    initFilters: function() {
+      // Overload me!
     },
 
     getCommonDatatableConfig:function(unit_name) {
@@ -58,6 +74,7 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
 
           $.getJSON( sSource, aoData, function (json) {
             fnCallback(json);
+            self.trigger("loaded");
           });
         }
       };
@@ -96,10 +113,46 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
 
     },
 
-    refreshDataTable:function() {
+    refreshDataTable:function(justQueue) {
+
       if (!this.dataTable) return this.flush();
 
-      this.dataTable.fnReloadAjax();
+      var self = this;
+
+      var REFRESH_INTERVAL = parseInt($(".js-autorefresh").val(), 10) * 1000;
+
+      if (!this.app.rootView.isTabVisible) {
+        REFRESH_INTERVAL = 0;
+      }
+
+      clearTimeout(self.refreshDataTableTimeout);
+
+      if (!REFRESH_INTERVAL) return;
+
+      var queue = function() {
+        self.refreshDataTableTimeout = setTimeout(function() {
+          self.refreshDataTable();
+        }, REFRESH_INTERVAL);
+      };
+
+      var el = self.$(".js-datatable");
+
+      // We may have navigated away in the meantime
+      if (!el.is(":visible")) return;
+
+      // Don't reload when a modal is shown
+      if ($(".modal:visible").length) {
+        $(".modal:visible").trigger("poll");
+        justQueue = true;
+      }
+
+      if (justQueue) {
+        queue();
+      } else {
+        this.once("loaded", queue);
+        this.dataTable.fnReloadAjax();
+      }
+
     },
 
     renderFilters: function() {

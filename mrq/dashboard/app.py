@@ -121,6 +121,8 @@ def api_logs():
 
   data = {
     "logs": "\n".join([lines["logs"] for lines in logs]),
+
+    # Don't be surprised, this will send unexisting ObjectIds when we're up to date!
     "last_log_id": logs[-1]["_id"] if len(logs) else ObjectId()
   }
 

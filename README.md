@@ -57,22 +57,24 @@ TODO
  * Max Retries
  * MongoDB/Redis disconnect tests in more contexts (long-running queries, ...)
 
-**beta**
+**public beta**
 
- * ETAs / Lag stats for each queue
- * uniquestarted/uniquequeued via bulk sets?
- * Base cleaning/retry tasks: move
- * Current greenlet traces in dashboard
- * Scheduled statuses in dashboard
  * Full linting
  * Code coverage
  * Public docs
  * PyPI
- * Move monitoring in a thread?
+
+**whishlist**
+
+ * task progress
+ * ETAs / Lag stats for each queue
+ * uniquestarted/uniquequeued via bulk sets?
+ * Base cleaning/retry tasks: move
+ * Current greenlet traces in dashboard
+ * Move monitoring in a thread to protect against CPU-intensive tasks
  * Bulk queues
  * Tasksets
  * Search in dashboard
-
 
 Credits
 =======

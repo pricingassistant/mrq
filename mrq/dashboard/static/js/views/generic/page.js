@@ -120,11 +120,14 @@ define(["backbone", "underscore", "jquery"],function(Backbone, _, $) {
 
       if (this.menuName) this.setActiveMenu(this.menuName);
 
+      this.trigger("show");
       $(this.el).fadeIn();
+
     },
 
     hide: function() {
       $(this.el).hide();
+      this.trigger("hide");
     },
 
     remove:function() {

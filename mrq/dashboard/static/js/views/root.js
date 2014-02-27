@@ -21,7 +21,12 @@ define(["views/generic/page", "jquery",
     init: function() {
 
       var self = this;
-      //this.app.user.on("change",this.renderHeader,this);
+
+      // We want to reload once when the autorefresh rate changes
+      $(".js-autorefresh").on("change", function() {
+        self.trigger("visibilitychange");
+      });
+
 
       // http://stackoverflow.com/questions/1060008/is-there-a-way-to-detect-if-a-browser-window-is-not-currently-active
       (function() {
