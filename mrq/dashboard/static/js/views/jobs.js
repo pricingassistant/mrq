@@ -165,6 +165,31 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
             }
           },
           {
+            "sTitle": "Time",
+            "sType":"string",
+            "sClass": "col-jobs-time",
+            "mData":function(source, type/*, val*/) {
+              if (type == "display") {
+                var display = [
+                  "started "+moment.utc(source.datestarted).fromNow()
+                  //"updated "+moment.utc(source.dateupdated).fromNow()
+                ];
+
+                if (source.totaltime) {
+                  display.push("totaltime "+String(source.totaltime).substring(0,6)+"s");
+                }
+                if (source.time) {
+                  display.push("cputime "+String(source.time).substring(0,6)+"s ("+source.switches+" switches)");
+                }
+
+                return "<small>" + display.join("<br/>") + "</small>";
+
+              } else {
+                return source.datestarted;
+              }
+            }
+          },
+          {
             "sTitle": "Queue",
             "sType":"string",
             "sClass": "col-jobs-queue",
