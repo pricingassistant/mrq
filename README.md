@@ -25,7 +25,7 @@ The main features of MRQ are:
  * **Job routing:** Like Celery, jobs can have default queues, timeout and ttl values.
  * **Thorough testing:** Edge-cases like worker interrupts, Redis failures, ... are tested inside a Docker container.
  * **Builtin scheduler:** Schedule tasks by interval or by time of the day
- * **Greenlet tracing:** See how much time was spent in each greenlets to debug CPU-intensive jobs.
+ * **Greenlet tracing:** See how much time was spent in each greenlet to debug CPU-intensive jobs.
 
 Performance
 ===========
@@ -47,6 +47,11 @@ You can also open a shell inside the docker (just like you would enter in a virt
 $ make docker (if it wasn't build before)
 $ make ssh
 ```
+
+PyPy
+====
+
+Earlier in its development MRQ was tested successfully on PyPy but we are waiting for better PyPy+gevent support to continue working on it, as performance was worse than CPython.
 
 
 TODO
@@ -74,6 +79,7 @@ TODO
  * Move monitoring in a thread to protect against CPU-intensive tasks
  * Bulk queues
  * Tasksets
+ * Full PyPy support
  * Search in dashboard
 
 Credits
@@ -83,8 +89,14 @@ Inspirations:
  * RQ
  * Celery
 
-Vendored:
+JS libraries used in the Dashboard:
+ * http://backbonejs.org
+ * http://underscorejs.org
+ * http://requirejs.org
+ * http://momentjs.com
+ * http://jquery.com
+ * http://datatables.net
  * https://github.com/Jowin/Datatables-Bootstrap3/
  * https://github.com/twbs/bootstrap
 
-... as well as all the modules in requirements.txt!
+... as well as all the Python modules in requirements.txt!

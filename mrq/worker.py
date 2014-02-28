@@ -101,6 +101,7 @@ class Worker(object):
       self.mongodb_logs.command("convertToCapped", "mrq_logs", size=self.config["logs_size"])
     except:
       pass
+
     self.mongodb_logs.mrq_logs.ensure_index([("job", 1)], background=True)
     self.mongodb_logs.mrq_logs.ensure_index([("worker", 1)], background=True, sparse=True)
 
