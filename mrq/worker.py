@@ -182,8 +182,9 @@ class Worker(object):
     whitelisted_config = [
       "max_jobs",
       "gevent",
-      "process",
+      "processes",
       "queues",
+      "scheduler",
       "name"
     ]
 
