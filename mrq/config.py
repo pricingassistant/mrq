@@ -84,6 +84,12 @@ def get_config(sources=("file", "env", "args"), env_prefix="MRQ_", defaults=None
   if defaults is not None:
     merged_config.update(defaults)
 
+  # If a mrq-config.py file is in the current directory, use it!
+  default_config_file = os.path.join(os.getcwd(), "mrq-config.py")
+  if merged_config["config"] is None and os.path.isfile(default_config_file):
+    # print "Using config file at %s" % default_config_file
+    merged_config["config"] = default_config_file
+
   config_module = None
   if "file" in sources and merged_config["config"]:
     sys.path.append(os.path.dirname(merged_config["config"]))
