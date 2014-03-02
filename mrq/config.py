@@ -68,6 +68,9 @@ def get_config(sources=("file", "env", "args"), env_prefix="MRQ_", defaults=None
   parser.add_argument('--admin_port', default=0, action="store", type=int,
                       help='Start an admin server on this port, if provided. Incompatible with --processes')
 
+  parser.add_argument('--worker_class', default="mrq.worker.Worker", action="store",
+                      help='Path to a custom worker class')
+
   parser.add_argument('queues', nargs='*', default=["default"],
                       help='The queues to listen on (default: \'default\')')
 

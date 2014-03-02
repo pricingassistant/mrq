@@ -20,7 +20,7 @@ def test_interrupt_worker_gracefully(worker, p_flags):
 
   job_id = worker.send_task("mrq.basetasks.tests.general.Add", {"a": 41, "b": 1, "sleep": 5}, block=False)
 
-  time.sleep(1)
+  time.sleep(2)
 
   job = Job(job_id).fetch().data
   assert job["status"] == "started"

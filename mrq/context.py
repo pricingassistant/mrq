@@ -52,6 +52,7 @@ def get_current_worker():
 def set_current_config(config):
   global _CONFIG
   _CONFIG = config
+  log.quiet = config["quiet"]
 
 
 def get_current_config():

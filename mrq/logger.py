@@ -77,12 +77,14 @@ class LogHandler(object):
       from mrq.context import get_current_worker
       self.log("debug", "Log insert failed.", worker=get_current_worker())
 
+
 class LoggerInterface(object):
   """ This object acts as a logger from python's logging module. """
 
   def __init__(self, handler, **kwargs):
     self._handler = handler
     self.kwargs = kwargs
+    self.quiet = False
 
   @property
   def handler(self):
@@ -96,7 +98,8 @@ class LoggerInterface(object):
     if worker:
       return worker.log_handler
     else:
-      return LogHandler()
+      self._handler = LogHandler(quiet=self.quiet)
+      return self._handler
 
   def info(self, *args):
     self.handler.log("info", *args, **self.kwargs)

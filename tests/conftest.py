@@ -8,6 +8,7 @@ import sys
 import psutil
 import time
 import re
+import json
 
 sys.path.append(os.getcwd())
 
@@ -187,6 +188,22 @@ class WorkerFixture(ProcessFixture):
 
   def send_task(self, path, params, **kwargs):
     return self.send_tasks(path, [params], **kwargs)[0]
+
+  def send_task_cli(self, path, params, block=True, queue=None, **kwargs):
+    if not self.started and not block:
+      self.start()
+
+    cli = ["python", "mrq/bin/mrq-run.py", "--quiet"]
+    if queue:
+      cli += ["--queue", queue]
+    if not block:
+      cli += ["--async"]
+    cli += [path, json.dumps(params)]
+
+    out = subprocess.check_output(cli).strip()
+    if block:
+      return json.loads(out)
+    return out
 
 
 class RedisFixture(ProcessFixture):

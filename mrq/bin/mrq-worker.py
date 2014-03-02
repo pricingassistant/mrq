@@ -8,11 +8,11 @@ import tempfile
 import signal
 import subprocess32 as subprocess
 import psutil
-import time
 
 sys.path.append(os.getcwd())
 
-from mrq import worker, config
+from mrq import config
+from mrq.utils import load_class_by_path
 
 
 def main():
@@ -83,7 +83,9 @@ def main():
   # If not, start the actual worker
   else:
 
-    w = worker.Worker(cfg)
+    worker_class = load_class_by_path(cfg["worker_class"])
+
+    w = worker_class(cfg)
 
     exitcode = w.work_loop()
 
