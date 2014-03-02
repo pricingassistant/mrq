@@ -28,6 +28,7 @@ class Job(object):
   def __init__(self, job_id, worker=None, queue=None, start=False, fetch=False):
     self.worker = get_current_worker()
     self.queue = queue
+    self.datestarted = None
 
     self.collection = connections.mongodb_jobs.mrq_jobs
     self.id = ObjectId(job_id)
@@ -87,9 +88,11 @@ class Job(object):
     now = datetime.datetime.utcnow()
     updates = {
       "status": status,
-      "dateupdated": now,
-      "totaltime": (now - self.datestarted).total_seconds()
+      "dateupdated": now
     }
+
+    if self.datestarted:
+      updates["totaltime"] = (now - self.datestarted).total_seconds()
     if result is not None:
       updates["result"] = result
     if traceback is not None:
@@ -111,7 +114,8 @@ class Job(object):
       "_id": self.id
     }, {"$set": updates}, w=w)
 
-    self.data.update(updates)
+    if self.data:
+      self.data.update(updates)
 
   def save_retry(self, exc, traceback=None):
 

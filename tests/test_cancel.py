@@ -4,7 +4,7 @@ from mrq.job import Job
 def test_cancel_by_path(worker):
 
   # Start the worker with only one greenlet so that tasks execute sequentially
-  worker.start(flags="-n 1")
+  worker.start(flags="--gevent 1")
 
   job_id1 = worker.send_task("mrq.basetasks.tests.general.Add", {"a": 41, "b": 1, "sleep": 2}, block=False)
 

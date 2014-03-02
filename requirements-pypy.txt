@@ -1,4 +1,4 @@
-argparse==1.1
+argparse==1.1  # Bug with 1.2.1 ?
 redis==2.9.1
 pymongo==2.6.3
 ujson==1.33
@@ -7,4 +7,4 @@ psutil==1.2.1
 pytest==2.5.1
 pylint==1.1.0
 Flask==0.10.1
-gunicorn==18.0
+uswgi==2.0.2

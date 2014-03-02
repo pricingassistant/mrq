@@ -7,6 +7,7 @@ except:
 import sys
 import psutil
 import time
+import re
 
 sys.path.append(os.getcwd())
 
@@ -32,7 +33,11 @@ class ProcessFixture(object):
 
     self.request.addfinalizer(self.stop)
 
-  def start(self, cmdline=None, env=None):
+  def start(self, cmdline=None, env=None, expected_children=0):
+
+    self.stopped = False
+    self.process_children = []
+
     if not cmdline:
       cmdline = self.cmdline
     if env is None:
@@ -50,16 +55,27 @@ class ProcessFixture(object):
 
     self.cmdline = cmdline
     # print cmdline
-    self.process = subprocess.Popen(cmdline.split(" ") if type(cmdline) in [str, unicode] else cmdline,
+    self.process = subprocess.Popen(re.split(r"\s+", cmdline) if type(cmdline) in [str, unicode] else cmdline,
                                     shell=False, close_fds=True, env=env, cwd=os.getcwd(), stdout=stdout)
 
     if self.quiet:
       stdout.close()
 
+    # Wait for children to start
+    if expected_children > 0:
+      psutil_process = psutil.Process(self.process.pid)
+
+      # print "Expecting %s children, got %s" % (expected_children, psutil_process.get_children(recursive=False))
+      while True:
+        self.process_children = psutil_process.get_children(recursive=True)
+        if len(self.process_children) >= expected_children:
+          break
+        time.sleep(0.1)
+
     if self.wait_port:
       wait_for_net_service("127.0.0.1", int(self.wait_port))
 
-  def stop(self, force=False, timeout=None, block=True, sig=2):
+  def stop(self, force=False, timeout=None, block=True, sig=15):
 
     # Call this only one time.
     if self.stopped and not force:
@@ -67,8 +83,13 @@ class ProcessFixture(object):
     self.stopped = True
 
     if self.process is not None:
-      # print "kill -2 %s" % self.cmdline
+
       os.kill(self.process.pid, sig)
+
+      # When sending a sigkill to the process, we also want to kill the children in case of supervisord usage
+      if sig == 9 and len(self.process_children) > 0:
+        for c in self.process_children:
+          c.send_signal(sig)
 
       if not block:
         return
@@ -78,8 +99,10 @@ class ProcessFixture(object):
         try:
           p = psutil.Process(self.process.pid)
           if p.status == "zombie":
+            # print "process %s zombie OK" % self.cmdline
             return
         except psutil.NoSuchProcess:
+          # print "process %s exit OK" % self.cmdline
           return
 
         time.sleep(0.01)
@@ -115,13 +138,22 @@ class WorkerFixture(ProcessFixture):
       self.fixture_mongodb.flush()
       self.fixture_redis.flush()
 
-    cmdline = "python mrq/bin/mrq-worker.py --admin_port=20000 %s %s %s" % (
+    processes = 0
+    m = re.search(r"--processes (\d+)", kwargs.get("flags", ""))
+    if m:
+      processes = int(m.group(1))
+
+    cmdline = "python mrq/bin/mrq-worker.py --mongodb_logs_size 0 %s %s %s %s" % (
+      "--admin_port 20000" if (processes <= 1) else "",
       "--trace_greenlets" if trace else "",
       kwargs.get("flags", ""),
       kwargs.get("queues", "high default low")
     )
 
-    ProcessFixture.start(self, cmdline=cmdline, env=kwargs.get("env"))
+    # +1 because of supervisord itself
+    if processes > 0:
+      processes += 1
+    ProcessFixture.start(self, cmdline=cmdline, env=kwargs.get("env"), expected_children=processes)
 
   def stop(self, deps=True, sig=2, **kwargs):
 
@@ -177,7 +209,7 @@ def httpstatic(request):
 
 @pytest.fixture(scope="function")
 def mongodb(request):
-  cmd = "mongod"
+  cmd = "mongod --smallfiles --noprealloc --nojournal"
   if os.environ.get("STACK_STARTED"):
     cmd = "sleep 1h"
   return MongoFixture(request, cmd, wait_port=27017, quiet=True)

@@ -38,7 +38,7 @@ def main():
 
   worker.Worker(config.get_config())
 
-  queue.send_task(args.taskpath, params, sync=not args.async, queue=args.queue)
+  print queue.send_task(args.taskpath, params, sync=not args.async, queue=args.queue)
 
 if __name__ == "__main__":
   main()

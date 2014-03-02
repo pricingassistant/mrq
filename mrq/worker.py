@@ -8,6 +8,7 @@ import socket
 import traceback
 import psutil
 import sys
+import pymongo
 from bson import ObjectId
 from gevent.pywsgi import WSGIServer
 
@@ -49,6 +50,7 @@ class Worker(object):
 
     self.connected = False  # MongoDB + Redis
 
+    self.exitcode = 0
     self.process = psutil.Process(os.getpid())
     self.greenlet = gevent.getcurrent()
 
@@ -58,7 +60,7 @@ class Worker(object):
     else:
       self.name = self.make_name()
 
-    self.pool_size = self.config["pool_size"]
+    self.pool_size = self.config["gevent"]
 
     from .logger import LogHandler
     self.log_handler = LogHandler(quiet=self.config["quiet"])
@@ -97,10 +99,17 @@ class Worker(object):
 
   def ensure_indexes(self):
 
-    try:
-      self.mongodb_logs.command("convertToCapped", "mrq_logs", size=self.config["logs_size"])
-    except:
-      pass
+    if self.config["mongodb_logs_size"] > 0:
+
+      try:
+        self.mongodb_logs.create_collection("mrq_logs", capped=True, size=self.config["mongodb_logs_size"])
+      except:
+        pass
+
+      try:
+        self.mongodb_logs.command("convertToCapped", "mrq_logs", size=self.config["mongodb_logs_size"])
+      except:
+        pass
 
     self.mongodb_logs.mrq_logs.ensure_index([("job", 1)], background=True)
     self.mongodb_logs.mrq_logs.ensure_index([("worker", 1)], background=True, sparse=True)
@@ -172,7 +181,8 @@ class Worker(object):
     # Avoid sharing passwords or sensitive config!
     whitelisted_config = [
       "max_jobs",
-      "pool_size",
+      "gevent",
+      "process",
       "queues",
       "name"
     ]
@@ -184,7 +194,6 @@ class Worker(object):
       "datestarted": self.datestarted,
       "datereported": datetime.datetime.utcnow(),
       "name": self.name,
-      "_id": self.id,
       "process": {
         "pid": self.process.pid,
         "cpu": {
@@ -208,13 +217,20 @@ class Worker(object):
 
   def report_worker(self, w=0):
 
+    try:
       self.mongodb_logs.mrq_workers.update({
         "_id": ObjectId(self.id)
       }, {"$set": self.get_worker_report()}, upsert=True, w=w)
+    except pymongo.errors.AutoReconnect:
+      self.log.debug("Worker report failed.")
 
   def greenlet_admin(self):
     """ This greenlet is used to get status information about the worker when --admin_port was given
     """
+
+    if self.config["processes"] > 1:
+      self.log.debug("Admin server disabled because of multiple processes.")
+      return
 
     from flask import Flask
     from mrq.dashboard.utils import jsonify
@@ -222,11 +238,18 @@ class Worker(object):
 
     @app.route('/')
     def route_index():
-      return jsonify(self.get_worker_report())
+      report = self.get_worker_report()
+      report.update({
+        "_id": self.id
+      })
+      return jsonify(report)
 
     self.log.debug("Starting admin server on port %s" % self.config["admin_port"])
-    server = WSGIServer(("0.0.0.0", self.config["admin_port"]), app)
-    server.serve_forever()
+    try:
+      server = WSGIServer(("0.0.0.0", self.config["admin_port"]), app)
+      server.serve_forever()
+    except Exception, e:
+      self.log.debug("Error in admin server : %s" % e)
 
   def flush_logs(self, w=0):
     self.log_handler.flush(w=w)
@@ -340,6 +363,8 @@ class Worker(object):
       g_switches = getattr(self.greenlet, "_trace_switches", None)
       self.log.debug("Exiting main worker greenlet (%0.5fs, %s switches)." % (g_time, g_switches))
 
+    return self.exitcode
+
   def perform_job(self, job):
     """ Wraps a job.perform() call with timeout logic and exception handlers.
 
@@ -383,11 +408,19 @@ class Worker(object):
   def shutdown_graceful(self):
     """ Graceful shutdown: waits for all the jobs to finish. """
 
+    # This is in the 'exitcodes' list in supervisord so processes
+    # exiting gracefully won't be restarted.
+    self.exitcode = 2
+
     self.log.info("Graceful shutdown...")
     raise StopRequested()
 
   def shutdown_now(self):
     """ Forced shutdown: interrupts all the jobs. """
+
+    # This is in the 'exitcodes' list in supervisord so processes
+    # exiting gracefully won't be restarted.
+    self.exitcode = 3
 
     self.log.info("Forced shutdown...")
     self.status = "killing"

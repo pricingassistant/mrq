@@ -10,8 +10,15 @@ def get_config(sources=("file", "env", "args"), env_prefix="MRQ_", defaults=None
   parser.add_argument('--max_jobs', default=0, type=int, action='store',
                       help='Gevent: max number of jobs to do before quitting. Temp workaround for memory leaks')
 
-  parser.add_argument('--pool_size', '-n', default=1, type=int, action='store',
+  parser.add_argument('--gevent', '-g', default=1, type=int, action='store',
                       help='Gevent: max number of greenlets')
+
+  parser.add_argument('--processes', '-p', default=0, type=int, action='store',
+                      help='Number of processes to launch with supervisord')
+
+  default_template = os.path.abspath(os.path.join(os.path.dirname(__file__), "supervisord_templates/default.conf"))
+  parser.add_argument('--supervisord_template', default=default_template, action='store',
+                      help='Path of supervisord template to use')
 
   parser.add_argument('--mongodebug', action='store_true', default=False,
                       help='Print all Mongo requests')
@@ -30,6 +37,9 @@ def get_config(sources=("file", "env", "args"), env_prefix="MRQ_", defaults=None
 
   parser.add_argument('--mongodb_logs', action='store', default="mongodb://127.0.0.1:27017/mrq",
                       help='MongoDB URI for the logs database')
+
+  parser.add_argument('--mongodb_logs_size', action='store', default=16 * 1024 * 1024, type=int,
+                      help='If provided, sets the log collection to capped to that amount of bytes')
 
   parser.add_argument('--redis', action='store', default="redis://127.0.0.1:6379",
                       help='Redis URI')
@@ -56,10 +66,7 @@ def get_config(sources=("file", "env", "args"), env_prefix="MRQ_", defaults=None
                       help='Path of a config file')
 
   parser.add_argument('--admin_port', default=0, action="store", type=int,
-                      help='Start an admin server on this port. If none, no admin server.')
-
-  parser.add_argument('--logs_size', default=1024 * 1024 * 1024 * 15, action="store", type=int,
-                      help='Size (in bytes) of the capped collection for logs in MongoDB.')
+                      help='Start an admin server on this port, if provided. Incompatible with --processes')
 
   parser.add_argument('queues', nargs='*', default=["default"],
                       help='The queues to listen on (default: \'default\')')

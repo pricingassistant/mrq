@@ -54,6 +54,12 @@ PyPy
 Earlier in its development MRQ was tested successfully on PyPy but we are waiting for better PyPy+gevent support to continue working on it, as performance was worse than CPython.
 
 
+Useful third-party utils
+========================
+
+* http://superlance.readthedocs.org/en/latest/
+
+
 TODO
 ====
 
@@ -72,7 +78,7 @@ TODO
 **whishlist**
 
  * task progress
- * ETAs / Lag stats for each queue
+ * ETAs / Lag stats for each queue + graphes
  * uniquestarted/uniquequeued via bulk sets?
  * Base cleaning/retry tasks: move
  * Current greenlet traces in dashboard

@@ -1,9 +1,14 @@
 import time
+import pytest
 
 
-def test_parallel_100sleeps(worker):
+@pytest.mark.parametrize(["p_flags"], [
+  ["--gevent 50"],
+  ["--processes 10 --gevent 5"]
+])
+def test_parallel_100sleeps(worker, p_flags):
 
-  worker.start(flags="-n 50")
+  worker.start(flags=p_flags)
 
   start_time = time.time()
 

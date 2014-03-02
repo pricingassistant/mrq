@@ -1,9 +1,9 @@
 import time
 
 
-def benchmark_task(worker, taskpath, taskparams, tasks=1000, greenlets=50, max_seconds=10, profile=False, quiet=True):
+def benchmark_task(worker, taskpath, taskparams, tasks=1000, greenlets=50, processes=0, max_seconds=10, profile=False, quiet=True):
 
-  worker.start(flags="-n %s%s%s" % (greenlets, " --profile" if profile else "", " --quiet" if quiet else ""))
+  worker.start(flags="--processes %s --gevent %s%s%s" % (processes, greenlets, " --profile" if profile else "", " --quiet" if quiet else ""))
 
   start_time = time.time()
 
@@ -14,7 +14,7 @@ def benchmark_task(worker, taskpath, taskparams, tasks=1000, greenlets=50, max_s
 
   total_time = time.time() - start_time
 
-  print "%s tasks done with %s greenlets in %0.3f seconds : %0.2f jobs/second!" % (tasks, greenlets, total_time, tasks / total_time)
+  print "%s tasks done with %s greenlets and %s processes in %0.3f seconds : %0.2f jobs/second!" % (tasks, greenlets, processes, total_time, tasks / total_time)
 
   assert total_time < max_seconds
 
@@ -25,6 +25,7 @@ def test_performance_simpleadds(worker):
 
   n_tasks = 10000
   n_greenlets = 50
+  n_processes = 0
   max_seconds = 20
 
   result, total_time = benchmark_task(worker,
@@ -32,6 +33,7 @@ def test_performance_simpleadds(worker):
                                       [{"a": i, "b": 0, "sleep": 0} for i in range(n_tasks)],
                                       tasks=n_tasks,
                                       greenlets=n_greenlets,
+                                      processes=n_processes,
                                       max_seconds=max_seconds)
 
   # ... and return correct results

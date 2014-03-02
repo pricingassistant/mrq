@@ -2,12 +2,21 @@ import time, datetime
 from mrq.job import Job
 from mrq.queue import Queue
 from bson import ObjectId
+import pytest
+
+PROCESS_CONFIGS = [
+  ["--gevent 1"],
+  ["--gevent 2"],
+  ["--gevent 1 --processes 1"],
+  ["--gevent 2 --processes 1"]
+]
 
 
-def test_interrupt_worker_gracefully(worker):
+@pytest.mark.parametrize(["p_flags"], PROCESS_CONFIGS)
+def test_interrupt_worker_gracefully(worker, p_flags):
   """ Test what happens when we interrupt a running worker gracefully. """
 
-  worker.start()
+  worker.start(flags=p_flags)
 
   job_id = worker.send_task("mrq.basetasks.tests.general.Add", {"a": 41, "b": 1, "sleep": 5}, block=False)
 
@@ -39,12 +48,13 @@ def test_interrupt_worker_gracefully(worker):
   assert job.get("status") == "queued"
 
 
-def test_interrupt_worker_double_sigint(worker):
+@pytest.mark.parametrize(["p_flags"], PROCESS_CONFIGS)
+def test_interrupt_worker_double_sigint(worker, p_flags):
   """ Test what happens when we interrupt a running worker with 2 SIGINTs. """
 
   start_time = time.time()
 
-  worker.start()
+  worker.start(flags=p_flags)
 
   job_id = worker.send_task("mrq.basetasks.tests.general.Add", {"a": 41, "b": 1, "sleep": 10}, block=False)
 
@@ -95,7 +105,8 @@ def test_interrupt_worker_double_sigint(worker):
   assert job["queue"] == "default"
 
 
-def test_interrupt_worker_sigterm(worker):
+@pytest.mark.parametrize(["p_flags"], PROCESS_CONFIGS)
+def test_interrupt_worker_sigterm(worker, p_flags):
   """ Test what happens when we interrupt a running worker with 1 SIGTERM.
 
       We should have had time to mark the task as 'interrupt' so that we can restart it somewhere else right away.
@@ -103,7 +114,7 @@ def test_interrupt_worker_sigterm(worker):
 
   start_time = time.time()
 
-  worker.start()
+  worker.start(flags=p_flags)
 
   job_id = worker.send_task("mrq.basetasks.tests.general.Add", {"a": 41, "b": 1, "sleep": 10}, block=False)
 
@@ -111,15 +122,16 @@ def test_interrupt_worker_sigterm(worker):
 
   worker.stop(block=True, sig=15, deps=False)
 
-  time.sleep(1)
+  time.sleep(2)
 
   job = Job(job_id).fetch().data
   assert job["status"] == "interrupt"
 
-  assert time.time() - start_time < 5
+  assert time.time() - start_time < 6
 
 
-def test_interrupt_worker_sigkill(worker):
+@pytest.mark.parametrize(["p_flags"], PROCESS_CONFIGS)
+def test_interrupt_worker_sigkill(worker, p_flags):
   """ Test what happens when we interrupt a running worker with 1 SIGKILL.
 
       SIGKILLs can't be intercepted by the process so the job should still be in 'started' state.
@@ -127,7 +139,7 @@ def test_interrupt_worker_sigkill(worker):
 
   start_time = time.time()
 
-  worker.start()
+  worker.start(flags=p_flags)
 
   job_id = worker.send_task("mrq.basetasks.tests.general.Add", {"a": 41, "b": 1, "sleep": 10}, block=False)
 
@@ -140,7 +152,7 @@ def test_interrupt_worker_sigkill(worker):
   job = Job(job_id).fetch().data
   assert job["status"] == "started"
 
-  assert time.time() - start_time < 5
+  assert time.time() - start_time < 6
 
   # Then try the cleaning task that requeues started jobs
 

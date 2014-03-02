@@ -1,6 +1,7 @@
 
 from collections import defaultdict
 import datetime
+import pymongo
 
 
 class LogHandler(object):
@@ -65,11 +66,16 @@ class LogHandler(object):
       "logs": "\n".join(v) + "\n"
     } for k, v in self.buffer["jobs"].iteritems()]
 
+    if len(inserts) == 0:
+      return
+
     self.reset()
 
-    if len(inserts) > 0:
+    try:
       self.collection.insert(inserts, w=w)
-
+    except pymongo.errors.AutoReconnect:
+      from mrq.context import get_current_worker
+      self.log("debug", "Log insert failed.", worker=get_current_worker())
 
 class LoggerInterface(object):
   """ This object acts as a logger from python's logging module. """
