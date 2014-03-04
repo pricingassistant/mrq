@@ -107,8 +107,9 @@ def wait_for_net_service(server, port, timeout=None):
 class LazyObject(object):
   """ Lazy-connection class. Connections will only be initialized when first used. """
 
-  _factories = []
-  _attributes_via_factories = []
+  def __init__(self):
+    self._factories = []
+    self._attributes_via_factories = []
 
   def add_factory(self, factory):
     self._factories.append(factory)
