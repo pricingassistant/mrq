@@ -128,7 +128,11 @@ def api_logs():
 
   return jsonify(data)
 
-if __name__ == '__main__':
 
+def main():
   app.debug = True
   app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 5555)))
+
+
+if __name__ == '__main__':
+  main()

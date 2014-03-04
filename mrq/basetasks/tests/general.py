@@ -38,6 +38,11 @@ class Retry(Task):
 
     log.info("Retrying in %s on %s" % (params.get("countdown"), params.get("queue")))
 
+    connections.mongodb_logs.tests_inserts.insert(params)
+
+    if params.get("cancel_on_retry"):
+      self.cancel_on_retry = params.get("cancel_on_retry")
+
     retry_current_job(queue=params.get("queue"), countdown=params.get("countdown"))
 
     raise Exception("Should not be reached")

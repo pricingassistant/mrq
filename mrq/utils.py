@@ -119,7 +119,7 @@ class LazyObject(object):
 
     for factory in self._factories:
       value = factory(attr)
-      if value:
+      if value is not None:
         self._attributes_via_factories.append(attr)
         self.__dict__[attr] = value
         return value

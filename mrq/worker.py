@@ -384,7 +384,16 @@ class Worker(object):
       job.perform()
 
     except job.retry_on_exceptions:
-      job.save_retry(sys.exc_info()[1], traceback=traceback.format_exc())
+      trace = traceback.format_exc()
+      self.log.error("Caught exception => retry")
+      self.log.error(trace)
+      job.save_retry(sys.exc_info()[1], traceback=trace)
+
+    except job.cancel_on_exceptions:
+      trace = traceback.format_exc()
+      self.log.error("Job cancelled")
+      self.log.error(trace)
+      job.save_status("cancel", traceback=trace)
 
     except JobTimeoutException:
       trace = traceback.format_exc()

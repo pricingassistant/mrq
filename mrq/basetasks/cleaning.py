@@ -15,6 +15,17 @@ class RequeueInterruptedJobs(Task):
     }, sync=True)
 
 
+class RequeueRetryJobs(Task):
+  """ Requeue jobs that were marked as retry. """
+
+  def run(self, params):
+    return send_task("mrq.basetasks.utils.JobAction", {
+      "status": "retry",
+      "dateretry": {"$lte": datetime.datetime.utcnow()},
+      "action": "requeue"
+    }, sync=True)
+
+
 class RequeueStartedJobs(Task):
   """ Requeue jobs that were marked as status=started and never finished.
 
