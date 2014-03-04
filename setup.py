@@ -1,11 +1,12 @@
 from setuptools import setup, find_packages
 import os
+CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 
 
 def get_requirements():
     lines = []
     for f in ["requirements.txt", "requirements-dashboard.txt"]:
-        lines += [line.strip() for line in open(f).readlines() if not line.startswith("#")]
+        lines += [line.strip() for line in open(os.path.join(CURRENT_DIRECTORY, f)).readlines() if not line.startswith("#")]
     return lines
 
 
