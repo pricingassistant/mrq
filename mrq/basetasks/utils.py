@@ -20,7 +20,7 @@ class JobAction(Task):
     if self.params.get("id"):
       query["_id"] = ObjectId(self.params.get("id"))
 
-    for k in ["queue", "status", "worker", "path"]:  # TODO use redis for queue
+    for k in ["queue", "status", "worker", "path", "dateretry"]:  # TODO use redis for queue
       if self.params.get(k):
         query[k] = self.params.get(k)
 

@@ -2,7 +2,7 @@ import datetime
 from bson import ObjectId
 import pymongo
 import time
-from .exceptions import RetryInterrupt
+from .exceptions import RetryInterrupt, CancelInterrupt
 from .utils import load_class_by_path
 from .queue import Queue
 from .context import get_current_worker, log, connections, get_current_config
@@ -23,6 +23,11 @@ class Job(object):
     pymongo.errors.OperationFailure,
     pymongo.errors.ConnectionFailure,
     RetryInterrupt
+  )
+
+  # Exceptions that will make the task as cancelled
+  cancel_on_exceptions = (
+    CancelInterrupt
   )
 
   def __init__(self, job_id, worker=None, queue=None, start=False, fetch=False):
@@ -121,37 +126,48 @@ class Job(object):
 
     countdown = 24 * 3600
 
-    if isinstance(exc, RetryInterrupt) and exc.countdown:
+    if isinstance(exc, RetryInterrupt) and exc.countdown is not None:
       countdown = exc.countdown
 
     queue = None
     if isinstance(exc, RetryInterrupt) and exc.queue:
       queue = exc.queue
 
-    self.save_status(
-      "retry",
-      traceback=traceback,
-      dateretry=datetime.datetime.utcnow() + datetime.timedelta(seconds=countdown),
-      queue=queue
-    )
+    if countdown == 0:
+      self.requeue(queue=queue)
+    else:
+      self.save_status(
+        "retry",
+        traceback=traceback,
+        dateretry=datetime.datetime.utcnow() + datetime.timedelta(seconds=countdown),
+        queue=queue
+      )
 
   def retry(self, queue=None, countdown=None, max_retries=None):
 
-    exc = RetryInterrupt()
-    exc.queue = queue
-    exc.countdown = countdown
-    raise exc
+    if self.task.cancel_on_retry:
+      raise CancelInterrupt()
+    else:
+      exc = RetryInterrupt()
+      exc.queue = queue
+      exc.countdown = countdown
+      raise exc
 
   def cancel(self):
     self.save_status("cancel")
 
   def requeue(self, queue=None):
-    self.save_status("queued")
 
-    if not self.data or not self.data.get("queue"):
-      self.fetch(full_data=True)  # TODO only fetch queue?
+    if not queue:
+      if not self.data or not self.data.get("queue"):
+        self.fetch(full_data=True)  # TODO only fetch queue?
+      queue = self.data["queue"]
 
-    Queue(queue or self.data["queue"]).enqueue_job_ids([str(self.id)])
+    self.save_status("queued", queue=queue)
+
+    # Between these two lines, jobs can become "lost" too.
+
+    Queue(queue).enqueue_job_ids([str(self.id)])
 
   def perform(self):
     """ Loads and starts the main task for this job, the saves the result. """
