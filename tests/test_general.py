@@ -14,7 +14,7 @@ def test_general_simple_task_one(worker):
   assert db_workers[0]["status"] == "idle"
 
   # Test the HTTP admin API
-  admin_worker = json.load(urllib2.urlopen("http://localhost:20000"))
+  admin_worker = json.load(urllib2.urlopen("http://localhost:20020"))
 
   assert admin_worker["_id"] == str(db_workers[0]["_id"])
   assert admin_worker["status"] == "idle"
