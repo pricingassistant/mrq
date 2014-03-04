@@ -6,10 +6,17 @@ class JobTimeoutException(BaseException):
   pass
 
 
+class CancelInterrupt(BaseException):
+  pass
+
+
 # Inherits from BaseException to avoid being caught when not intended.
 class RetryInterrupt(BaseException):
   countdown = None
   queue = None
+
+  def __str__(self):
+    return "<RetryInterrupt %s seconds, %s queue>" % (self.countdown, self.queue)
 
 
 class StopRequested(GreenletExit):

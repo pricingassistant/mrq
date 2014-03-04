@@ -35,7 +35,11 @@ On a MacbookPro, we see 1300 jobs/second in a single worker process with very si
 Tests
 =====
 
-Testing is done inside a Docker container for maximum repeatability. We don't use Travis-CI or friends because we need to be able to kill our process dependencies (MongoDB, Redis, ...) on demand.
+Testing is done inside a Docker container for maximum repeatability.
+We don't use Travis-CI or friends because we need to be able to kill our process dependencies (MongoDB, Redis, ...) on demand.
+
+Therefore you need to ([install docker](https://www.docker.io/gettingstarted/#h_installation)) to run the tests.
+If you're not on an os that supports natively docker, don't forget to start up your VM and ssh into it.
 
 ```
 $ make test
@@ -47,6 +51,12 @@ You can also open a shell inside the docker (just like you would enter in a virt
 $ make docker (if it wasn't build before)
 $ make ssh
 ```
+
+Use in your application
+=======================
+
+add MRQ to your environment
+
 
 PyPy
 ====
