@@ -8,7 +8,7 @@ def get_requirements():
     # reqs is a list of requirement
     # e.g. ['django==1.5.1', 'mezzanine==1.4.6']
     reqs = []
-    for filename in ["requirements", "requirements-dashboard"]:
+    for filename in ["requirements.txt", "requirements-dashboard.txt"]:
         # parse_requirements() returns generator of pip.req.InstallRequirement objects
         install_reqs = parse_requirements(filename)
         reqs += [str(ir.req) for ir in install_reqs]
