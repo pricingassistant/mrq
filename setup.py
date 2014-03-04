@@ -1,13 +1,18 @@
 from setuptools import setup, find_packages
 import os
-CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
+from pip.req import parse_requirements
 
 
 def get_requirements():
-    lines = []
-    for f in ["requirements.txt", "requirements-dashboard.txt"]:
-        lines += [line.strip() for line in open(os.path.join(CURRENT_DIRECTORY, f)).readlines() if not line.startswith("#")]
-    return lines
+    # found at http://stackoverflow.com/questions/14399534/how-can-i-reference-requirements-txt-for-the-install-requires-kwarg-in-setuptool
+    # reqs is a list of requirement
+    # e.g. ['django==1.5.1', 'mezzanine==1.4.6']
+    reqs = []
+    for filename in ["requirements", "requirements-dashboard"]:
+        # parse_requirements() returns generator of pip.req.InstallRequirement objects
+        install_reqs = parse_requirements(filename)
+        reqs += [str(ir.req) for ir in install_reqs]
+    return reqs
 
 
 def get_version():
