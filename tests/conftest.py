@@ -144,7 +144,7 @@ class WorkerFixture(ProcessFixture):
     if m:
       processes = int(m.group(1))
 
-    cmdline = "python mrq/bin/mrq-worker.py --mongodb_logs_size 0 %s %s %s %s" % (
+    cmdline = "python mrq/bin/mrq_worker.py --mongodb_logs_size 0 %s %s %s %s" % (
       "--admin_port 20020" if (processes <= 1) else "",
       "--trace_greenlets" if trace else "",
       kwargs.get("flags", ""),
@@ -193,7 +193,7 @@ class WorkerFixture(ProcessFixture):
     if not self.started and not block:
       self.start()
 
-    cli = ["python", "mrq/bin/mrq-run.py", "--quiet"]
+    cli = ["python", "mrq/bin/mrq_run.py", "--quiet"]
     if queue:
       cli += ["--queue", queue]
     if not block:
