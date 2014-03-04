@@ -1,2 +1,3 @@
 include *.md
 include mrq/supervisord_templates/*.conf
+include requirements*

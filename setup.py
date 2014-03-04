@@ -1,7 +1,6 @@
 from setuptools import setup, find_packages
 import os
 from pip.req import parse_requirements
-CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 
 
 def get_requirements():
@@ -11,7 +10,7 @@ def get_requirements():
     reqs = []
     for filename in ["requirements.txt", "requirements-dashboard.txt"]:
         # parse_requirements() returns generator of pip.req.InstallRequirement objects
-        install_reqs = parse_requirements(os.path.join(CURRENT_DIRECTORY, filename))
+        install_reqs = parse_requirements(filename)
         reqs += [str(ir.req) for ir in install_reqs]
     return reqs
 
