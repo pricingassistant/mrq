@@ -86,7 +86,7 @@ def get_config(sources=("file", "env", "args"), env_prefix="MRQ_", defaults=None
 
   # If a mrq-config.py file is in the current directory, use it!
   default_config_file = os.path.join(os.getcwd(), "mrq-config.py")
-  print default_config_file
+
   if merged_config["config"] is None and os.path.isfile(default_config_file):
     # print "Using config file at %s" % default_config_file
     merged_config["config"] = default_config_file
@@ -96,7 +96,7 @@ def get_config(sources=("file", "env", "args"), env_prefix="MRQ_", defaults=None
     sys.path.append(os.path.dirname(merged_config["config"]))
     config_module = __import__(os.path.basename(merged_config["config"].replace(".py", "")))
     sys.path.pop(-1)
-    merged_config.update({k.lower(): v for k, v in config_module.__dict__.iteritems() if k.isupper()})
+    merged_config.update({k.lower(): v for k, v in config_module.__dict__.iteritems() if k[0].isupper()})
 
   # Keys that can't be passed from the command line
   merged_config["tasks"] = {}
