@@ -15,8 +15,7 @@ from mrq.config import get_config
 
 
 set_current_config(get_config())
-
-app = Flask("dashboard", static_folder='mrq/dashboard/static')
+app = Flask("dashboard", static_folder=os.path.join(os.path.dirname(__file__), "static"))
 
 
 @app.route('/')
