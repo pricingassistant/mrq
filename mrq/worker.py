@@ -247,7 +247,7 @@ class Worker(object):
 
     self.log.debug("Starting admin server on port %s" % self.config["admin_port"])
     try:
-      server = WSGIServer(("0.0.0.0", self.config["admin_port"]), app)
+      server = WSGIServer(("0.0.0.0", self.config["admin_port"]), app, log=open(os.devnull, "w"))
       server.serve_forever()
     except Exception, e:
       self.log.debug("Error in admin server : %s" % e)
