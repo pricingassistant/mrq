@@ -4,6 +4,9 @@ docker:
 test: docker
 	sh -c "docker run -rm -i -t -p 27017:27017 -p 6379:6379 -p 5555:5555 -p 20020:20020 -v `pwd`:/app:rw -w /app mrq/mrq_local py.test tests/ -s -v"
 
+test_jenkins: docker
+	sh -c "docker run -rm -i -t -p 27017:27017 -p 6379:6379 -p 5555:5555 -p 20020:20020 -v `pwd`:/app:rw -w /app mrq/mrq_local /usr/local/bin/py.test tests/ --cov-report=xml --junitxml=test_suite_report.xml --cov mrq"
+
 ssh:
 	sh -c "docker run -rm -i -t -p 27017:27017 -p 6379:6379 -p 5555:5555 -p 20020:20020 -v `pwd`:/app:rw -w /app mrq/mrq_local bash"
 
