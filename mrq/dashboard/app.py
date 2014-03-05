@@ -70,7 +70,7 @@ def api_datatables(unit):
     # Add a string index?
     # if request.args.get("sSearch"):
     #   query.update(json.loads(request.args.get("sSearch")))
-    collection = connections.mongodb_logs.mrq_jobs
+    collection = connections.mongodb_jobs.mrq_jobs
 
   if collection is not None:
     data = {

@@ -178,6 +178,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
             "sType":"string",
             "sClass": "col-jobs-time",
             "mData":function(source, type/*, val*/) {
+
               if (type == "display") {
                 var display = [
                   "started "+moment.utc(source.datestarted).fromNow()
@@ -194,7 +195,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
                 return "<small>" + display.join("<br/>") + "</small>";
 
               } else {
-                return source.datestarted;
+                return source.datestarted || "";
               }
             }
           },
