@@ -13,9 +13,10 @@ from mrq.queue import send_task, Queue
 from mrq.context import connections, set_current_config
 from mrq.config import get_config
 
+CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 
 set_current_config(get_config())
-app = Flask("dashboard", static_folder=os.path.join(os.path.dirname(__file__), "static"))
+app = Flask("dashboard", static_folder=os.path.join(CURRENT_DIRECTORY, "static"))
 
 
 @app.route('/')
