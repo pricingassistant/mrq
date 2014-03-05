@@ -55,7 +55,8 @@ $ make ssh
 Use in your application
 =======================
 
-add MRQ to your environment
+- install `mrq==0.0.6` in your application virtualenv
+- then you can run `mrq-worker` and `mrq-dashboard`
 
 
 PyPy
