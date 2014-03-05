@@ -57,7 +57,7 @@ Use in your application
 
 - install `mrq==0.0.6` in your application virtualenv
 - then you can run `mrq-worker` and `mrq-dashboard`
-
+- To run a task you can use `mrq-run`. If you add the `--async` option that will enqueue it to be later ran by a worker
 
 PyPy
 ====
