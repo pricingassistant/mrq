@@ -22,6 +22,10 @@ class TimeoutFromConfig(Add):
   pass
 
 
+class TimeoutFromConfigAndCancel(Add):
+  cancel_on_timeout = True
+
+
 class Fetch(Task):
   def run(self, params):
 

@@ -247,7 +247,7 @@ class Worker(object):
 
     self.log.debug("Starting admin server on port %s" % self.config["admin_port"])
     try:
-      server = WSGIServer(("0.0.0.0", self.config["admin_port"]), app)
+      server = WSGIServer(("0.0.0.0", self.config["admin_port"]), app, log=open(os.devnull, "w"))
       server.serve_forever()
     except Exception, e:
       self.log.debug("Error in admin server : %s" % e)
@@ -397,9 +397,14 @@ class Worker(object):
 
     except JobTimeoutException:
       trace = traceback.format_exc()
-      self.log.error("Job timeouted after %s seconds" % job.timeout)
       self.log.error(trace)
-      job.save_status("timeout", traceback=trace)
+
+      if job.task.cancel_on_timeout:
+        self.log.error("Job timeouted after %s seconds, cancelled" % job.timeout)
+        job.save_status("cancel", traceback=trace)
+      else:
+        self.log.error("Job timeouted after %s seconds" % job.timeout)
+        job.save_status("timeout", traceback=trace)
 
     except JobInterrupt:
       trace = traceback.format_exc()

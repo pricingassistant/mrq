@@ -6,26 +6,24 @@
   border:1px solid black;
   width:100%;
   font-size:12px;
+  overflow:hidden;
+  position:relative;
+}
+
+#app-container .col-jobs-params pre {
+  max-height:300px;
+  overflow:scroll;
 }
 
 #app-container .modal-content textarea {
   height:500px;
 }
 
-.col-jobs-status {
-  width:80px;
+table.datatable {
+  table-layout: fixed !important;
 }
-
-.col-jobs-queue {
-  width:100px;
-}
-
-.col-jobs-worker {
-  width:140px;
-}
-
-.col-jobs-action {
-  width:200px;
+table.datatable td {
+  word-wrap:break-word;
 }
 
 .container {

@@ -147,6 +147,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
           {
             "sTitle": "Path &amp; ID",
             "sClass": "col-jobs-path",
+            "sWidth":"30%",
             "mDataProp": "path",
             "fnRender": function ( o /*, val */) {
               return "<a href='/#jobs?path="+o.aData.path+"'>"+o.aData.path+"</a>"+
@@ -155,6 +156,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
           },
           {
             "sTitle": "Params",
+            "sWidth":"70%",
             "sClass": "col-jobs-params",
             "mDataProp": "params",
             "fnRender": function ( o /*, val */) {
@@ -164,6 +166,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
           {
             "sTitle": "Status",
             "sType":"string",
+            "sWidth":"100px",
             "sClass": "col-jobs-status",
             "mData":function(source, type/*, val*/) {
               if (type == "display") {
@@ -207,6 +210,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
           {
             "sTitle": "Time",
             "sType":"string",
+            "sWidth":"100px",
             "sClass": "col-jobs-time",
             "mData":function(source, type/*, val*/) {
 
@@ -233,6 +237,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
           {
             "sTitle": "Queue",
             "sType":"string",
+            "sWidth":"100px",
             "sClass": "col-jobs-queue",
             "mData":function(source, type/*, val*/) {
               if (type == "display") {
@@ -246,6 +251,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
           {
             "sTitle": "Worker",
             "sType":"string",
+            "sWidth":"140px",
             "sClass": "col-jobs-worker",
             "mData":function(source, type/*, val*/) {
               if (type == "display") {
@@ -258,6 +264,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
           {
             "sTitle": "Actions",
             "sType":"string",
+            "sWidth":"200px",
             "sClass": "col-jobs-action",
             "mData":function(source, type) {
               if (type == "display") {
@@ -275,7 +282,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
 
 
         ],
-        "aaSorting":[ [0,'asc'] ],
+        "aaSorting":[ [0,'asc'] ]
       });
 
       this.initDataTable(datatableConfig);
