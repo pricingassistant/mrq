@@ -4,6 +4,10 @@ TASKS = {
   "mrq.basetasks.tests.general.TimeoutFromConfig": {
     "timeout": 2,
     "queue": "tests"
+  },
+  "mrq.basetasks.tests.general.TimeoutFromConfigAndCancel": {
+    "timeout": 2,
+    "queue": "tests"
   }
 }
 

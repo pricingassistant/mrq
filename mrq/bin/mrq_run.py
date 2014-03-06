@@ -41,6 +41,7 @@ def main():
 
   cfg = config.get_config(sources=("file", "env"))
   cfg["quiet"] = args.quiet
+  cfg["is_cli"] = True
   set_current_config(cfg)
 
   ret = queue.send_task(args.taskpath, params, sync=not args.async, queue=args.queue)

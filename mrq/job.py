@@ -180,6 +180,8 @@ class Job(object):
 
     self.task = task_class()
 
+    self.task.is_main_task = True
+
     result = self.task.run(self.data["params"])
 
     self.save_status("success", result)

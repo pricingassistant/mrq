@@ -397,9 +397,14 @@ class Worker(object):
 
     except JobTimeoutException:
       trace = traceback.format_exc()
-      self.log.error("Job timeouted after %s seconds" % job.timeout)
       self.log.error(trace)
-      job.save_status("timeout", traceback=trace)
+
+      if job.task.cancel_on_timeout:
+        self.log.error("Job timeouted after %s seconds, cancelled" % job.timeout)
+        job.save_status("cancel", traceback=trace)
+      else:
+        self.log.error("Job timeouted after %s seconds" % job.timeout)
+        job.save_status("timeout", traceback=trace)
 
     except JobInterrupt:
       trace = traceback.format_exc()

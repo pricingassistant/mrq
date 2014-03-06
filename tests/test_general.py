@@ -79,14 +79,3 @@ def test_general_simple_task_multiple(worker):
 def test_general_exception_status(worker):
 
   worker.send_task("mrq.basetasks.tests.general.RaiseException", {"message": "xxx"}, block=True, accept_statuses=["failed"])
-
-
-def test_general_exception_timeout(worker):
-
-  worker.start(flags="--config tests/fixtures/config1.py")
-
-  r = worker.send_task("mrq.basetasks.tests.general.TimeoutFromConfig", {"a": 1, "b": 2}, block=True)
-  assert r == 3
-
-  r = worker.send_task("mrq.basetasks.tests.general.TimeoutFromConfig", {"a": 1, "b": 2, "sleep": 1000}, block=True, accept_statuses=["timeout"])
-  assert r != 3
