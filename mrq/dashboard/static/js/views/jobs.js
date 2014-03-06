@@ -170,7 +170,38 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
             "sClass": "col-jobs-status",
             "mData":function(source, type/*, val*/) {
               if (type == "display") {
-                return ("<a href='/#jobs?status="+(source.status || "queued")+"'>"+(source.status || "queued")+"</a>");
+                var css_class = "";
+
+                switch (source.status)
+                {
+                  case 'started':
+                    css_class = "label-success";
+                    break;
+                  case 'success':
+                    css_class = "label-success";
+                    break;
+                  case 'timeout':
+                    css_class = "label-danger";
+                    break;
+                  case 'failed':
+                    css_class = "label-danger";
+                    break;
+                  case 'interrupt':
+                    css_class = "label-danger";
+                    break;
+                  case 'cancel':
+                    css_class = "label-warning";
+                    break;
+                  case 'retry':
+                    css_class = "label-warning";
+                    break;
+                  default:
+                    css_class = "label-info";
+                    break;
+                }
+
+                html = "<a href='/#jobs?status=" + (source.status || "queued")+ "'>" + "<span class='label " + css_class + "'>" + (source.status || "queued") + "</span></a>";
+                return (html);
               } else {
                 return source.status || "queued";
               }
