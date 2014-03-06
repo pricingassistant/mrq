@@ -14,7 +14,8 @@ require.config({
     bootstrap: "/static/js/vendor/bootstrap.min",
     datatables: "/static/js/vendor/jquery.dataTables.min",
     datatablesbs3: "/static/js/vendor/datatables.bs3",
-    moment: "/static/js/vendor/moment.min"
+    moment: "/static/js/vendor/moment.min",
+    sparkline: "/static/js/vendor/jquery.sparkline.min"
   },
 
   urlArgs: "bust=" +  (new Date()).getTime(),
@@ -37,6 +38,9 @@ require.config({
     },
     backbonequeryparams: {
       deps: ["backbone"]
+    },
+    sparkline: {
+      deps: ["jquery"]
     }
 
   }

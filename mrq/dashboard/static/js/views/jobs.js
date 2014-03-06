@@ -276,7 +276,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
       _.each(self.filters, function(v, k) {
         self.filters[k] = self.$(".js-datatable-filters-"+k).val();
       });
-      console.log(self.filters);
+
       window.location = "/#jobs?"+$.param(self.filters);
 
     },

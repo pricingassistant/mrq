@@ -8,9 +8,15 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
    */
   return Page.extend({
 
+    alwaysRenderOnShow:true,
+
     init: function() {
 
+      var self = this;
+
       this.filters = {};
+
+      this.counters = {};
 
       this.delegateEvents(_.extend({
         "click .js-datatable-filters-submit": "filterschanged"
@@ -18,6 +24,12 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
 
       this.on("show", function() {
         this.listenTo(this.app.rootView, "visibilitychange", this.refreshDataTable);
+
+        // Wait before the DOM is actually shown before rendering the datatable (width adjustment)
+        setTimeout(function() {
+          self.renderDatatable();
+        }, 100);
+
       }, this);
 
       this.on("hide", function() {
@@ -25,8 +37,6 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
       }, this);
 
       this.initFilters();
-
-      this.refreshDataTable(true);
 
     },
 
@@ -47,7 +57,7 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
         },
         //"bLengthChange":false,
         //"aLengthMenu": [[25, 50, 100], [25, 50, 100]],
-        "sDom":"rtipl",
+        "sDom":"iprtipl",
         "oLanguage":{
           "sSearch":"",
           "sInfo": "Showing _START_ to _END_ of _TOTAL_ "+unit_name,
@@ -67,7 +77,6 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
         "bDestroy": true,
         "sAjaxSource": "/api/datatables/"+unit_name,
         "fnServerData": function (sSource, aoData, fnCallback) {
-
           _.each(self.filters, function(v, k) {
             aoData.push({"name": k, "value": v});
           });
@@ -83,6 +92,8 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
 
 
     initDataTable:function(config) {
+
+      var self = this;
 
       this.dataTable = this.$(".js-datatable").dataTable(config);
 
@@ -111,6 +122,10 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
 
       this.dataTable.fnSetFilteringDelay();
 
+      setTimeout(function() {
+        self.refreshDataTable(true);
+      }, 1000);
+
     },
 
     refreshDataTable:function(justQueue) {
@@ -138,7 +153,9 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
       var el = self.$(".js-datatable");
 
       // We may have navigated away in the meantime
-      if (!el.is(":visible")) return;
+      if (!el.is(":visible")) {
+        return console.log("DT wasn't visible anymore");
+      }
 
       // Don't reload when a modal is shown
       if ($(".modal:visible").length) {
@@ -150,7 +167,9 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
         queue();
       } else {
         this.once("loaded", queue);
-        this.dataTable.fnReloadAjax();
+
+        // This will call fnDraw which will reload the data
+        this.dataTable.fnAdjustColumnSizing();
       }
 
     },
@@ -166,6 +185,21 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
 
     },
 
+    // Used mainly to generate sparklines across refreshes
+    addToCounter: function(name, newvalue, maxvalues) {
+
+      if (!this.counters[name]) this.counters[name] = [];
+
+      this.counters[name].push(newvalue);
+
+      if (this.counters[name].length > maxvalues) {
+        this.counters[name].shift();
+      }
+
+      return this.counters[name];
+
+    },
+
 
     filterschanged:function(evt) {
 
@@ -177,7 +211,12 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
       }
 
       _.each(self.filters, function(v, k) {
-        self.filters[k] = self.$(".js-datatable-filters-"+k).val();
+        var field = self.$(".js-datatable-filters-"+k);
+        if (field.is(':checkbox')) {
+          self.filters[k] = field.is(':checked')?"1":"";
+        } else {
+          self.filters[k] = field.val();
+        }
       });
 
       this.refreshDataTable();
@@ -188,8 +227,6 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
       this.renderTemplate({"filters": this.filters||{}});
 
       this.renderFilters();
-
-      this.renderDatatable();
 
       return this;
     }

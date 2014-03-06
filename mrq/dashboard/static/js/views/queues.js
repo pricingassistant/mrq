@@ -21,17 +21,30 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
           {
             "sTitle": "Name",
             "sClass": "col-name",
-            "mDataProp": "name",
-            "fnRender": function ( o /*, val */) {
-              return "<a href='/#jobs?queue="+o.aData.name+"'>"+o.aData.name+"</a>";
+            "sType": "string",
+            "mData":function(source, type, val) {
+              return "<a href='/#jobs?queue="+source.name+"'>"+source.name+"</a>";
             }
           },
           {
             "sTitle": "Jobs",
             "sClass": "col-jobs",
             "sType":"numeric",
-            "mData":function(source /*, type, val*/) {
-              return source.count || 0;
+            "mData":function(source, type, val) {
+              var cnt = source.count || 0;
+
+              if (type == "display") {
+                return "<a href='/#jobs?queue="+source.name+"'>"+cnt+"</a>"
+                 + "<br/>"
+                 + '<span class="inlinesparkline" values="'+self.addToCounter("queue."+source.name, cnt, 50).join(",")+'"></span>';
+              } else {
+                return cnt;
+              }
+            },
+            "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
+              setTimeout(function() {
+                $(".inlinesparkline", nTd).sparkline("html", {"width": "100px", "height": "30px", "defaultPixelsPerValue": 1});
+              }, 10);
             }
           }
 

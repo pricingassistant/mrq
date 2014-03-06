@@ -28,9 +28,21 @@ from .queue import Queue
 
 
 class Worker(object):
+  """ Main worker class. """
 
   # Allow easy overloading
   job_class = Job
+
+  """ Valid statuses:
+        * init: General worker initialization
+        * wait: Waiting for new jobs from Redis (BLPOP in progress)
+        * spawn: Got some new jobs, greenlets are being spawned
+        * full: All the worker pool is busy executing jobs
+        * join: Waiting for current jobs to finish, no new one will be accepted
+        * kill: Killing all current jobs
+        * stop: Worker is stopped, no jobs should remain
+  """
+  status = "init"
 
   def __init__(self, config):
 
@@ -42,7 +54,6 @@ class Worker(object):
       enable_greenlet_tracing()
 
     self.datestarted = datetime.datetime.utcnow()
-    self.status = "init"
     self.queues = [x for x in self.config["queues"] if x]
     self.redis_queues = [Queue(x).redis_key for x in self.queues]
     self.done_jobs = 0
@@ -261,9 +272,8 @@ class Worker(object):
     self.log.debug("Fetching %s jobs from Redis" % max_jobs)
 
     jobs = []
-    self.status = "idle"
     queue, job_id = self.redis.blpop(self.redis_queues, 0)
-    self.status = "started"
+    self.status = "spawn"
 
     # From this point until job.fetch_and_start(), job is only local to this worker.
     # If we die here, job will be lost in redis without having been marked as "started".
@@ -310,9 +320,9 @@ class Worker(object):
         while True:
           free_pool_slots = self.gevent_pool.free_count()
           if free_pool_slots > 0:
-            self.status = "started"
+            self.status = "wait"
             break
-          self.status = "idle"
+          self.status = "full"
           gevent.sleep(0.01)
 
         self.log.info('Listening on %s' % self.queues)
@@ -323,8 +333,6 @@ class Worker(object):
 
           # TODO investigate spawn_raw?
           self.gevent_pool.spawn(self.perform_job, job)
-
-          self.done_jobs += 1
 
         if self.max_jobs and self.max_jobs >= self.done_jobs:
           self.log.info("Reached max_jobs=%s" % self.done_jobs)
@@ -338,13 +346,15 @@ class Worker(object):
       try:
 
         self.log.debug("Joining the greenlet pool...")
-        self.status = "stopping"
+        self.status = "join"
 
         self.gevent_pool.join(timeout=None, raise_error=False)
         self.log.debug("Joined.")
 
       except StopRequested:
         pass
+
+      self.status = "kill"
 
       self.gevent_pool.kill(exception=JobInterrupt, block=True)
 
@@ -353,6 +363,8 @@ class Worker(object):
         g_switches = getattr(self.greenlets[g], "_trace_switches", None)
         self.greenlets[g].kill(block=True)
         self.log.debug("Greenlet for %s killed (%0.5fs, %s switches)." % (g, g_time, g_switches))
+
+      self.status = "stop"
 
       self.report_worker(w=1)
       self.flush_logs(w=1)
@@ -419,6 +431,8 @@ class Worker(object):
     finally:
       gevent_timeout.cancel()
       set_current_job(None)
+
+      self.done_jobs += 1
 
   def shutdown_graceful(self):
     """ Graceful shutdown: waits for all the jobs to finish. """

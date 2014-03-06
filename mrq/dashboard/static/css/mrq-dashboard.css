@@ -12,7 +12,7 @@
 
 #app-container .col-jobs-params pre {
   max-height:300px;
-  overflow:scroll;
+  overflow:auto;
 }
 
 #app-container .modal-content textarea {
@@ -26,9 +26,22 @@ table.datatable td {
   word-wrap:break-word;
 }
 
+div.dataTables_paginate ul {
+  margin:0;
+}
+div.dataTables_info {
+  float:left;
+  padding:5px;
+}
+
 .container {
   width:inherit;
 }
+
+.jqstooltip {
+  box-sizing: content-box;
+}
+
 
 .spin {
   -webkit-animation: spin 1s infinite linear;

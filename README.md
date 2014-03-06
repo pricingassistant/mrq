@@ -79,6 +79,7 @@ TODO
  * Max Retries
  * MongoDB/Redis disconnect tests in more contexts (long-running queries, ...)
 
+
 **public beta**
 
  * Full linting

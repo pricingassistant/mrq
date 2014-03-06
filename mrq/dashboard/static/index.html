@@ -105,6 +105,23 @@
 
       <script id="tpl-page-workers" type="text/template">
 
+        <div class="container" style="margin-bottom:5px;">
+
+          <form class="form-inline js-datatable-filters pull-left" role="form">
+            <br/>
+            Filter by: &nbsp;
+
+            <div class="form-group">
+              <div class="checkbox">
+                <label>
+                  <input type="checkbox" class="js-datatable-filters-showstopped" <%= filters.showstopped?'checked="checked"':'' %>> Show stopped
+                </label>
+              </div>
+            </div>
+
+          </form>
+        </div>
+
         <div class="container">
           <table cellpadding="0" cellspacing="0" border="0" class="datatable table table-striped table-bordered js-datatable">
           </table>
@@ -135,10 +152,11 @@
           </div>
         </div>
 
-        <div class="container" style="margin-bottom:0px;">
+        <div class="container" style="margin-bottom:5px;">
 
           <form class="form-inline js-datatable-filters pull-left" role="form">
             <br/>
+            Filter by: &nbsp;
             <div class="form-group">
               <label class="sr-only" for="jobs-form-id">ID</label>
               <input type="text" class="form-control input-sm js-datatable-filters-id" id="jobs-form-id" placeholder="Job ID" value="<%= filters.id %>">

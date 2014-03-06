@@ -28,6 +28,7 @@ def root():
 def api_datatables(unit):
 
   collection = None
+  sort = None
 
   if unit == "queues":
     # TODO MongoDB distinct?
@@ -43,8 +44,12 @@ def api_datatables(unit):
 
   if unit == "workers":
     fields = None
-    query = {}
+    query = {"status": {"$nin": ["stop"]}}
     collection = connections.mongodb_logs.mrq_workers
+    sort = [("datestarted", -1)]
+
+    if request.args.get("showstopped"):
+      query = {}
 
   elif unit == "scheduled_jobs":
     collection = connections.mongodb_jobs.mrq_scheduled_jobs
@@ -60,11 +65,13 @@ def api_datatables(unit):
       query["_id"] = {"$in": [ObjectId(x) for x in Queue(request.args.get("redisqueue")).list_job_ids(limit=1000)]}
     else:
 
-      for param in ["queue", "worker", "path", "status"]:
+      for param in ["queue", "path", "status"]:
         if request.args.get(param):
           query[param] = request.args.get(param)
       if request.args.get("id"):
         query["_id"] = ObjectId(request.args.get("id"))
+      if request.args.get("worker"):
+        query["worker"] = ObjectId(request.args.get("worker"))
 
     # We can't search easily params because we store it as decoded JSON in mongo :(
     # Add a string index?
@@ -73,8 +80,14 @@ def api_datatables(unit):
     collection = connections.mongodb_jobs.mrq_jobs
 
   if collection is not None:
+
+    cursor = collection.find(query, fields=fields)
+
+    if sort:
+      cursor.sort(sort)
+
     data = {
-      "aaData": list(collection.find(query, fields=fields).skip(int(request.args.get("iDisplayStart", 0))).limit(int(request.args.get("iDisplayLength", 20)))),
+      "aaData": list(cursor.skip(int(request.args.get("iDisplayStart", 0))).limit(int(request.args.get("iDisplayLength", 20)))),
       "iTotalDisplayRecords": collection.find(query).count()
     }
 

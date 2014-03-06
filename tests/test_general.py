@@ -11,13 +11,13 @@ def test_general_simple_task_one(worker):
 
   db_workers = list(worker.mongodb_logs.mrq_workers.find())
   assert len(db_workers) == 1
-  assert db_workers[0]["status"] == "idle"
+  assert db_workers[0]["status"] == "wait"
 
   # Test the HTTP admin API
   admin_worker = json.load(urllib2.urlopen("http://localhost:20020"))
 
   assert admin_worker["_id"] == str(db_workers[0]["_id"])
-  assert admin_worker["status"] == "idle"
+  assert admin_worker["status"] == "wait"
 
   # Stop the worker gracefully
   worker.stop(deps=False)
@@ -40,7 +40,7 @@ def test_general_simple_task_one(worker):
   db_workers = list(worker.mongodb_logs.mrq_workers.find())
   assert len(db_workers) == 1
   assert db_workers[0]["name"] == db_jobs[0]["worker"]
-  assert db_workers[0]["status"] == "stopping"
+  assert db_workers[0]["status"] == "stop"
   assert db_workers[0]["jobs"] == []
   assert db_workers[0]["done_jobs"] == 1
   assert db_workers[0]["config"]

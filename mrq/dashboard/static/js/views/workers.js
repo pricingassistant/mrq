@@ -7,6 +7,21 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models", "moment
     template:"#tpl-page-workers",
 
     events:{
+      "change .js-datatable-filters-showstopped": "filterschanged",
+    },
+
+    initFilters: function() {
+
+      this.filters = {
+        "showstopped": this.options.params.showstopped||""
+      };
+
+    },
+
+    setOptions:function(options) {
+      this.options = options;
+      this.initFilters();
+      this.flush();
     },
 
     renderDatatable:function() {
@@ -22,6 +37,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models", "moment
             "sTitle": "Name",
             "sClass": "col-name",
             "sType":"string",
+            "sWidth":"150px",
             "mData":function(source, type/*, val*/) {
               return "<a href='/#jobs?worker="+source._id+"'>"+source.name+"</a>";
             }
@@ -40,6 +56,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models", "moment
             "sTitle": "Status",
             "sClass": "col-status",
             "sType":"string",
+            "sWidth":"80px",
             "mData":function(source, type/*, val*/) {
               return source.status;
             }
@@ -48,51 +65,93 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models", "moment
             "sTitle": "Last report",
             "sClass": "col-last-report",
             "sType":"string",
+            "sWidth":"150px",
             "mData":function(source, type/*, val*/) {
-              if (!source.datereported) return "Never";
-              return moment.utc(source.datereported).fromNow();
+              if (type == "display") {
+
+                return "<small>" + (source.datereported?moment.utc(source.datereported).fromNow():"Never")
+                   + "<br/>"
+                   + "started " + moment.utc(source.datestarted).fromNow() + "</small>";
+              } else {
+                return source.datereported || "";
+              }
             }
           },
           {
-            "sTitle": "CPU sys/usr",
+            "sTitle": "CPU usr/sys",
             "sClass": "col-cpu",
             "sType":"string",
+            "sWidth":"120px",
             "mData":function(source, type/*, val*/) {
-              return source.process.cpu.system+" / "+source.process.cpu.user;
+
+              var usage = (source.process.cpu.user + source.process.cpu.system) * 1000 / (moment.utc(source.datereported || null).valueOf() - moment.utc(source.datestarted).valueOf());
+
+              return source.process.cpu.user + "s / " + source.process.cpu.system + "s"
+                + "<br/>"
+                + (Math.round(usage * 10000) / 100) + "% use";
             }
           },
           {
             "sTitle": "RSS",
             "sClass": "col-mem",
             "sType":"numeric",
+            "sWidth":"130px",
             "mData":function(source, type/*, val*/) {
-              return Math.round((source.process.mem.rss / (1024*1024)) *10)/10 + "M";
+              if (type == "display") {
+
+                return Math.round((source.process.mem.rss / (1024*1024)) *10)/10 + "M"
+                 + "<br/>"
+                 + '<span class="inlinesparkline" values="'+self.addToCounter("worker.mem."+source._id, source.process.mem.rss / (1024*1024), 50).join(",")+'"></span>';
+              } else {
+                return source.process.mem.rss
+              }
+            },
+            "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
+              setTimeout(function() {
+                $(".inlinesparkline", nTd).sparkline("html", {"width": "110px", "height": "30px", "defaultPixelsPerValue": 1});
+              }, 10);
             }
           },
           {
             "sTitle": "Done Jobs",
             "sClass": "col-done-jobs",
             "sType":"numeric",
+            "sWidth":"120px",
             "mData":function(source, type/*, val*/) {
               var cnt = (source.done_jobs || 0);
               if (type == "display") {
-                return "<a href='/#jobs?worker="+source.name+"'>"+cnt+"</a>";
+                return "<a href='/#jobs?worker="+source._id+"'>"+cnt+"</a>"
+                 + "<br/>"
+                 + '<span class="inlinesparkline" values="'+self.addToCounter("worker.donejobs."+source._id, cnt, 50).join(",")+'"></span>';
               } else {
                 return cnt;
               }
+            },
+            "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
+              setTimeout(function() {
+                $(".inlinesparkline", nTd).sparkline("html", {"width": "100px", "height": "30px", "defaultPixelsPerValue": 1});
+              }, 10);
             }
           },
           {
             "sTitle": "Current Jobs",
             "sClass": "col-current-jobs",
             "sType":"numeric",
+            "sWidth":"120px",
             "mData":function(source, type/*, val*/) {
               var cnt = (source.jobs || []).length;
               if (type == "display") {
-                return "<a href='/#jobs?worker="+source.name+"&status=started'>"+cnt+"</a>";
+                return "<a href='/#jobs?worker="+source._id+"&status=started'>"+cnt+"</a>"
+                 + "<br/>"
+                 + '<span class="inlinesparkline" values="'+self.addToCounter("worker.currentjobs."+source._id, cnt, 50).join(",")+'"></span>';
               } else {
                 return cnt;
               }
+            },
+            "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
+              setTimeout(function() {
+                $(".inlinesparkline", nTd).sparkline("html", {"width": "100px", "height": "30px", "defaultPixelsPerValue": 1});
+              }, 10);
             }
           }
 

@@ -72,7 +72,7 @@ class Job(object):
       }, {"$set": {
         "status": "started",
         "datestarted": self.datestarted,
-        "worker": self.worker.name
+        "worker": self.worker.id
       }}, fields=fields)
     else:
       self.data = self.collection.find_one({

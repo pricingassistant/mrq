@@ -3,7 +3,7 @@ require([
 
   //other plain-JS deps
 
-    "datatablesbs3", "bootstrap", "backbonequeryparams"
+    "datatablesbs3", "bootstrap", "backbonequeryparams", "sparkline"
 
   ],function(Backbone, _, $, app) {
 

@@ -90,9 +90,9 @@ define(["backbone", "underscore", "jquery"],function(Backbone, _, $) {
       this.app.rootView.showChildPage('queues');
     },
 
-    workers: function() {
+    workers: function(params) {
       this.setNavbar("workers");
-      this.app.rootView.showChildPage('workers');
+      this.app.rootView.showChildPage('workers', {"options": {"params": params || {}}});
     },
 
     scheduledjobs: function() {
