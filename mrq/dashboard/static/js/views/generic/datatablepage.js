@@ -153,9 +153,7 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
       var el = self.$(".js-datatable");
 
       // We may have navigated away in the meantime
-      if (!el.is(":visible")) {
-        return console.log("DT wasn't visible anymore");
-      }
+      if (!el.is(":visible")) return;
 
       // Don't reload when a modal is shown
       if ($(".modal:visible").length) {

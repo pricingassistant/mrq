@@ -4,7 +4,8 @@ define(["backbone", "underscore", "jquery"],function(Backbone, _, $) {
 
     routes: {
 
-      '': 'queues',
+      '': 'index',
+      'queues': 'queues',
       'workers': 'workers',
       'jobs': 'jobs',
       'scheduledjobs': 'scheduledjobs'
@@ -88,6 +89,11 @@ define(["backbone", "underscore", "jquery"],function(Backbone, _, $) {
     queues: function() {
       this.setNavbar("queues");
       this.app.rootView.showChildPage('queues');
+    },
+
+    index: function() {
+      this.setNavbar("index");
+      this.app.rootView.showChildPage('index');
     },
 
     workers: function(params) {

@@ -24,6 +24,22 @@ def root():
   return app.send_static_file("index.html")
 
 
+@app.route('/api/datatables/status')
+def api_jobstatuses():
+  stats = list(connections.mongodb_jobs.mrq_jobs.aggregate([
+    {"$group": {"_id": "$status", "jobs": {"$sum": 1}}}
+  ])["result"])
+
+  data = {
+    "aaData": stats,
+    "iTotalDisplayRecords": len(stats)
+  }
+
+  data["sEcho"] = request.args["sEcho"]
+
+  return jsonify(data)
+
+
 @app.route('/api/datatables/<unit>')
 def api_datatables(unit):
 
