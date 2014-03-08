@@ -73,8 +73,8 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
 
       var self = this;
 
-      var job_id = $(evt.target).closest(".js-actions").data("jobid");
-      var action = $(evt.target).data("action");
+      var job_id = $(evt.currentTarget).closest(".js-actions").data("jobid");
+      var action = $(evt.currentTarget).data("action");
 
       if (action == "viewresult") {
 
