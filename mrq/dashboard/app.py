@@ -7,7 +7,7 @@ import os
 import sys
 from bson import ObjectId
 
-sys.path.append(os.getcwd())
+sys.path.insert(0, os.getcwd())
 
 from mrq.queue import send_task, Queue
 from mrq.context import connections, set_current_config, get_current_config

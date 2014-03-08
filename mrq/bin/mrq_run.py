@@ -7,7 +7,7 @@ import os
 import argparse
 import json
 
-sys.path.append(os.getcwd())
+sys.path.insert(0, os.getcwd())
 
 from mrq import config, queue, utils
 from mrq.context import set_current_config
