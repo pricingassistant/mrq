@@ -34,6 +34,8 @@ def api_jobstatuses():
     {"$group": {"_id": "$status", "jobs": {"$sum": 1}}}
   ])["result"])
 
+  stats.sort(key=lambda x: x["_id"])
+
   data = {
     "aaData": stats,
     "iTotalDisplayRecords": len(stats)
@@ -50,6 +52,8 @@ def api_taskpaths():
   stats = list(connections.mongodb_jobs.mrq_jobs.aggregate([
     {"$group": {"_id": "$path", "jobs": {"$sum": 1}}}
   ])["result"])
+
+  stats.sort(key=lambda x: -x["jobs"])
 
   data = {
     "aaData": stats,
