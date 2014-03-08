@@ -10,7 +10,7 @@ from bson import ObjectId
 sys.path.append(os.getcwd())
 
 from mrq.queue import send_task, Queue
-from mrq.context import connections, set_current_config
+from mrq.context import connections, set_current_config, get_current_config
 from mrq.config import get_config
 
 from utils import jsonify, requires_auth
@@ -154,7 +154,7 @@ def api_job_result(job_id):
 @requires_auth
 def api_job_action():
   return jsonify({
-    "job_id": send_task("mrq.basetasks.utils.JobAction", {k: v for k, v in request.form.iteritems()})
+    "job_id": send_task("mrq.basetasks.utils.JobAction", {k: v for k, v in request.form.iteritems()}, queue=get_current_config()["dashboard_queue"])
   })
 
 

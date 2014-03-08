@@ -74,6 +74,9 @@ def get_config(sources=("file", "env", "args"), env_prefix="MRQ_", defaults=None
   parser.add_argument('--dashboard_httpauth', default="", action="store",
                       help='HTTP Auth for the Dashboard. Format is user:pass')
 
+  parser.add_argument('--dashboard_queue', default=None, action="store",
+                      help='Default queue for dashboard actions.')
+
   parser.add_argument('queues', nargs='*', default=["default"],
                       help='The queues to listen on (default: \'default\')')
 
