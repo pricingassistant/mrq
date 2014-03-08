@@ -37,3 +37,5 @@ nosetests.xml
 venv
 pypy
 .DS_Store
+
+mrq-config.py

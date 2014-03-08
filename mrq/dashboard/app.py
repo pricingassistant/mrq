@@ -2,7 +2,7 @@ from gevent import monkey
 monkey.patch_all()
 
 from flask import Flask, request
-from utils import jsonify
+
 import os
 import sys
 from bson import ObjectId
@@ -10,8 +10,10 @@ from bson import ObjectId
 sys.path.append(os.getcwd())
 
 from mrq.queue import send_task, Queue
-from mrq.context import connections, set_current_config
+from mrq.context import connections, set_current_config, get_current_config
 from mrq.config import get_config
+
+from utils import jsonify, requires_auth
 
 CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 
@@ -20,15 +22,19 @@ app = Flask("dashboard", static_folder=os.path.join(CURRENT_DIRECTORY, "static")
 
 
 @app.route('/')
+@requires_auth
 def root():
   return app.send_static_file("index.html")
 
 
 @app.route('/api/datatables/status')
+@requires_auth
 def api_jobstatuses():
   stats = list(connections.mongodb_jobs.mrq_jobs.aggregate([
     {"$group": {"_id": "$status", "jobs": {"$sum": 1}}}
   ])["result"])
+
+  stats.sort(key=lambda x: x["_id"])
 
   data = {
     "aaData": stats,
@@ -41,10 +47,13 @@ def api_jobstatuses():
 
 
 @app.route('/api/datatables/taskpaths')
+@requires_auth
 def api_taskpaths():
   stats = list(connections.mongodb_jobs.mrq_jobs.aggregate([
     {"$group": {"_id": "$path", "jobs": {"$sum": 1}}}
   ])["result"])
+
+  stats.sort(key=lambda x: -x["jobs"])
 
   data = {
     "aaData": stats,
@@ -57,6 +66,7 @@ def api_taskpaths():
 
 
 @app.route('/api/datatables/<unit>')
+@requires_auth
 def api_datatables(unit):
 
   collection = None
@@ -131,6 +141,7 @@ def api_datatables(unit):
 
 
 @app.route('/api/job/<job_id>/result')
+@requires_auth
 def api_job_result(job_id):
   collection = connections.mongodb_jobs.mrq_jobs
 
@@ -144,13 +155,15 @@ def api_job_result(job_id):
 
 
 @app.route('/api/jobaction', methods=["POST"])
+@requires_auth
 def api_job_action():
   return jsonify({
-    "job_id": send_task("mrq.basetasks.utils.JobAction", {k: v for k, v in request.form.iteritems()})
+    "job_id": send_task("mrq.basetasks.utils.JobAction", {k: v for k, v in request.form.iteritems()}, queue=get_current_config()["dashboard_queue"])
   })
 
 
 @app.route('/api/logs')
+@requires_auth
 def api_logs():
   collection = connections.mongodb_logs.mrq_logs
 
