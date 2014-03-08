@@ -160,7 +160,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
             "sClass": "col-jobs-params",
             "mDataProp": "params",
             "fnRender": function ( o /*, val */) {
-              return "<pre>"+JSON.stringify(o.aData.params, null, 2)+"</pre>";
+              return "<pre class='js-oxpre'>"+JSON.stringify(o.aData.params, null, 2)+"</pre>";
             }
           },
           {
