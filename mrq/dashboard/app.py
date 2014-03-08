@@ -31,6 +31,7 @@ def root():
 @requires_auth
 def api_jobstatuses():
   stats = list(connections.mongodb_jobs.mrq_jobs.aggregate([
+    {"$sort": {"status": 1}},  # https://jira.mongodb.org/browse/SERVER-11447
     {"$group": {"_id": "$status", "jobs": {"$sum": 1}}}
   ])["result"])
 
@@ -50,6 +51,7 @@ def api_jobstatuses():
 @requires_auth
 def api_taskpaths():
   stats = list(connections.mongodb_jobs.mrq_jobs.aggregate([
+    {"$sort": {"path": 1}},  # https://jira.mongodb.org/browse/SERVER-11447
     {"$group": {"_id": "$path", "jobs": {"$sum": 1}}}
   ])["result"])
 

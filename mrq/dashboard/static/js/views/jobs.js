@@ -198,10 +198,13 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
 
               if (type == "display") {
                 var display = [
-                  "started "+moment.utc(source.datestarted).fromNow()
+                  "queued "+moment.utc(1000 * parseInt(source._id.substring(0, 8), 16)).fromNow()
                   //"updated "+moment.utc(source.dateupdated).fromNow()
                 ];
 
+                if (source.datestarted) {
+                  display.push("started "+moment.utc(source.datestarted).fromNow());
+                }
                 if (source.totaltime) {
                   display.push("totaltime "+String(source.totaltime).substring(0,6)+"s");
                 }

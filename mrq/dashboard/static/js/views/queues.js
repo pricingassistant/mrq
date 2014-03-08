@@ -23,7 +23,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
             "sClass": "col-name",
             "sType": "string",
             "mData":function(source, type, val) {
-              return "<a href='/#jobs?queue="+source.name+"'>"+source.name+"</a>";
+              return "<a href='/#jobs?queue="+source.name+"&status=queued'>"+source.name+"</a>";
             }
           },
           {
@@ -34,7 +34,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
               var cnt = source.count || 0;
 
               if (type == "display") {
-                return "<a href='/#jobs?queue="+source.name+"'>"+cnt+"</a>"
+                return "<a href='/#jobs?queue="+source.name+"&status=queued'>"+cnt+"</a>"
                  + "<br/>"
                  + '<span class="inlinesparkline" values="'+self.addToCounter("queue."+source.name, cnt, 50).join(",")+'"></span>';
               } else {
