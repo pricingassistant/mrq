@@ -54,8 +54,10 @@ class Job(object):
   def fetch(self, start=False, full_data=True):
     """ Get the current job data and possibly flag it as started. """
 
-    if full_data:
+    if full_data is True:
       fields = None
+    elif type(full_data) == dict:
+      fields = full_data
     else:
       fields = {
         "_id": 0,
@@ -160,7 +162,7 @@ class Job(object):
 
     if not queue:
       if not self.data or not self.data.get("queue"):
-        self.fetch(full_data=True)  # TODO only fetch queue?
+        self.fetch(full_data={"_id": 0, "queue": 1, "path": 1})
       queue = self.data["queue"]
 
     self.save_status("queued", queue=queue)

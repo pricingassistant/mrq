@@ -1,4 +1,5 @@
 import time
+from mrq.queue import Queue
 
 
 def benchmark_task(worker, taskpath, taskparams, tasks=1000, greenlets=50, processes=0, max_seconds=10, profile=False, quiet=True):
@@ -73,3 +74,56 @@ def test_performance_httpstatic_external(worker):
                                       tasks=n_tasks,
                                       greenlets=n_greenlets,
                                       max_seconds=max_seconds, quiet=False)
+
+
+def test_performance_queue_cancel_requeue(worker):
+
+  worker.start()
+
+  n_tasks = 10000
+
+  start_time = time.time()
+
+  worker.send_tasks(
+    "mrq.basetasks.tests.general.Add",
+    [{"a": i, "b": 0, "sleep": 0} for i in range(n_tasks)],
+    queue="noexec",
+    block=False
+  )
+
+  queue_time = time.time() - start_time
+
+  print "Queued %s tasks in %s seconds" % (n_tasks, queue_time)
+  assert queue_time < 5
+
+  assert Queue("noexec").size() == n_tasks
+  assert worker.mongodb_jobs.mrq_jobs.count() == n_tasks
+
+  # Then cancel them all
+  start_time = time.time()
+
+  worker.send_task(
+    "mrq.basetasks.utils.JobAction",
+    {"queue": "noexec", "action": "cancel"},
+    block=True
+  )
+  queue_time = time.time() - start_time
+  print "Cancelled %s tasks in %s seconds" % (n_tasks, queue_time)
+  assert queue_time < 10
+
+  # Then requeue them all
+  start_time = time.time()
+
+  worker.send_task(
+    "mrq.basetasks.utils.JobAction",
+    {"queue": "noexec", "action": "requeue"},
+    block=True
+  )
+  queue_time = time.time() - start_time
+  print "Requeued %s tasks in %s seconds" % (n_tasks, queue_time)
+  assert queue_time < 10
+
+
+
+
+

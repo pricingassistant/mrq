@@ -81,7 +81,7 @@ class RequeueLostJobs(Task):
 
     for job_data in self.collection.find({
       "status": "queued"
-    }, fields={"_id": 1, "queue": 1}).sort([("_id", 1)]).batch_size(100):
+    }, fields={"_id": 1, "queue": 1}).sort([("_id", 1)]):
 
       stats["fetched"] += 1
 
