@@ -106,6 +106,7 @@ def api_datatables(unit):
 
     fields = None
     query = {}
+    sort = [("_id", 1)]
 
     if request.args.get("redisqueue"):
       query["_id"] = {"$in": [ObjectId(x) for x in Queue(request.args.get("redisqueue")).list_job_ids(limit=1000)]}

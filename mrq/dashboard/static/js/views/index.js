@@ -48,6 +48,22 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models", "moment
                 $(".inlinesparkline", nTd).sparkline("html", {"width": "100px", "height": "30px", "defaultPixelsPerValue": 1});
               }, 10);
             }
+          },
+          {
+            "sTitle": "Speed",
+            "sClass": "col-eta",
+            "sType":"numeric",
+            "mData":function(source, type, val) {
+              return (Math.round(self.getCounterSpeed("index.status."+source._id) * 100) / 100) + " jobs/second";
+            }
+          },
+          {
+            "sTitle": "ETA",
+            "sClass": "col-eta",
+            "sType":"numeric",
+            "mData":function(source, type, val) {
+              return self.getCounterEta("index.status."+source._id, source.jobs || 0);
+            }
           }
 
         ],
