@@ -1,4 +1,5 @@
 import datetime
+import os
 
 SCHEDULER_TASKS = [
   {
@@ -6,7 +7,7 @@ SCHEDULER_TASKS = [
     "params": {
       "a": 1
     },
-    "dailytime": (datetime.datetime.utcnow() + datetime.timedelta(seconds=3)).time()
+    "dailytime": datetime.datetime.fromtimestamp(float(os.environ.get("MRQ_TEST_SCHEDULER_TIME"))).time()
   },
 ]
 

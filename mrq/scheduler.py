@@ -36,6 +36,7 @@ class Scheduler(object):
         # The date part will be discarded in check()
         task["dailytime"] = datetime.datetime.combine(datetime.datetime.utcnow(), task["dailytime"])
         task["interval"] = 3600 * 24
+
       self.collection.insert(task)
       log.debug("Scheduler: added %s" % task["hash"])
 
@@ -55,11 +56,24 @@ class Scheduler(object):
 
         dailytime = task.get("dailytime").time()
 
-        if task.get("datelastqueued") and task.get("datelastqueued").time().isoformat()[0:8] != dailytime.isoformat()[0:8]:
-          log.debug("Adjusting the time of scheduled task %s to %s" % (task["_id"], dailytime))
+        time_datelastqueued = task.get("datelastqueued").time().isoformat()[0:8]
+        time_dailytime = dailytime.isoformat()[0:8]
+        if task.get("datelastqueued") and time_datelastqueued != time_dailytime:
+          log.debug("Adjusting the time of scheduled task %s from %s to %s" % (task["_id"], time_datelastqueued, time_dailytime))
 
-          self.collection.update({"_id": task["_id"]}, {"$set": {
-            "datelastqueued": datetime.datetime.combine(task.get("datelastqueued").date() - datetime.timedelta(days=1), dailytime)
+          # Make sure we don't queue the task in a loop by adjusting the time
+          if time_datelastqueued < time_dailytime:
+            adjusted_datelastqueued = datetime.datetime.combine(task.get("datelastqueued").date() - datetime.timedelta(days=1), dailytime)
+          else:
+            adjusted_datelastqueued = datetime.datetime.combine(task.get("datelastqueued").date(), dailytime)
+
+          # We do find_and_modify and not update() because several check() may be happening
+          # at the same time.
+          self.collection.find_and_modify({
+            "_id": task["_id"],
+            "datelastqueued": task.get("datelastqueued")
+          }, {"$set": {
+            "datelastqueued": adjusted_datelastqueued
           }})
           self.refresh()
 
@@ -67,7 +81,7 @@ class Scheduler(object):
         "_id": task["_id"],
         "datelastqueued": {"$lt": last_time}
       }, {"$set": {
-        "datelastqueued": datetime.datetime.utcnow()
+        "datelastqueued": now
       }})
 
       if task_data:
