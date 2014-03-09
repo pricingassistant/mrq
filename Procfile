@@ -1,1 +1,1 @@
-web: python mrq/dashboard/app.py
+web: uwsgi mrq/dashboard/uwsgi-heroku.ini
