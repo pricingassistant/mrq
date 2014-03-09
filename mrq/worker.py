@@ -110,29 +110,30 @@ class Worker(object):
 
   def ensure_indexes(self):
 
-    if self.config["mongodb_logs_size"] > 0:
+    self.mongodb_logs.mrq_logs.ensure_index([("job", 1)], background=True)
+    self.mongodb_logs.mrq_logs.ensure_index([("worker", 1)], background=True, sparse=True)
 
-      try:
-        self.mongodb_logs.create_collection("mrq_logs", capped=True, size=self.config["mongodb_logs_size"])
-      except:
-        pass
+    if self.config["mongodb_logs_size"] > 0:
 
       try:
         self.mongodb_logs.command("convertToCapped", "mrq_logs", size=self.config["mongodb_logs_size"])
       except:
         pass
 
-    self.mongodb_logs.mrq_logs.ensure_index([("job", 1)], background=True)
-    self.mongodb_logs.mrq_logs.ensure_index([("worker", 1)], background=True, sparse=True)
-
     self.mongodb_logs.mrq_workers.ensure_index([("status", 1)], background=True)
     self.mongodb_logs.mrq_workers.ensure_index([("datereported", 1)], background=True, expireAfterSeconds=3600)
 
     self.mongodb_jobs.mrq_jobs.ensure_index([("status", 1)], background=True)
-    self.mongodb_jobs.mrq_jobs.ensure_index([("path", 1)], background=True)
-    self.mongodb_jobs.mrq_jobs.ensure_index([("worker", 1)], background=True)
-    self.mongodb_jobs.mrq_jobs.ensure_index([("queue", 1)], background=True)
+    self.mongodb_jobs.mrq_jobs.ensure_index([("path", 1), ("status", 1)], background=True)
+    self.mongodb_jobs.mrq_jobs.ensure_index([("worker", 1), ("status", 1)], background=True, sparse=True)
+    self.mongodb_jobs.mrq_jobs.ensure_index([("queue", 1), ("status", 1)], background=True)
     self.mongodb_jobs.mrq_jobs.ensure_index([("dateexpires", 1)], sparse=True, background=True, expireAfterSeconds=0)
+
+    try:
+      # This will be default in MongoDB 2.6
+      self.mongodb_jobs.command({"collMod": "mrq_jobs", "usePowerOf2Sizes": True})
+    except:
+      pass
 
   def make_name(self):
     """ Generate a human-readable name for this worker. """
