@@ -1,11 +1,21 @@
 from bson import ObjectId
 import urllib2
 import time
+import pytest
+import datetime
 
 
-def test_scheduler_simple(worker):
+# We want to test that launching the scheduler several times queues tasks only once.
+PROCESS_CONFIGS = [
+  ["--gevent 1"],
+  ["--gevent 1 --processes 5"]
+]
 
-  worker.start(flags="--scheduler --config tests/fixtures/config-scheduler1.py")
+
+@pytest.mark.parametrize(["p_flags"], PROCESS_CONFIGS)
+def test_scheduler_simple(worker, p_flags):
+
+  worker.start(flags="--scheduler --config tests/fixtures/config-scheduler1.py %s" % p_flags)
 
   collection = worker.mongodb_logs.tests_inserts
   scheduled_jobs = worker.mongodb_jobs.mrq_scheduled_jobs
@@ -30,7 +40,7 @@ def test_scheduler_simple(worker):
   collection.remove({})
 
   # Start with new config
-  worker.start(deps=False, flags="--scheduler --config tests/fixtures/config-scheduler2.py")
+  worker.start(deps=False, flags="--scheduler --config tests/fixtures/config-scheduler2.py %s" % p_flags)
 
   time.sleep(2)
 
@@ -43,14 +53,21 @@ def test_scheduler_simple(worker):
   assert len(inserts) == 3
 
 
-def test_scheduler_dailytime(worker):
+@pytest.mark.parametrize(["p_flags"], PROCESS_CONFIGS)
+def test_scheduler_dailytime(worker, p_flags):
 
   # Task is scheduled in 3 seconds
-  worker.start(flags="--scheduler --config tests/fixtures/config-scheduler3.py")
+  worker.start(
+    flags="--scheduler --config tests/fixtures/config-scheduler3.py %s" % p_flags,
+    env={
+
+      # We need to pass this in the environment so that each worker has the exact same hash
+      "MRQ_TEST_SCHEDULER_TIME": str(time.time() + 4)
+    })
 
   # It will be done a first time immediately
 
-  time.sleep(1)
+  time.sleep(3)
 
   collection = worker.mongodb_logs.tests_inserts
 
@@ -60,3 +77,9 @@ def test_scheduler_dailytime(worker):
   time.sleep(4)
 
   assert collection.find().count() == 2
+
+  # Nothing more should happen today
+  time.sleep(4)
+
+  assert collection.find().count() == 2
+
