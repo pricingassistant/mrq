@@ -110,8 +110,8 @@ class Worker(object):
 
   def ensure_indexes(self):
 
-    self.mongodb_logs.mrq_logs.ensure_index([("job", 1)], background=True)
-    self.mongodb_logs.mrq_logs.ensure_index([("worker", 1)], background=True, sparse=True)
+    self.mongodb_logs.mrq_logs.ensure_index([("job", 1)], background=False)
+    self.mongodb_logs.mrq_logs.ensure_index([("worker", 1)], background=False, sparse=True)
 
     if self.config["mongodb_logs_size"] > 0:
 
@@ -120,14 +120,14 @@ class Worker(object):
       except:
         pass
 
-    self.mongodb_logs.mrq_workers.ensure_index([("status", 1)], background=True)
-    self.mongodb_logs.mrq_workers.ensure_index([("datereported", 1)], background=True, expireAfterSeconds=3600)
+    self.mongodb_logs.mrq_workers.ensure_index([("status", 1)], background=False)
+    self.mongodb_logs.mrq_workers.ensure_index([("datereported", 1)], background=False, expireAfterSeconds=3600)
 
-    self.mongodb_jobs.mrq_jobs.ensure_index([("status", 1)], background=True)
-    self.mongodb_jobs.mrq_jobs.ensure_index([("path", 1), ("status", 1)], background=True)
-    self.mongodb_jobs.mrq_jobs.ensure_index([("worker", 1), ("status", 1)], background=True, sparse=True)
-    self.mongodb_jobs.mrq_jobs.ensure_index([("queue", 1), ("status", 1)], background=True)
-    self.mongodb_jobs.mrq_jobs.ensure_index([("dateexpires", 1)], sparse=True, background=True, expireAfterSeconds=0)
+    self.mongodb_jobs.mrq_jobs.ensure_index([("status", 1)], background=False)
+    self.mongodb_jobs.mrq_jobs.ensure_index([("path", 1), ("status", 1)], background=False)
+    self.mongodb_jobs.mrq_jobs.ensure_index([("worker", 1), ("status", 1)], background=False, sparse=True)
+    self.mongodb_jobs.mrq_jobs.ensure_index([("queue", 1), ("status", 1)], background=False)
+    self.mongodb_jobs.mrq_jobs.ensure_index([("dateexpires", 1)], sparse=True, background=False, expireAfterSeconds=0)
 
     self.mongodb_jobs.mrq_scheduled_jobs.ensure_index([("hash", 1)], unique=True, background=False, drop_dups=True)
 
