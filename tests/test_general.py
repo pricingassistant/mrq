@@ -12,7 +12,7 @@ def test_general_simple_task_one(worker):
 
   time.sleep(0.1)
 
-  db_workers = list(worker.mongodb_logs.mrq_workers.find())
+  db_workers = list(worker.mongodb_jobs.mrq_workers.find())
   assert len(db_workers) == 1
   assert db_workers[0]["status"] in ["full", "wait"]
 
@@ -40,7 +40,7 @@ def test_general_simple_task_one(worker):
   assert db_jobs[0]["time"] < 0.1
   assert db_jobs[0]["switches"] >= 1
 
-  db_workers = list(worker.mongodb_logs.mrq_workers.find())
+  db_workers = list(worker.mongodb_jobs.mrq_workers.find())
   assert len(db_workers) == 1
   assert db_workers[0]["_id"] == db_jobs[0]["worker"]
   assert db_workers[0]["status"] == "stop"

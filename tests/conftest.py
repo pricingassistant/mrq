@@ -9,6 +9,7 @@ import psutil
 import time
 import re
 import json
+import urllib2
 
 sys.path.append(os.getcwd())
 
@@ -205,6 +206,13 @@ class WorkerFixture(ProcessFixture):
       return json.loads(out)
     return out
 
+  def get_report(self):
+    wait_for_net_service("127.0.0.1", 20020)
+    f = urllib2.urlopen("http://127.0.0.1:20020")
+    data = json.load(f)
+    f.close()
+    return data
+
 
 class RedisFixture(ProcessFixture):
   def flush(self):
@@ -214,9 +222,10 @@ class RedisFixture(ProcessFixture):
 class MongoFixture(ProcessFixture):
   def flush(self):
     for mongodb in (connections.mongodb_jobs, connections.mongodb_logs):
-      for c in mongodb.collection_names():
-        if not c.startswith("system."):
-          mongodb.drop_collection(c)
+      if mongodb:
+        for c in mongodb.collection_names():
+          if not c.startswith("system."):
+            mongodb.drop_collection(c)
 
 
 @pytest.fixture(scope="function")

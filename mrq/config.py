@@ -29,17 +29,26 @@ def get_config(sources=("file", "env", "args"), env_prefix="MRQ_", defaults=None
   parser.add_argument('--trace_greenlets', action='store_true', default=False,
                       help='Collect stats about each greenlet execution time and switches.')
 
+  parser.add_argument('--trace_memory', action='store_true', default=False,
+                      help='Collect stats about memory for each task. Incompatible with gevent > 1')
+
+  parser.add_argument('--trace_memory_type', action='store', default="",
+                      help='Create a .png object graph in trace_memory_output_dir with a random object of this type.')
+
+  parser.add_argument('--trace_memory_output_dir', action='store', default="memory_traces",
+                      help='Directory where to output .pngs with object graphs')
+
   parser.add_argument('--profile', action='store_true', default=False,
                       help='Run profiling on the whole worker')
 
   parser.add_argument('--mongodb_jobs', action='store', default="mongodb://127.0.0.1:27017/mrq",
-                      help='MongoDB URI for the jobs database')
+                      help='MongoDB URI for the jobs, scheduled_jobs & workers database')
 
   parser.add_argument('--mongodb_logs', action='store', default="mongodb://127.0.0.1:27017/mrq",
-                      help='MongoDB URI for the logs database')
+                      help='MongoDB URI for the logs database. If set to "0", will disable remote logs.')
 
   parser.add_argument('--mongodb_logs_size', action='store', default=16 * 1024 * 1024, type=int,
-                      help='If provided, sets the log collection to capped to that amount of bytes')
+                      help='If provided, sets the log collection to capped to that amount of bytes.')
 
   parser.add_argument('--redis', action='store', default="redis://127.0.0.1:6379",
                       help='Redis URI')

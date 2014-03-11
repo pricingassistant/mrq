@@ -7,6 +7,7 @@ from .utils import load_class_by_path
 from .queue import Queue
 from .context import get_current_worker, log, connections, get_current_config
 import gevent
+import gc
 
 
 class Job(object):
@@ -232,3 +233,46 @@ class Job(object):
       time.sleep(poll_interval)
 
     raise Exception("Waited for job result for %ss seconds, timeout." % timeout)
+
+  def trace_memory_start(self):
+    """ Starts measuring memory consumption """
+    import objgraph
+    objgraph.show_growth(limit=10)
+    #gc.collect()  # - is done in show_growth
+    self._memory_start = self.worker.get_memory()
+
+  def trace_memory_stop(self):
+    """ Stops measuring memory consumption """
+
+    #gc.collect() - is done in show_growth
+    import objgraph, random, gevent
+
+    gevent.sleep(0)
+
+    objgraph.show_growth(limit=10)
+
+    trace_type = get_current_config()["trace_memory_type"]
+    if trace_type:
+
+      objgraph.show_chain(
+        objgraph.find_backref_chain(
+          random.choice(objgraph.by_type(trace_type)),
+          objgraph.is_proper_module
+        ),
+        filename='%s/%s-%s.png' % (get_current_config()["trace_memory_output_dir"], trace_type, self.id)
+      )
+
+    self._memory_stop = self.worker.get_memory()
+
+    diff = self._memory_stop - self._memory_start
+
+    log.debug("Memory diff for job %s : %s" % (self.id, diff))
+
+    # We need to update it later than the results, we need them off memory already.
+    self.collection.update({
+      "_id": self.id
+    }, {"$set": {
+      "memory_diff": diff
+    }}, w=1)
+
+

@@ -4,6 +4,7 @@ from mrq.context import log, retry_current_job, connections
 import urllib2
 
 
+
 class Add(Task):
 
   def run(self, params):
@@ -34,6 +35,21 @@ class Fetch(Task):
     f.close()
 
     return len(t)
+
+
+LEAKS = []
+
+
+class Leak(Task):
+  def run(self, params):
+
+    if params.get("size", 0) > 0:
+      LEAKS.append("x" * params.get("size", 0))
+
+    if params.get("sleep", 0) > 0:
+      sleep(params.get("sleep", 0))
+
+    return params.get("return")
 
 
 class Retry(Task):
