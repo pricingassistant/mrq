@@ -11,12 +11,10 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
     alwaysRenderOnShow:true,
 
     init: function() {
-
       var self = this;
 
       this.filters = {};
 
-      this.counters = {};
 
       this.delegateEvents(_.extend({
         "click .js-datatable-filters-submit": "filterschanged"
@@ -180,50 +178,6 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
       // if (this.filters["manufacturer"]) {
       //   this.$('.js-filter-manufacturer .js-filter-txt').html("Manufacturer: "+this.filters["manufacturer"]["name"]);
       // }
-
-    },
-
-    // Used mainly to generate sparklines across refreshes
-    addToCounter: function(name, newvalue, maxvalues) {
-
-      if (!this.counters[name]) this.counters[name] = [];
-
-      this.counters[name].push({
-        "date": +new Date(),
-        "value": newvalue
-      });
-
-      if (this.counters[name].length > maxvalues) {
-        this.counters[name].shift();
-      }
-
-      return _.pluck(this.counters[name], "value");
-
-    },
-
-    getCounterSpeed: function(name) {
-
-      if ((this.counters[name] || []).length < 2) return 0;
-
-      var last = this.counters[name].length - 1;
-      var interval = (this.counters[name][last]["date"] - this.counters[name][0]["date"]) / 1000;
-      var diff = this.counters[name][last]["value"] - this.counters[name][0]["value"];
-
-      if (diff == 0) return 0;
-
-      return diff / interval;
-
-    },
-
-    getCounterEta: function(name, total) {
-
-      var speed = this.getCounterSpeed(name);
-
-      if (speed >= 0) {
-        return "N/A";
-      } else {
-        return moment.duration(total * 1000 / speed).humanize();
-      }
 
     },
 

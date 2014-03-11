@@ -67,6 +67,15 @@ def api_taskpaths():
   return jsonify(data)
 
 
+@app.route('/workers')
+@requires_auth
+def test():
+  collection = connections.mongodb_logs.mrq_workers
+  cursor = collection.find({"status": {"$ne": "stop"}})
+  data = {"workers": list(cursor)}
+  return jsonify(data)
+
+
 @app.route('/api/datatables/<unit>')
 @requires_auth
 def api_datatables(unit):

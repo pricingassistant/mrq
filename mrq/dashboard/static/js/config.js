@@ -7,6 +7,7 @@ require.config({
   paths: {
 
     // Libraries.
+    circliful: "/static/js/vendor/jquery.circliful.min",
     jquery: "/static/js/vendor/jquery-2.1.0.min",
     underscore: "/static/js/vendor/underscore.min",
     backbone: "/static/js/vendor/backbone.min",

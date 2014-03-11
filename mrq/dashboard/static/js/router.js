@@ -9,7 +9,8 @@ define(["backbone", "underscore", "jquery"],function(Backbone, _, $) {
       'workers': 'workers',
       'taskpaths': 'taskpaths',
       'jobs': 'jobs',
-      'scheduledjobs': 'scheduledjobs'
+      'scheduledjobs': 'scheduledjobs',
+      'status': 'status'
     },
 
     /**
@@ -95,6 +96,11 @@ define(["backbone", "underscore", "jquery"],function(Backbone, _, $) {
     index: function() {
       this.setNavbar("index");
       this.app.rootView.showChildPage('index');
+    },
+
+    status: function() {
+      this.setNavbar("status");
+      this.app.rootView.showChildPage('status');
     },
 
     workers: function(params) {

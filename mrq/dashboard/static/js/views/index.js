@@ -1,6 +1,7 @@
-define(["jquery", "underscore", "views/generic/datatablepage", "models", "moment"],function($, _, DataTablePage, Models, moment) {
+define(["jquery", "underscore", "views/generic/page", "models", "moment", "circliful"]
+  ,function($, _, Page, Models, moment) {
 
-  return DataTablePage.extend({
+  return Page.extend({
 
     el: '.js-page-index',
 
@@ -10,69 +11,116 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models", "moment
     },
 
 
-    renderDatatable:function() {
-
+    fetchStats: function(cb) {
       var self = this;
+      $.get("/workers").done(function (data) {
+        workers = data.workers;
+        var poolSize = 0;
+        var currentJobs = 0;
+        var doneJobs = 0;
 
-      var datatableConfig = self.getCommonDatatableConfig("status");
+        for (var i in workers) {
+          poolSize += workers[i].config.gevent
+          currentJobs += workers[i].jobs.length
+          doneJobs += workers[i].done_jobs
+        }
 
-      _.extend(datatableConfig, {
-        "aoColumns": [
-
-          {
-            "sTitle": "Status",
-            "sClass": "col-status",
-            "sType":"string",
-            "sWidth":"150px",
-            "mData":function(source, type/*, val*/) {
-              return "<a href='/#jobs?status="+source._id+"'>"+source._id+"</a>";
-            }
-          },
-          {
-            "sTitle": "Jobs",
-            "sClass": "col-jobs",
-            "sType":"numeric",
-            "sWidth":"120px",
-            "mData":function(source, type/*, val*/) {
-              var cnt = (source.jobs || 0);
-              if (type == "display") {
-                return "<a href='/#jobs?status="+source._id+"'>"+cnt+"</a>"
-                 + "<br/>"
-                 + '<span class="inlinesparkline" values="'+self.addToCounter("index.status."+source._id, cnt, 50).join(",")+'"></span>';
-              } else {
-                return cnt;
-              }
-            },
-            "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
-              setTimeout(function() {
-                $(".inlinesparkline", nTd).sparkline("html", {"width": "100px", "height": "30px", "defaultPixelsPerValue": 1});
-              }, 10);
-            }
-          },
-          {
-            "sTitle": "Speed",
-            "sClass": "col-eta",
-            "sType":"numeric",
-            "mData":function(source, type, val) {
-              return (Math.round(self.getCounterSpeed("index.status."+source._id) * 100) / 100) + " jobs/second";
-            }
-          },
-          {
-            "sTitle": "ETA",
-            "sClass": "col-eta",
-            "sType":"numeric",
-            "mData":function(source, type, val) {
-              return self.getCounterEta("index.status."+source._id, source.jobs || 0);
-            }
-          }
-
-        ],
-        "aaSorting":[ [0,'asc'] ],
+        cb.apply(self, [poolSize, currentJobs, Math.round((currentJobs / poolSize) * 100), doneJobs]);
       });
+    },
 
-      this.initDataTable(datatableConfig);
+    buildCircle: function (selector, text, percent, info, animation) {
+      if (animation) {
+        animation = 1;
+      } else {
+        animation = percent;
+      }
 
+      return  '<div class="stat"\
+                    id="' + selector + '"\
+                    data-dimension="250"\
+                    data-text="' + text + '"\
+                    data-info="' + info + '"\
+                    data-width="30"\
+                    data-fontsize="38"\
+                    data-percent="' + percent + '"\
+                    data-fgcolor="#61a9dc"\
+                    data-bgcolor="#eee"\
+                    data-animation-step="' + animation + '"\
+                    data-fill="#ddd"></div>';
+
+    },
+
+    renderCircleStats: function (scope, selector, text, percent, info, animation) {
+      $(scope).append(this.buildCircle(selector, text, percent, info, animation));
+      $("#" + selector).circliful();
+    },
+
+
+    renderStats: function (poolSize, currentJobs, utilization, doneJobs) {
+      var self = this;
+      var scope = ".js-circle-row";
+      var values = self.addToCounter("overall-done-jobs", 0, 50).join(",");
+      var jobSpeed = Math.round(self.getCounterSpeed("overall-done-jobs") * 100) / 100;
+
+      this.renderCircleStats(scope, "poolSizeStat", poolSize, 100, "Pool Size", true);
+      this.renderCircleStats(scope, "utilizationStat", utilization + "%", utilization, "Utilization (" + currentJobs + " jobs)")
+      this.renderCircleStats(scope, "jobspeed", jobSpeed, 100, "jobs/sec");
+
+      values = self.addToCounter("overall-done-jobs", doneJobs, 50).join(",")
+      $(scope).append('<div class=stat><span class="inlinesparkline" values="' + values + '"></span></div>');
+      $(".inlinesparkline").sparkline("html", {"width": "250px", "height": "200px", "defaultPixelsPerValue": 1});
+    },
+
+    refreshCircleStats: function (poolSize, currentJobs, utilization) {
+      var self = this;
+      var jobSpeed = Math.round(self.getCounterSpeed("overall-done-jobs") * 100) / 100;
+
+      if (poolSize != $("#poolSizeStat").data("text")) {
+        $("#poolSizeStat").html("");
+        $("#poolSizeStat").data("text", poolSize);
+        $("#poolSizeStat").circliful();
+      }
+
+      $("#utilizationStat").html("");
+      $("#utilizationStat").data("percent", utilization);
+      $("#utilizationStat").data("text", utilization + "%");
+      $("#utilizationStat").data("info", "Utilization (" + currentJobs + " jobs)");
+      $("#utilizationStat").circliful();
+
+      $("#jobspeed").html("");
+      $("#jobspeed").data("text", jobSpeed);
+      $("#jobspeed").circliful();
+
+
+      },
+
+    refreshStats: function (poolSize, currentJobs, utilization, doneJobs) {
+      var self = this;
+      var values = self.addToCounter("overall-done-jobs", doneJobs, 50).join(",");
+      var refreshInterval = parseInt($(".js-autorefresh").val(), 10) * 1000;
+
+      $(".inlinesparkline").attr("values", values);
+      $(".inlinesparkline").sparkline("html", {"width": "250px", "height": "200px", "defaultPixelsPerValue": 1});
+      self.refreshCircleStats(poolSize, currentJobs, utilization);
+
+      setTimeout(function () {
+        self.fetchStats(self.refreshStats);
+      }, refreshInterval);
+    },
+
+    render: function() {
+      var self = this;
+      var refreshInterval = parseInt($(".js-autorefresh").val(), 10) * 1000;
+
+      self.renderTemplate();
+      self.fetchStats(self.renderStats);
+
+      setTimeout(function () {
+        self.fetchStats(self.refreshStats);
+      }, refreshInterval);
     }
+
   });
 
 });

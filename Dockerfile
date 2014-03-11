@@ -23,12 +23,13 @@ RUN mkdir -p /data/db
 VOLUME ["/data"]
 
 ADD requirements.txt requirements.txt
+ADD requirements-base.txt requirements-base.txt
+ADD requirements-dashboard.txt requirements-dashboard.txt
 RUN pip install --use-mirrors -r requirements.txt
 
 ADD requirements-dev.txt requirements-dev.txt
 RUN pip install --use-mirrors -r requirements-dev.txt
 
-ADD requirements-dashboard.txt requirements-dashboard.txt
 RUN pip install --use-mirrors -r requirements-dashboard.txt
 
 
