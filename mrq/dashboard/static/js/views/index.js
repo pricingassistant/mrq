@@ -73,7 +73,7 @@ define(["jquery", "underscore", "views/generic/page", "models", "moment", "circl
       this.renderCircleStats(scope, "jobspeed", jobSpeed, 100, "jobs/sec");
 
       values = self.addToCounter("overall-done-jobs", doneJobs, 50).join(",")
-      $(scope).append('<div class=stat><span class="inlinesparkline" values="' + values + '"></span></div>');
+      $(scope).append('<div class=stat><span class="inlinesparkline" values="' + values + '"></span><span class="sparkline-title">Done Jobs</span></div>');
       $(".inlinesparkline").sparkline("html", {"width": "250px", "height": "200px", "defaultPixelsPerValue": 1});
     },
 

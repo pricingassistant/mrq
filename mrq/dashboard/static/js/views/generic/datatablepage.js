@@ -6,7 +6,8 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
    * A page with a main DataTable instance bound to this.col
    *
    */
-  return dataTablePage = Page.extend({
+  var dataTablePage = Page.extend({
+
 
     alwaysRenderOnShow:true,
 
@@ -223,4 +224,5 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
 
   });
 
+  return dataTablePage;
 });
