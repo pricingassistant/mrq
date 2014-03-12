@@ -7,7 +7,6 @@ from .utils import load_class_by_path
 from .queue import Queue
 from .context import get_current_worker, log, connections, get_current_config
 import gevent
-import gc
 
 
 class Job(object):

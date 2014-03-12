@@ -94,8 +94,8 @@ def test_performance_queue_cancel_requeue(worker):
 
   queue_time = time.time() - start_time
 
-  print "Queued %s tasks in %s seconds" % (n_tasks, queue_time)
-  assert queue_time < 5
+  print "Queued %s tasks in %s seconds (%s/s)" % (n_tasks, queue_time, float(n_tasks) / queue_time)
+  assert queue_time < 1
 
   assert Queue("noexec").size() == n_tasks
   assert worker.mongodb_jobs.mrq_jobs.count() == n_tasks
@@ -103,26 +103,34 @@ def test_performance_queue_cancel_requeue(worker):
   # Then cancel them all
   start_time = time.time()
 
-  worker.send_task(
+  res = worker.send_task(
     "mrq.basetasks.utils.JobAction",
     {"queue": "noexec", "action": "cancel"},
     block=True
   )
+  assert res["cancelled"] == n_tasks
   queue_time = time.time() - start_time
-  print "Cancelled %s tasks in %s seconds" % (n_tasks, queue_time)
-  assert queue_time < 10
+  print "Cancelled %s tasks in %s seconds (%s/s)" % (n_tasks, queue_time, float(n_tasks) / queue_time)
+  assert queue_time < 5
+
+  # Special case because we cancelled by queue: they should have been removed from redis.
+  assert Queue("noexec").size() == 0
 
   # Then requeue them all
   start_time = time.time()
 
-  worker.send_task(
+  res = worker.send_task(
     "mrq.basetasks.utils.JobAction",
     {"queue": "noexec", "action": "requeue"},
     block=True
   )
+  assert res["requeued"] == n_tasks
   queue_time = time.time() - start_time
-  print "Requeued %s tasks in %s seconds" % (n_tasks, queue_time)
-  assert queue_time < 15
+  print "Requeued %s tasks in %s seconds (%s/s)" % (n_tasks, queue_time, float(n_tasks) / queue_time)
+  assert queue_time < 1
+
+  # They should be back in the queue
+  assert Queue("noexec").size() == n_tasks
 
 
 

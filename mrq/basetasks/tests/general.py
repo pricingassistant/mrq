@@ -95,7 +95,7 @@ class MongoInsert(Task):
 
   def run(self, params):
 
-    connections.mongodb_logs.tests_inserts.insert(params)
+    connections.mongodb_logs.tests_inserts.insert(params, manipulate=False)
 
     if params.get("sleep", 0) > 0:
       sleep(params.get("sleep", 0))

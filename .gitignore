@@ -40,4 +40,4 @@ pypy
 
 mrq-config.py
 dump.rdb
-supervisor.pid
+supervisord.pid
