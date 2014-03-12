@@ -27,7 +27,7 @@ def test_performance_simpleadds(worker):
   n_tasks = 10000
   n_greenlets = 50
   n_processes = 0
-  max_seconds = 20
+  max_seconds = 25
 
   result, total_time = benchmark_task(worker,
                                       "mrq.basetasks.tests.general.Add",
@@ -41,7 +41,8 @@ def test_performance_simpleadds(worker):
   assert result == range(n_tasks)
 
 
-def test_performance_httpstatic_internal(worker, httpstatic):
+# TODO add network latency
+def test_performance_httpstatic_fast(worker, httpstatic):
 
   httpstatic.start()
 
@@ -58,22 +59,22 @@ def test_performance_httpstatic_internal(worker, httpstatic):
                                       profile=False)
 
 
-def test_performance_httpstatic_external(worker):
+# def test_performance_httpstatic_external(worker):
 
-  n_tasks = 1000
-  n_greenlets = 50
-  max_seconds = 25
+#   n_tasks = 1000
+#   n_greenlets = 100
+#   max_seconds = 25
 
-  url = "http://www.microsoft.com/favicon.ico"
-  url = "http://ox-mockserver.herokuapp.com/ipheaders"
-  # url = "http://ox-mockserver.herokuapp.com/timeout?timeout=1000"
+#   url = "http://bing.com/favicon.ico"
+#   # url = "http://ox-mockserver.herokuapp.com/ipheaders"
+#   # url = "http://ox-mockserver.herokuapp.com/timeout?timeout=1000"
 
-  result, total_time = benchmark_task(worker,
-                                      "mrq.basetasks.tests.general.Fetch",
-                                      [{"url": url} for _ in range(n_tasks)],
-                                      tasks=n_tasks,
-                                      greenlets=n_greenlets,
-                                      max_seconds=max_seconds, quiet=False)
+#   result, total_time = benchmark_task(worker,
+#                                       "mrq.basetasks.tests.general.Fetch",
+#                                       [{"url": url} for _ in range(n_tasks)],
+#                                       tasks=n_tasks,
+#                                       greenlets=n_greenlets,
+#                                       max_seconds=max_seconds, quiet=False)
 
 
 def test_performance_queue_cancel_requeue(worker):
@@ -121,7 +122,7 @@ def test_performance_queue_cancel_requeue(worker):
   )
   queue_time = time.time() - start_time
   print "Requeued %s tasks in %s seconds" % (n_tasks, queue_time)
-  assert queue_time < 10
+  assert queue_time < 15
 
 
 

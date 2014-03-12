@@ -128,7 +128,7 @@ def api_datatables(unit):
   if unit == "workers":
     fields = None
     query = {"status": {"$nin": ["stop"]}}
-    collection = connections.mongodb_logs.mrq_workers
+    collection = connections.mongodb_jobs.mrq_workers
     sort = [("datestarted", -1)]
 
     if request.args.get("showstopped"):

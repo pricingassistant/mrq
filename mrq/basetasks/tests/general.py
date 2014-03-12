@@ -1,7 +1,8 @@
 from time import sleep
 from mrq.task import Task
-from mrq.context import log, retry_current_job, connections
+from mrq.context import log, retry_current_job, connections, get_current_config
 import urllib2
+
 
 
 class Add(Task):
@@ -34,6 +35,26 @@ class Fetch(Task):
     f.close()
 
     return len(t)
+
+
+class GetConfig(Task):
+  def run(self, params):
+    return get_current_config()
+
+
+LEAKS = []
+
+
+class Leak(Task):
+  def run(self, params):
+
+    if params.get("size", 0) > 0:
+      LEAKS.append("x" * params.get("size", 0))
+
+    if params.get("sleep", 0) > 0:
+      sleep(params.get("sleep", 0))
+
+    return params.get("return")
 
 
 class Retry(Task):
@@ -75,6 +96,11 @@ class MongoInsert(Task):
   def run(self, params):
 
     connections.mongodb_logs.tests_inserts.insert(params)
+
+    if params.get("sleep", 0) > 0:
+      sleep(params.get("sleep", 0))
+
+    return params
 
 
 MongoInsert2 = MongoInsert

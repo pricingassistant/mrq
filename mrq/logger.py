@@ -42,6 +42,9 @@ class LogHandler(object):
     if not self.quiet:
       print formatted
 
+    if self.collection is False:
+      return
+
     if worker is not None:
       self.buffer["workers"][worker].append(formatted)
     elif job is not None:
@@ -55,7 +58,7 @@ class LogHandler(object):
   def flush(self, w=0):
 
     # We may log some stuff before we are even connected to Mongo!
-    if self.collection is None:
+    if not self.collection:
       return
 
     inserts = [{

@@ -6,7 +6,7 @@ RUN echo 'deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen
 RUN apt-get update && echo "Updated on 2014-01-15"
 RUN apt-get upgrade -y
 
-RUN apt-get install -y gcc make g++ build-essential libc6-dev tcl curl adduser mongodb-10gen python python-pip python-dev strace git software-properties-common libev-dev nginx
+RUN apt-get install -y gcc make g++ build-essential libc6-dev tcl curl adduser mongodb-10gen python python-pip python-dev strace git software-properties-common libev-dev nginx graphviz
 
 # Then add PPAs (after software-properties-common is installed)
 # RUN add-apt-repository -y ppa:pypy/ppa

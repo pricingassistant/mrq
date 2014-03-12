@@ -44,6 +44,10 @@ class Worker(object):
   """
   status = "init"
 
+  mongodb_jobs = None
+  mongodb_logs = None
+  redis = None
+
   def __init__(self, config):
 
     self.config = config
@@ -99,9 +103,12 @@ class Worker(object):
     # Accessing connections attributes will automatically connect
     self.redis = connections.redis
     self.mongodb_jobs = connections.mongodb_jobs
-    self.mongodb_logs = connections.mongodb_logs
 
-    self.log_handler.set_collection(self.mongodb_logs.mrq_logs)
+    if self.config["mongodb_logs"] == "0":
+      self.log_handler.set_collection(False)  # Disable
+    else:
+      self.mongodb_logs = connections.mongodb_logs
+      self.log_handler.set_collection(self.mongodb_logs.mrq_logs)
 
     self.connected = True
 
@@ -110,18 +117,20 @@ class Worker(object):
 
   def ensure_indexes(self):
 
-    self.mongodb_logs.mrq_logs.ensure_index([("job", 1)], background=False)
-    self.mongodb_logs.mrq_logs.ensure_index([("worker", 1)], background=False, sparse=True)
+    if self.mongodb_logs:
 
-    if self.config["mongodb_logs_size"] > 0:
+      self.mongodb_logs.mrq_logs.ensure_index([("job", 1)], background=False)
+      self.mongodb_logs.mrq_logs.ensure_index([("worker", 1)], background=False, sparse=True)
 
-      try:
-        self.mongodb_logs.command("convertToCapped", "mrq_logs", size=self.config["mongodb_logs_size"])
-      except:
-        pass
+      if self.config["mongodb_logs_size"] > 0:
 
-    self.mongodb_logs.mrq_workers.ensure_index([("status", 1)], background=False)
-    self.mongodb_logs.mrq_workers.ensure_index([("datereported", 1)], background=False, expireAfterSeconds=3600)
+        try:
+          self.mongodb_logs.command("convertToCapped", "mrq_logs", size=self.config["mongodb_logs_size"])
+        except:
+          pass
+
+    self.mongodb_jobs.mrq_workers.ensure_index([("status", 1)], background=False)
+    self.mongodb_jobs.mrq_workers.ensure_index([("datereported", 1)], background=False, expireAfterSeconds=3600)
 
     self.mongodb_jobs.mrq_jobs.ensure_index([("status", 1)], background=False)
     self.mongodb_jobs.mrq_jobs.ensure_index([("path", 1), ("status", 1)], background=False)
@@ -165,6 +174,9 @@ class Worker(object):
       self.report_worker()
       self.flush_logs(w=0)
       time.sleep(int(self.config["report_interval"]))
+
+  def get_memory(self):
+    return self.process.get_memory_info().rss
 
   def get_worker_report(self):
 
@@ -217,7 +229,7 @@ class Worker(object):
           "percent": self.process.get_cpu_percent(0)
         },
         "mem": {
-          "rss": self.process.get_memory_info().rss
+          "rss": self.get_memory()
         }
         # https://code.google.com/p/psutil/wiki/Documentation
         # get_open_files
@@ -233,7 +245,7 @@ class Worker(object):
   def report_worker(self, w=0):
 
     try:
-      self.mongodb_logs.mrq_workers.update({
+      self.mongodb_jobs.mrq_workers.update({
         "_id": ObjectId(self.id)
       }, {"$set": self.get_worker_report()}, upsert=True, w=w)
     except pymongo.errors.AutoReconnect:
@@ -321,7 +333,15 @@ class Worker(object):
       while True:
 
         while True:
+
+          if self.config["trace_memory"]:
+            # When debugging memory, intermediate psutils call like this one are
+            # needed for some obscure reason. (tested in test_memoryleaks.py)
+            self.get_memory()
+            gevent.sleep(0.1)
+
           free_pool_slots = self.gevent_pool.free_count()
+
           if free_pool_slots > 0:
             self.status = "wait"
             break
@@ -387,6 +407,9 @@ class Worker(object):
         This is the first call happening inside the greenlet.
     """
 
+    if self.config["trace_memory"]:
+      job.trace_memory_start()
+
     set_current_job(job)
 
     gevent_timeout = gevent.Timeout(job.timeout, JobTimeoutException(
@@ -436,6 +459,9 @@ class Worker(object):
       set_current_job(None)
 
       self.done_jobs += 1
+
+      if self.config["trace_memory"]:
+        job.trace_memory_stop()
 
   def shutdown_graceful(self):
     """ Graceful shutdown: waits for all the jobs to finish. """
