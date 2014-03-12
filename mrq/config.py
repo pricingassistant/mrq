@@ -3,7 +3,7 @@ import os
 import sys
 
 
-def get_config(sources=("file", "env", "args"), env_prefix="MRQ_", defaults=None):
+def get_config(sources=("file", "env", "args"), env_prefix="MRQ_"):
 
   parser = argparse.ArgumentParser(description='Starts an RQ worker')
 
@@ -89,46 +89,53 @@ def get_config(sources=("file", "env", "args"), env_prefix="MRQ_", defaults=None
   parser.add_argument('queues', nargs='*', default=["default"],
                       help='The queues to listen on (default: \'default\')')
 
-  if "args" in sources:
-    from_args = parser.parse_args()
-  else:
-    from_args = parser.parse_args([])
-
-  # Get defaults
-  merged_config = from_args.__dict__
-  if defaults is not None:
-    merged_config.update(defaults)
-
-  # If a mrq-config.py file is in the current directory, use it!
-  default_config_file = os.path.join(os.getcwd(), "mrq-config.py")
-
-  if merged_config["config"] is None and os.path.isfile(default_config_file):
-    # print "Using config file at %s" % default_config_file
-    merged_config["config"] = default_config_file
-
-  config_module = None
-  if "file" in sources and merged_config["config"]:
-    sys.path.append(os.path.dirname(merged_config["config"]))
-    config_module = __import__(os.path.basename(merged_config["config"].replace(".py", "")))
-    sys.path.pop(-1)
-    merged_config.update({k.lower(): v for k, v in config_module.__dict__.iteritems() if k[0].isupper()})
+  default_config = parser.parse_args([]).__dict__
 
   # Keys that can't be passed from the command line
-  merged_config["tasks"] = {}
-  merged_config["scheduled_tasks"] = {}
+  default_config["tasks"] = {}
+  default_config["scheduled_tasks"] = {}
 
+  # Only keep values different from config, actually passed on the command line
+  from_args = {}
+  if "args" in sources:
+    for k, v in parser.parse_args().__dict__.iteritems():
+      if default_config[k] != v:
+        from_args[k] = v
+
+  # If we were given another config file, use it
+  if from_args.get("config"):
+    config_file = from_args.get("config")
+  # If a mrq-config.py file is in the current directory, use it!
+  elif os.path.isfile(os.path.join(os.getcwd(), "mrq-config.py")):
+    config_file = os.path.join(os.getcwd(), "mrq-config.py")
+  else:
+    config_file = None
+
+  from_file = {}
+  if config_file and "file" in sources:
+    sys.path.insert(0, os.path.dirname(config_file))
+    config_module = __import__(os.path.basename(config_file.replace(".py", "")))
+    sys.path.pop(0)
+    for k, v in config_module.__dict__.iteritems():
+
+      # We only keep variables starting with an uppercase character.
+      if k[0].isupper():
+        default_config[k.lower()] = v
+        if k.lower() not in default_config:
+          default_config[k.lower()] = v
+
+  # Merge the config in the order given by the user
+  merged_config = default_config
   for part in sources:
     for name, arg_value in merged_config.iteritems():
 
-      value = None
       if part == "env":
         value = os.environ.get(env_prefix + name.upper())
-      elif part == "args":
-        value = arg_value
-      elif part == "file":
-        value = getattr(config_module, name.upper(), None)
-
-      if value is not None:
-        merged_config[name] = value
+        if value:
+          merged_config[name] = value
+      elif part == "args" and name in from_args:
+        merged_config[name] = from_args[name]
+      elif part == "file" and name in from_file:
+        merged_config[name] = from_file[name]
 
   return merged_config

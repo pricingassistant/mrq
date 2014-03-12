@@ -58,7 +58,7 @@ def test_memoryleaks_1mleak(worker):
   worker.mongodb_jobs.mrq_jobs.remove()
 
   # 1M leak!
-  diff1m = get_diff_after_jobs(worker, 10, 100000, sleep=0.05)  # sleep is needed so that psutil measurements are accurate :-/
+  diff1m = get_diff_after_jobs(worker, 10, 100000, sleep=0.2)  # sleep is needed so that psutil measurements are accurate :-/
 
   assert diff1m > 900000
 

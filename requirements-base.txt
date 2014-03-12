@@ -7,3 +7,4 @@ hiredis==0.1.2
 psutil==1.2.1
 supervisor==3.0
 subprocess32==3.2.5
+objgraph==1.8.0
