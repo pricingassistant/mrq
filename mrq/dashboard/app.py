@@ -6,6 +6,8 @@ from flask import Flask, request
 import os
 import sys
 from bson import ObjectId
+from ast import literal_eval
+from HTMLParser import HTMLParser
 
 sys.path.insert(0, os.getcwd())
 
@@ -69,11 +71,37 @@ def api_taskpaths():
 
 @app.route('/workers')
 @requires_auth
-def test():
+def get_workers():
   collection = connections.mongodb_logs.mrq_workers
   cursor = collection.find({"status": {"$ne": "stop"}})
   data = {"workers": list(cursor)}
   return jsonify(data)
+
+def build_api_datatables_query(request):
+  query = {}
+
+  if request.args.get("redisqueue"):
+    query["_id"] = {"$in": [ObjectId(x) for x in Queue(request.args.get("redisqueue")).list_job_ids(limit=1000)]}
+  else:
+
+    for param in ["queue", "path", "status"]:
+      if request.args.get(param):
+        query[param] = request.args.get(param)
+    if request.args.get("id"):
+      query["_id"] = ObjectId(request.args.get("id"))
+    if request.args.get("worker"):
+      query["worker"] = ObjectId(request.args.get("worker"))
+
+    if request.args.get("params"):
+      try:
+        params_dict = literal_eval(HTMLParser().unescape(request.args.get("params")))
+        for key in params_dict.keys():
+          query["params.%s" % key] = params_dict[key]
+      except:
+        print "malformated"
+        pass
+
+  return query
 
 
 @app.route('/api/datatables/<unit>')
@@ -114,20 +142,8 @@ def api_datatables(unit):
   elif unit == "jobs":
 
     fields = None
-    query = {}
+    query = build_api_datatables_query(request)
     sort = [("_id", 1)]
-
-    if request.args.get("redisqueue"):
-      query["_id"] = {"$in": [ObjectId(x) for x in Queue(request.args.get("redisqueue")).list_job_ids(limit=1000)]}
-    else:
-
-      for param in ["queue", "path", "status"]:
-        if request.args.get(param):
-          query[param] = request.args.get(param)
-      if request.args.get("id"):
-        query["_id"] = ObjectId(request.args.get("id"))
-      if request.args.get("worker"):
-        query["worker"] = ObjectId(request.args.get("worker"))
 
     # We can't search easily params because we store it as decoded JSON in mongo :(
     # Add a string index?

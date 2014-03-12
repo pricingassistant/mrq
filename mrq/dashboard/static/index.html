@@ -215,6 +215,10 @@
               <input type="text" class="form-control input-sm js-datatable-filters-path" id="jobs-form-path" placeholder="Task" value="<%= filters.path %>">
             </div>
             <div class="form-group">
+              <label class="sr-only" for="jobs-form-params">Task</label>
+              <input type="text" class="form-control input-sm js-datatable-filters-params" id="jobs-form-params" placeholder="Params" value="<%= filters.params %>">
+            </div>
+            <div class="form-group">
               <select class="form-control input-sm js-datatable-filters-status" id="jobs-form-status">
 
                 <option <%= filters.status==""?"selected='selected'":"" %> value="">-statuses-</option>

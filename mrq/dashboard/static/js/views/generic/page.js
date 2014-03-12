@@ -145,6 +145,7 @@ define(["backbone", "underscore", "jquery"],function(Backbone, _, $) {
       }
     },
 
+
     // Used mainly to generate sparklines across refreshes
     addToCounter: function(name, newvalue, maxvalues) {
 
@@ -172,7 +173,7 @@ define(["backbone", "underscore", "jquery"],function(Backbone, _, $) {
       var diff = this.counters[name][last]["value"] - this.counters[name][0]["value"];
 
       if (diff == 0) return 0;
-      console.log(this.counters[name][last]["value"], this.counters[name][0]["value"])
+
       return diff / interval;
 
     },
