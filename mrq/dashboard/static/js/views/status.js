@@ -10,7 +10,6 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models", "moment
     },
 
     renderDatatable:function() {
-      console.log("yolo1");
 
       var self = this;
 

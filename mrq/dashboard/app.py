@@ -6,8 +6,8 @@ from flask import Flask, request
 import os
 import sys
 from bson import ObjectId
-from ast import literal_eval
 from HTMLParser import HTMLParser
+import json
 
 sys.path.insert(0, os.getcwd())
 
@@ -94,12 +94,12 @@ def build_api_datatables_query(request):
 
     if request.args.get("params"):
       try:
-        params_dict = literal_eval(HTMLParser().unescape(request.args.get("params")))
+        params_dict = json.loads(HTMLParser().unescape(request.args.get("params")))
+
         for key in params_dict.keys():
           query["params.%s" % key] = params_dict[key]
-      except:
-        print "malformated"
-        pass
+      except Exception as e:
+        print "Error will converting form JSON: %s" % e
 
   return query
 

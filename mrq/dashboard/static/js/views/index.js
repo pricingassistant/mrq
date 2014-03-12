@@ -25,7 +25,12 @@ define(["jquery", "underscore", "views/generic/page", "models", "moment", "circl
           doneJobs += workers[i].done_jobs
         }
 
-        cb.apply(self, [poolSize, currentJobs, Math.round((currentJobs / poolSize) * 100), doneJobs]);
+        if (poolSize == 0)
+          var utilization = 0;
+        else
+          var utilization = Math.round((currentJobs / poolSize) * 100)
+
+        cb.apply(self, [poolSize, currentJobs, utilization, doneJobs]);
       });
     },
 

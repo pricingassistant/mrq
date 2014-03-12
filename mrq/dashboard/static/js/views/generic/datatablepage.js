@@ -6,13 +6,14 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
    * A page with a main DataTable instance bound to this.col
    *
    */
-  return Page.extend({
+  return dataTablePage = Page.extend({
 
     alwaysRenderOnShow:true,
 
     init: function() {
       var self = this;
 
+      dataTablePage.__super__.init.apply(self);
       this.filters = {};
 
 
