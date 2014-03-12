@@ -134,6 +134,15 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models", "moment
             }
           },
           {
+            "sTitle": "Speed",
+            "sClass": "col-eta",
+            "sType":"numeric",
+            "sWidth":"120px",
+            "mData":function(source, type, val) {
+              return (Math.round(self.getCounterSpeed("worker.donejobs."+source._id) * 100) / 100) + " j/s";
+            }
+          },
+          {
             "sTitle": "Current Jobs",
             "sClass": "col-current-jobs",
             "sType":"numeric",

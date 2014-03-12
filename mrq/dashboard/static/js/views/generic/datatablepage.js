@@ -153,9 +153,7 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
       var el = self.$(".js-datatable");
 
       // We may have navigated away in the meantime
-      if (!el.is(":visible")) {
-        return console.log("DT wasn't visible anymore");
-      }
+      if (!el.is(":visible")) return;
 
       // Don't reload when a modal is shown
       if ($(".modal:visible").length) {
@@ -190,16 +188,44 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
 
       if (!this.counters[name]) this.counters[name] = [];
 
-      this.counters[name].push(newvalue);
+      this.counters[name].push({
+        "date": +new Date(),
+        "value": newvalue
+      });
 
       if (this.counters[name].length > maxvalues) {
         this.counters[name].shift();
       }
 
-      return this.counters[name];
+      return _.pluck(this.counters[name], "value");
 
     },
 
+    getCounterSpeed: function(name) {
+
+      if ((this.counters[name] || []).length < 2) return 0;
+
+      var last = this.counters[name].length - 1;
+      var interval = (this.counters[name][last]["date"] - this.counters[name][0]["date"]) / 1000;
+      var diff = this.counters[name][last]["value"] - this.counters[name][0]["value"];
+
+      if (diff == 0) return 0;
+
+      return diff / interval;
+
+    },
+
+    getCounterEta: function(name, total) {
+
+      var speed = this.getCounterSpeed(name);
+
+      if (speed >= 0) {
+        return "N/A";
+      } else {
+        return moment.duration(total * 1000 / speed).humanize();
+      }
+
+    },
 
     filterschanged:function(evt) {
 

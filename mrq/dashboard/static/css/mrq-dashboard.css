@@ -1,18 +1,19 @@
 
-#app-container .modal-content textarea, #app-container .col-jobs-params pre {
+pre.js-oxpre {
   font-family:monospace;
   background-color:#1c1e22;
   color:white;
   border:1px solid black;
   width:100%;
   font-size:12px;
-  overflow:hidden;
   position:relative;
+  overflow:auto;
 }
-
+#app-container .modal-content pre{
+  max-height: 500px;
+}
 #app-container .col-jobs-params pre {
   max-height:300px;
-  overflow:auto;
 }
 
 #app-container .modal-content textarea {

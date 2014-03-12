@@ -9,7 +9,7 @@ import signal
 import subprocess32 as subprocess
 import psutil
 
-sys.path.append(os.getcwd())
+sys.path.insert(0, os.getcwd())
 
 from mrq import config
 from mrq.utils import load_class_by_path

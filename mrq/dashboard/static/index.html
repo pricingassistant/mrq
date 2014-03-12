@@ -13,7 +13,7 @@
     <div class="navbar navbar-default navbar-fixed-top">
       <div class="container">
         <div class="navbar-header">
-          <a href="../" class="navbar-brand">MRQ Dashboard</a>
+          <a href="/#" class="navbar-brand">MRQ Dashboard</a>
           <button class="navbar-toggle" type="button" data-toggle="collapse" data-target="#navbar-main">
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
@@ -24,13 +24,16 @@
           <ul class="nav navbar-nav">
 
             <li class="js-nav-queues">
-              <a href="/#">Queues</a>
+              <a href="/#queues">Queues</a>
             </li>
             <li class="js-nav-workers">
               <a href="/#workers">Workers</a>
             </li>
             <li class="js-nav-jobs">
               <a href="/#jobs">Jobs</a>
+            </li>
+            <li class="js-nav-taskpaths">
+              <a href="/#taskpaths">Task paths</a>
             </li>
             <li class="js-nav-scheduledjobs">
               <a href="/#scheduledjobs">Scheduled Jobs</a>
@@ -91,6 +94,8 @@
         <div class="js-page-worker"></div>
         <div class="js-page-jobs"></div>
         <div class="js-page-scheduledjobs"></div>
+        <div class="js-page-index"></div>
+        <div class="js-page-taskpaths"></div>
 
       </script>
 
@@ -136,6 +141,26 @@
         </div>
       </script>
 
+      <script id="tpl-page-taskpaths" type="text/template">
+
+        <h3>Jobs by task path</h3>
+
+        <div class="container">
+          <table cellpadding="0" cellspacing="0" border="0" class="datatable table table-striped table-bordered js-datatable">
+          </table>
+        </div>
+      </script>
+
+      <script id="tpl-page-index" type="text/template">
+
+        <h3>Jobs by status</h3>
+
+        <div class="container">
+          <table cellpadding="0" cellspacing="0" border="0" class="datatable table table-striped table-bordered js-datatable">
+          </table>
+        </div>
+      </script>
+
       <script id="tpl-page-jobs" type="text/template">
 
         <div class="modal js-jobs-modal" tabindex="-1" role="dialog">
@@ -146,7 +171,7 @@
                 <h4 class="modal-title"></h4>
               </div>
               <div class="modal-body">
-                <textarea class="js-jobs-modal-content"></textarea>
+                <pre class="js-oxpre js-jobs-modal-content"></pre>
               </div>
             </div>
           </div>

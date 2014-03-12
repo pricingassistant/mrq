@@ -1,6 +1,7 @@
 from bson import ObjectId
 import urllib2
 import json
+import time
 
 
 def test_general_simple_task_one(worker):
@@ -9,9 +10,11 @@ def test_general_simple_task_one(worker):
 
   assert result == 42
 
+  time.sleep(0.1)
+
   db_workers = list(worker.mongodb_logs.mrq_workers.find())
   assert len(db_workers) == 1
-  assert db_workers[0]["status"] == "wait"
+  assert db_workers[0]["status"] in ["full", "wait"]
 
   # Test the HTTP admin API
   admin_worker = json.load(urllib2.urlopen("http://localhost:20020"))
@@ -39,7 +42,7 @@ def test_general_simple_task_one(worker):
 
   db_workers = list(worker.mongodb_logs.mrq_workers.find())
   assert len(db_workers) == 1
-  assert db_workers[0]["name"] == db_jobs[0]["worker"]
+  assert db_workers[0]["_id"] == db_jobs[0]["worker"]
   assert db_workers[0]["status"] == "stop"
   assert db_workers[0]["jobs"] == []
   assert db_workers[0]["done_jobs"] == 1

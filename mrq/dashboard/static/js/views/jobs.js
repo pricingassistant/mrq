@@ -73,8 +73,8 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
 
       var self = this;
 
-      var job_id = $(evt.target).closest(".js-actions").data("jobid");
-      var action = $(evt.target).data("action");
+      var job_id = $(evt.currentTarget).closest(".js-actions").data("jobid");
+      var action = $(evt.currentTarget).data("action");
 
       if (action == "viewresult") {
 
@@ -160,7 +160,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
             "sClass": "col-jobs-params",
             "mDataProp": "params",
             "fnRender": function ( o /*, val */) {
-              return "<pre>"+JSON.stringify(o.aData.params, null, 2)+"</pre>";
+              return "<pre class='js-oxpre'>"+JSON.stringify(o.aData.params, null, 2)+"</pre>";
             }
           },
           {
@@ -198,10 +198,13 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
 
               if (type == "display") {
                 var display = [
-                  "started "+moment.utc(source.datestarted).fromNow()
+                  "queued "+moment.utc(1000 * parseInt(source._id.substring(0, 8), 16)).fromNow()
                   //"updated "+moment.utc(source.dateupdated).fromNow()
                 ];
 
+                if (source.datestarted) {
+                  display.push("started "+moment.utc(source.datestarted).fromNow());
+                }
                 if (source.totaltime) {
                   display.push("totaltime "+String(source.totaltime).substring(0,6)+"s");
                 }

@@ -1,42 +1,44 @@
-define(["jquery", "underscore", "views/generic/datatablepage", "models"],function($, _, DataTablePage, Models) {
+define(["jquery", "underscore", "views/generic/datatablepage", "models", "moment"],function($, _, DataTablePage, Models, moment) {
 
   return DataTablePage.extend({
 
-    el: '.js-page-queues',
+    el: '.js-page-index',
 
-    template:"#tpl-page-queues",
+    template:"#tpl-page-index",
 
     events:{
     },
+
 
     renderDatatable:function() {
 
       var self = this;
 
-      var datatableConfig = self.getCommonDatatableConfig("queues");
+      var datatableConfig = self.getCommonDatatableConfig("status");
 
       _.extend(datatableConfig, {
         "aoColumns": [
 
           {
-            "sTitle": "Name",
-            "sClass": "col-name",
-            "sType": "string",
-            "mData":function(source, type, val) {
-              return "<a href='/#jobs?queue="+source.name+"&status=queued'>"+source.name+"</a>";
+            "sTitle": "Status",
+            "sClass": "col-status",
+            "sType":"string",
+            "sWidth":"150px",
+            "mData":function(source, type/*, val*/) {
+              return "<a href='/#jobs?status="+source._id+"'>"+source._id+"</a>";
             }
           },
           {
             "sTitle": "Jobs",
             "sClass": "col-jobs",
             "sType":"numeric",
-            "mData":function(source, type, val) {
-              var cnt = source.count || 0;
-
+            "sWidth":"120px",
+            "mData":function(source, type/*, val*/) {
+              var cnt = (source.jobs || 0);
               if (type == "display") {
-                return "<a href='/#jobs?queue="+source.name+"&status=queued'>"+cnt+"</a>"
+                return "<a href='/#jobs?status="+source._id+"'>"+cnt+"</a>"
                  + "<br/>"
-                 + '<span class="inlinesparkline" values="'+self.addToCounter("queue."+source.name, cnt, 50).join(",")+'"></span>';
+                 + '<span class="inlinesparkline" values="'+self.addToCounter("index.status."+source._id, cnt, 50).join(",")+'"></span>';
               } else {
                 return cnt;
               }
@@ -52,7 +54,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
             "sClass": "col-eta",
             "sType":"numeric",
             "mData":function(source, type, val) {
-              return (Math.round(self.getCounterSpeed("queue."+source.name) * 100) / 100) + " jobs/second";
+              return (Math.round(self.getCounterSpeed("index.status."+source._id) * 100) / 100) + " jobs/second";
             }
           },
           {
@@ -60,7 +62,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
             "sClass": "col-eta",
             "sType":"numeric",
             "mData":function(source, type, val) {
-              return self.getCounterEta("queue."+source.name, source.count || 0);
+              return self.getCounterEta("index.status."+source._id, source.jobs || 0);
             }
           }
 

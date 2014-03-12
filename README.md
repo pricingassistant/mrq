@@ -90,7 +90,6 @@ TODO
 **whishlist**
 
  * task progress
- * ETAs / Lag stats for each queue + graphes
  * uniquestarted/uniquequeued via bulk sets?
  * Base cleaning/retry tasks: move
  * Current greenlet traces in dashboard

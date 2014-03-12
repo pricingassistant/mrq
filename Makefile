@@ -39,9 +39,6 @@ clean:
 	find . -name __pycache__ | xargs rm -r
 
 dashboard:
-	gunicorn -w 4 -b 0.0.0.0:5555 -k gevent mrq.dashboard.app:app
-
-dashboard_dev:
 	python mrq/dashboard/app.py
 
 stack:

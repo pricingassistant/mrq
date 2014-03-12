@@ -2,16 +2,18 @@ from gevent import monkey
 monkey.patch_all()
 
 from flask import Flask, request
-from utils import jsonify
+
 import os
 import sys
 from bson import ObjectId
 
-sys.path.append(os.getcwd())
+sys.path.insert(0, os.getcwd())
 
 from mrq.queue import send_task, Queue
-from mrq.context import connections, set_current_config
+from mrq.context import connections, set_current_config, get_current_config
 from mrq.config import get_config
+
+from utils import jsonify, requires_auth
 
 CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 
@@ -20,11 +22,53 @@ app = Flask("dashboard", static_folder=os.path.join(CURRENT_DIRECTORY, "static")
 
 
 @app.route('/')
+@requires_auth
 def root():
   return app.send_static_file("index.html")
 
 
+@app.route('/api/datatables/status')
+@requires_auth
+def api_jobstatuses():
+  stats = list(connections.mongodb_jobs.mrq_jobs.aggregate([
+    {"$sort": {"status": 1}},  # https://jira.mongodb.org/browse/SERVER-11447
+    {"$group": {"_id": "$status", "jobs": {"$sum": 1}}}
+  ])["result"])
+
+  stats.sort(key=lambda x: x["_id"])
+
+  data = {
+    "aaData": stats,
+    "iTotalDisplayRecords": len(stats)
+  }
+
+  data["sEcho"] = request.args["sEcho"]
+
+  return jsonify(data)
+
+
+@app.route('/api/datatables/taskpaths')
+@requires_auth
+def api_taskpaths():
+  stats = list(connections.mongodb_jobs.mrq_jobs.aggregate([
+    {"$sort": {"path": 1}},  # https://jira.mongodb.org/browse/SERVER-11447
+    {"$group": {"_id": "$path", "jobs": {"$sum": 1}}}
+  ])["result"])
+
+  stats.sort(key=lambda x: -x["jobs"])
+
+  data = {
+    "aaData": stats,
+    "iTotalDisplayRecords": len(stats)
+  }
+
+  data["sEcho"] = request.args["sEcho"]
+
+  return jsonify(data)
+
+
 @app.route('/api/datatables/<unit>')
+@requires_auth
 def api_datatables(unit):
 
   collection = None
@@ -36,6 +80,8 @@ def api_datatables(unit):
       "name": queue.id,
       "count": queue.size()
     } for queue in Queue.all()]
+
+    queues.sort(key=lambda x: -x["count"])
 
     data = {
       "aaData": queues,
@@ -60,6 +106,7 @@ def api_datatables(unit):
 
     fields = None
     query = {}
+    sort = [("_id", 1)]
 
     if request.args.get("redisqueue"):
       query["_id"] = {"$in": [ObjectId(x) for x in Queue(request.args.get("redisqueue")).list_job_ids(limit=1000)]}
@@ -97,6 +144,7 @@ def api_datatables(unit):
 
 
 @app.route('/api/job/<job_id>/result')
+@requires_auth
 def api_job_result(job_id):
   collection = connections.mongodb_jobs.mrq_jobs
 
@@ -110,13 +158,15 @@ def api_job_result(job_id):
 
 
 @app.route('/api/jobaction', methods=["POST"])
+@requires_auth
 def api_job_action():
   return jsonify({
-    "job_id": send_task("mrq.basetasks.utils.JobAction", {k: v for k, v in request.form.iteritems()})
+    "job_id": send_task("mrq.basetasks.utils.JobAction", {k: v for k, v in request.form.iteritems()}, queue=get_current_config()["dashboard_queue"])
   })
 
 
 @app.route('/api/logs')
+@requires_auth
 def api_logs():
   collection = connections.mongodb_logs.mrq_logs
 

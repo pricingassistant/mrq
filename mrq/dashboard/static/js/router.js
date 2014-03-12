@@ -4,8 +4,10 @@ define(["backbone", "underscore", "jquery"],function(Backbone, _, $) {
 
     routes: {
 
-      '': 'queues',
+      '': 'index',
+      'queues': 'queues',
       'workers': 'workers',
+      'taskpaths': 'taskpaths',
       'jobs': 'jobs',
       'scheduledjobs': 'scheduledjobs'
     },
@@ -90,6 +92,11 @@ define(["backbone", "underscore", "jquery"],function(Backbone, _, $) {
       this.app.rootView.showChildPage('queues');
     },
 
+    index: function() {
+      this.setNavbar("index");
+      this.app.rootView.showChildPage('index');
+    },
+
     workers: function(params) {
       this.setNavbar("workers");
       this.app.rootView.showChildPage('workers', {"options": {"params": params || {}}});
@@ -104,6 +111,12 @@ define(["backbone", "underscore", "jquery"],function(Backbone, _, $) {
       this.setNavbar("jobs");
       this.app.rootView.showChildPage('jobs', {"options": {"params": params || {}}});
     },
+
+    taskpaths: function(params) {
+      this.setNavbar("taskpaths");
+      this.app.rootView.showChildPage('taskpaths', {"options": {"params": params || {}}});
+    },
+
 
     worker: function(id) {
       this.setNavbar("workers");
