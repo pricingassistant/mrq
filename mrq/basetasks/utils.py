@@ -54,11 +54,18 @@ class JobAction(Task):
     elif action == "requeue":
 
       # Requeue task by groups of maximum 1k items (if all in the same queue)
-      for jobs in group_iter(self.collection.find(query, fields=["_id", "queue"]), n=1000):
+      cursor = self.collection.find(query, fields=["_id", "queue"])
+
+      # We must freeze the list because queries below would change it.
+      # This could not fit in memory, research adding {"stats": {"$ne": "queued"}} in the query
+      fetched_jobs = list(cursor)
+
+      for jobs in group_iter(fetched_jobs, n=1000):
 
         jobs_by_queue = defaultdict(list)
         for job in jobs:
           jobs_by_queue[job["queue"]].append(job["_id"])
+          stats["requeued"] += 1
 
         for queue in jobs_by_queue:
           self.collection.update({
@@ -66,11 +73,10 @@ class JobAction(Task):
           }, {"$set": {
             "status": "queued",
             "dateupdated": datetime.datetime.utcnow()
-          }})
+          }}, multi=True)
 
         # Between these two lines, jobs can become "lost" too.
 
         Queue(queue).enqueue_job_ids([str(x) for x in jobs_by_queue[queue]])
-        stats["requeued"] += len(jobs)
 
     return stats
