@@ -422,13 +422,13 @@ class Worker(object):
       trace, exception_name = self.get_stack_trace_info()
       self.log.error("Caught exception => retry")
       self.log.error(trace)
-      job.save_retry(sys.exc_info()[1], traceback=trace, exception_type=exception_name)
+      job.save_retry(sys.exc_info()[1], traceback=trace, exceptiontype=exception_name)
 
     except job.cancel_on_exceptions:
       trace, exception_name = self.get_stack_trace_info()
       self.log.error("Job cancelled")
       self.log.error(trace)
-      job.save_status("cancel", traceback=trace, exception_type=exception_name)
+      job.save_status("cancel", traceback=trace, exceptiontype=exception_name)
 
     except JobTimeoutException:
       trace, exception_name = self.get_stack_trace_info()
@@ -436,20 +436,20 @@ class Worker(object):
 
       if job.task.cancel_on_timeout:
         self.log.error("Job timeouted after %s seconds, cancelled" % job.timeout)
-        job.save_status("cancel", traceback=trace, exception_type=exception_name)
+        job.save_status("cancel", traceback=trace, exceptiontype=exception_name)
       else:
         self.log.error("Job timeouted after %s seconds" % job.timeout)
-        job.save_status("timeout", traceback=trace, exception_type=exception_name)
+        job.save_status("timeout", traceback=trace, exceptiontype=exception_name)
 
     except JobInterrupt:
       trace, exception_name = self.get_stack_trace_info()
       self.log.error(trace)
-      job.save_status("interrupt", traceback=trace, exception_type=exception_name)
+      job.save_status("interrupt", traceback=trace, exceptiontype=exception_name)
 
     except Exception:
       trace, exception_name = self.get_stack_trace_info()
       self.log.error(trace)
-      job.save_status("failed", traceback=trace, exception_type=exception_name)
+      job.save_status("failed", traceback=trace, exceptiontype=exception_name)
 
     finally:
       gevent_timeout.cancel()
