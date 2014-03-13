@@ -334,12 +334,6 @@ class Worker(object):
 
         while True:
 
-          if self.config["trace_memory"]:
-            # When debugging memory, intermediate psutils call like this one are
-            # needed for some obscure reason. (tested in test_memoryleaks.py)
-            self.get_memory()
-            gevent.sleep(0.1)
-
           free_pool_slots = self.gevent_pool.free_count()
 
           if free_pool_slots > 0:

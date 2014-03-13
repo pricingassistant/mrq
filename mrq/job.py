@@ -7,6 +7,9 @@ from .utils import load_class_by_path
 from .queue import Queue
 from .context import get_current_worker, log, connections, get_current_config
 import gevent
+import objgraph
+import random
+import gc
 
 
 class Job(object):
@@ -235,18 +238,14 @@ class Job(object):
 
   def trace_memory_start(self):
     """ Starts measuring memory consumption """
-    import objgraph
+
     objgraph.show_growth(limit=10)
-    #gc.collect()  # - is done in show_growth
+
+    gc.collect()
     self._memory_start = self.worker.get_memory()
 
   def trace_memory_stop(self):
     """ Stops measuring memory consumption """
-
-    #gc.collect() - is done in show_growth
-    import objgraph, random, gevent
-
-    gevent.sleep(0)
 
     objgraph.show_growth(limit=10)
 
@@ -261,6 +260,7 @@ class Job(object):
         filename='%s/%s-%s.png' % (get_current_config()["trace_memory_output_dir"], trace_type, self.id)
       )
 
+    gc.collect()
     self._memory_stop = self.worker.get_memory()
 
     diff = self._memory_stop - self._memory_start
