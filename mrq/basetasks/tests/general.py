@@ -2,7 +2,8 @@ from time import sleep
 from mrq.task import Task
 from mrq.context import log, retry_current_job, connections, get_current_config
 import urllib2
-
+import string
+import random
 
 
 class Add(Task):
@@ -49,7 +50,8 @@ class Leak(Task):
   def run(self, params):
 
     if params.get("size", 0) > 0:
-      LEAKS.append("x" * params.get("size", 0))
+      #LEAKS.append("".join([random.choice(string.letters) for _ in range(params.get("size", 0))]))
+      LEAKS.append(["1" for _ in range(params.get("size", 0))])
 
     if params.get("sleep", 0) > 0:
       sleep(params.get("sleep", 0))
