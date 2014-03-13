@@ -249,7 +249,6 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
     },
 
     render: function() {
-
       this.renderTemplate({"filters": this.filters||{}});
 
       this.renderFilters();

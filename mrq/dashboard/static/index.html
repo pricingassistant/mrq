@@ -36,6 +36,9 @@
             <li class="js-nav-taskpaths">
               <a href="/#taskpaths">Task paths</a>
             </li>
+            <li class="js-nav-taskexceptions">
+              <a href="/#taskexceptions">Task exceptions</a>
+            </li>
             <li class="js-nav-scheduledjobs">
               <a href="/#scheduledjobs">Scheduled Jobs</a>
             </li>
@@ -97,6 +100,8 @@
         <div class="js-page-scheduledjobs"></div>
         <div class="js-page-index"></div>
         <div class="js-page-taskpaths"></div>
+        <div class="js-page-taskexceptions"></div>
+
 
       </script>
 
@@ -152,6 +157,16 @@
         </div>
       </script>
 
+      <script id="tpl-page-taskexceptions" type="text/template">
+
+        <h3>Tasks by exceptions</h3>
+
+        <div class="container">
+          <table cellpadding="0" cellspacing="0" border="0" class="datatable table table-striped table-bordered js-datatable">
+          </table>
+        </div>
+      </script>
+
       <script id="tpl-page-index" type="text/template">
 
         <h3>Jobs by status</h3>
@@ -199,6 +214,12 @@
               <label class="sr-only" for="jobs-form-path">Task</label>
               <input type="text" class="form-control input-sm js-datatable-filters-path" id="jobs-form-path" placeholder="Task" value="<%= filters.path %>">
             </div>
+
+            <div class="form-group">
+              <label class="sr-only" for="jobs-form-exceptiontype">Exception Type</label>
+              <input type="text" class="form-control input-sm js-datatable-filters-exceptiontype" id="jobs-form-exceptiontype" placeholder="Exception Type" value="<%= filters.exceptiontype %>">
+            </div>
+
             <div class="form-group">
               <select class="form-control input-sm js-datatable-filters-status" id="jobs-form-status">
 

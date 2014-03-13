@@ -27,6 +27,27 @@ def root():
   return app.send_static_file("index.html")
 
 
+@app.route('/api/datatables/taskexceptions')
+@requires_auth
+def api_task_exceptions():
+  stats = list(connections.mongodb_jobs.mrq_jobs.aggregate([
+    {"$sort": {"status": 1}},  # https://jira.mongodb.org/browse/SERVER-11447
+    {"$match": {"status": "failed"}},
+    {"$group": {"_id": {"path": "$path", "exceptiontype": "$exceptiontype"}, "jobs": {"$sum": 1}}},
+  ])["result"])
+
+  stats.sort(key=lambda x: -x["jobs"])
+
+  data = {
+    "aaData": stats,
+    "iTotalDisplayRecords": len(stats)
+  }
+
+  data["sEcho"] = request.args["sEcho"]
+
+  return jsonify(data)
+
+
 @app.route('/api/datatables/status')
 @requires_auth
 def api_jobstatuses():
@@ -112,7 +133,7 @@ def api_datatables(unit):
       query["_id"] = {"$in": [ObjectId(x) for x in Queue(request.args.get("redisqueue")).list_job_ids(limit=1000)]}
     else:
 
-      for param in ["queue", "path", "status"]:
+      for param in ["queue", "path", "status", "exceptiontype"]:
         if request.args.get(param):
           query[param] = request.args.get(param)
       if request.args.get("id"):

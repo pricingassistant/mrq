@@ -13,12 +13,12 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
     },
 
     initFilters: function() {
-
       this.filters = {
         "worker": this.options.params.worker||"",
         "queue": this.options.params.queue||"",
         "path": this.options.params.path||"",
         "status": this.options.params.status||"",
+        "exceptiontype": this.options.params.exceptiontype||"",
         "id": this.options.params.id||"",
       };
 
@@ -54,7 +54,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
       $.ajax("/api/job/"+jobId+"/traceback", {
         "type": "GET",
         "success": function(data) {
-          self.$(".js-jobs-modal .js-jobs-modal-content").html(JSON.stringify(data["traceback"], null, 2).replace(/\\n/g, "<br/>"));
+          self.$(".js-jobs-modal .js-jobs-modal-content").html(data["traceback"].replace(/\\n/g, "<br/>"));
           self.$(".js-jobs-modal h4").html("Stack Trace");
           self.$(".js-jobs-modal").modal({});
         },
@@ -66,23 +66,20 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
 
 
     groupaction: function(evt) {
-
       evt.preventDefault();
       evt.stopPropagation();
 
       var self = this;
 
       var action = $(evt.target).data("action");
-
       var data = _.clone(this.filters);
-      data["action"] = action;
 
+      data["action"] = action;
       self.jobaction(evt, data);
 
     },
 
     row_jobaction:function(evt) {
-
       evt.preventDefault();
       evt.stopPropagation();
 
@@ -90,6 +87,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
 
       var job_id = $(evt.currentTarget).closest(".js-actions").data("jobid");
       var action = $(evt.currentTarget).data("action");
+
       self.$(".js-jobs-modal").unbind();
 
       if (action == "viewresult") {
@@ -208,7 +206,10 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
                 };
                 var css_class = status_classes[source.status] || "label-info";
 
-                html = "<a href='/#jobs?status=" + (source.status || "queued")+ "'>" + "<span class='label " + css_class + "'>" + (source.status || "queued") + "</span></a>";
+                html = "<div class='js-actions' data-jobid="+source._id+"><a href='/#jobs?status=" + (source.status || "queued")+ "'>" + "<span class='label " + css_class + "'>" + (source.status || "queued") + "</span></a>";
+                html += "<br/><br/>";
+                html += "<button class='btn btn-xs btn-default' data-action='viewstacktrace'><span class='glyphicon glyphicon-align-left'></span>Stacktrace</button>";
+                html += "</div>";
                 return (html);
               } else {
                 return source.status || "queued";
@@ -282,8 +283,6 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
                 return "<div class='js-actions' data-jobid='"+source._id+"'>"+
                   "<button class='btn btn-xs btn-default' data-action='viewlogs'><span class='glyphicon glyphicon-align-left'></span> Logs</button>"+
                   "<button class='pull-right btn btn-xs btn-default' data-action='viewresult'><span class='glyphicon glyphicon-file'></span> Result</button>"+
-                  "<br/><br/>"+
-                  "<button class='btn btn-xs btn-default' data-action='viewstacktrace'><span class='glyphicon glyphicon-align-left'></span> Stack Trace</button>"+
                   "<br/><br/>"+
                   "<button class='btn btn-xs btn-danger pull-right' data-action='cancel'><span class='glyphicon glyphicon-remove-circle'></span> Cancel</button>"+
                   "<button class='btn btn-xs btn-warning' data-action='requeue'><span class='glyphicon glyphicon-refresh'></span> Requeue</button>"+
