@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <title>MRQ Dashboard</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/static/css/jquery.circliful.css" media="screen">
     <link rel="stylesheet" href="/static/css/bootstrap-slate.min.css" media="screen">
     <link rel="stylesheet" href="/static/css/datatables.css" media="screen">
     <link rel="stylesheet" href="/static/css/mrq-dashboard.css" media="screen">
@@ -24,6 +25,9 @@
         <div class="navbar-collapse collapse" id="navbar-main">
           <ul class="nav navbar-nav">
 
+            <li class="js-nav-status">
+              <a href="/#status">status</a>
+            </li>
             <li class="js-nav-queues">
               <a href="/#queues">Queues</a>
             </li>
@@ -98,6 +102,7 @@
         <div class="js-page-worker"></div>
         <div class="js-page-jobs"></div>
         <div class="js-page-scheduledjobs"></div>
+        <div class="js-page-status"></div>
         <div class="js-page-index"></div>
         <div class="js-page-taskpaths"></div>
         <div class="js-page-taskexceptions"></div>
@@ -169,6 +174,17 @@
 
       <script id="tpl-page-index" type="text/template">
 
+        <h3>Overall</h3>
+        <div class="container">
+          <div class="row">
+            <div class="row-fluid js-circle-row">
+            </div>
+          </div>
+        </div>
+      </script>
+
+      <script id="tpl-page-status" type="text/template">
+
         <h3>Jobs by status</h3>
 
         <div class="container">
@@ -220,6 +236,10 @@
               <input type="text" class="form-control input-sm js-datatable-filters-exceptiontype" id="jobs-form-exceptiontype" placeholder="Exception Type" value="<%= filters.exceptiontype %>">
             </div>
 
+            <div class="form-group">
+              <label class="sr-only" for="jobs-form-params">Task</label>
+              <input type="text" class="form-control input-sm js-datatable-filters-params" id="jobs-form-params" placeholder="Params" value="<%= filters.params %>">
+            </div>
             <div class="form-group">
               <select class="form-control input-sm js-datatable-filters-status" id="jobs-form-status">
 

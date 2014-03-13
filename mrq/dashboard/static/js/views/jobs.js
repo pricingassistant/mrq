@@ -19,9 +19,9 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
         "path": this.options.params.path||"",
         "status": this.options.params.status||"",
         "exceptiontype": this.options.params.exceptiontype||"",
+        "params": (this.options.params.params||"").replace(/"/g, '&quot;'),
         "id": this.options.params.id||"",
       };
-
     },
 
     setOptions:function(options) {
@@ -320,8 +320,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
         self.filters[k] = self.$(".js-datatable-filters-"+k).val();
       });
 
-      window.location = "/#jobs?"+$.param(self.filters);
-
+      window.location = "/#jobs?"+$.param(self.filters, true).replace(/\+/g, "%20");
     },
 
   });

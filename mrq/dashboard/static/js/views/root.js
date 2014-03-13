@@ -2,11 +2,11 @@
  * @fileoverview Defines the view container view that contains all views
  */
 define(["views/generic/page", "jquery",
-        "views/queues", "views/workers", "views/jobs", "views/scheduledjobs", "views/index", "views/taskpaths", "views/taskexceptions"],
+        "views/queues", "views/workers", "views/jobs", "views/scheduledjobs", "views/index", "views/taskpaths", "views/status", "views/taskexceptions"],
 
       function(
         Page, $,
-        QueuesView, WorkersView, JobsView, ScheduledJobsView, IndexView, TaskPathsView, TaskExceptionsView
+        QueuesView, WorkersView, JobsView, ScheduledJobsView, IndexView, TaskPathsView, StatusView, TaskExceptionsView
   ) {
 
   return Page.extend({
@@ -114,6 +114,7 @@ define(["views/generic/page", "jquery",
       this.addChildPage('taskpaths', new TaskPathsView());
       this.addChildPage('taskexceptions', new TaskExceptionsView());
       this.addChildPage('index', new IndexView());
+      this.addChildPage('status', new StatusView());
 
       return this;
     }

@@ -43,6 +43,11 @@ div.dataTables_info {
   box-sizing: content-box;
 }
 
+.stat {
+  margin-left: 50px;
+  display: inline;
+}
+
 
 .spin {
   -webkit-animation: spin 1s infinite linear;
