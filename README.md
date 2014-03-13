@@ -73,6 +73,7 @@ Use in your application
 - install `mrq==0.0.6` in your application virtualenv
 - then you can run `mrq-worker` and `mrq-dashboard`
 - To run a task you can use `mrq-run`. If you add the `--async` option that will enqueue it to be later ran by a worker
+- you may want to convert your logs db to a capped collection : ie. run db.runCommand({"convertToCapped": "mrq_jobs", "size": 10737418240})
 
 PyPy
 ====
