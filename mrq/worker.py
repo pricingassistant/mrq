@@ -401,6 +401,9 @@ class Worker(object):
 
     return self.exitcode
 
+  def get_stack_trace_info(self):
+    return traceback.format_exc(), sys.exc_info()[0].__name__
+
   def perform_job(self, job):
     """ Wraps a job.perform() call with timeout logic and exception handlers.
 
@@ -422,37 +425,37 @@ class Worker(object):
       job.perform()
 
     except job.retry_on_exceptions:
-      trace = traceback.format_exc()
+      trace, exception_name = self.get_stack_trace_info()
       self.log.error("Caught exception => retry")
       self.log.error(trace)
-      job.save_retry(sys.exc_info()[1], traceback=trace)
+      job.save_retry(sys.exc_info()[1], traceback=trace, exception_type=exception_name)
 
     except job.cancel_on_exceptions:
-      trace = traceback.format_exc()
+      trace, exception_name = self.get_stack_trace_info()
       self.log.error("Job cancelled")
       self.log.error(trace)
-      job.save_status("cancel", traceback=trace)
+      job.save_status("cancel", traceback=trace, exception_type=exception_name)
 
     except JobTimeoutException:
-      trace = traceback.format_exc()
+      trace, exception_name = self.get_stack_trace_info()
       self.log.error(trace)
 
       if job.task.cancel_on_timeout:
         self.log.error("Job timeouted after %s seconds, cancelled" % job.timeout)
-        job.save_status("cancel", traceback=trace)
+        job.save_status("cancel", traceback=trace, exception_type=exception_name)
       else:
         self.log.error("Job timeouted after %s seconds" % job.timeout)
-        job.save_status("timeout", traceback=trace)
+        job.save_status("timeout", traceback=trace, exception_type=exception_name)
 
     except JobInterrupt:
-      trace = traceback.format_exc()
+      trace, exception_name = self.get_stack_trace_info()
       self.log.error(trace)
-      job.save_status("interrupt", traceback=trace)
+      job.save_status("interrupt", traceback=trace, exception_type=exception_name)
 
     except Exception:
-      trace = traceback.format_exc()
+      trace, exception_name = self.get_stack_trace_info()
       self.log.error(trace)
-      job.save_status("failed", traceback=trace)
+      job.save_status("failed", traceback=trace, exception_type=exception_name)
 
     finally:
       gevent_timeout.cancel()

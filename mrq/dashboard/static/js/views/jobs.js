@@ -50,6 +50,21 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
 
     },
 
+    refreshStackTrace: function(jobId)  {
+      $.ajax("/api/job/"+jobId+"/traceback", {
+        "type": "GET",
+        "success": function(data) {
+          self.$(".js-jobs-modal .js-jobs-modal-content").html(JSON.stringify(data["traceback"], null, 2).replace(/\\n/g, "<br/>"));
+          self.$(".js-jobs-modal h4").html("Stack Trace");
+          self.$(".js-jobs-modal").modal({});
+        },
+        "error": function(xhr, status, error) {
+          alert("Error: "+error);
+        }
+      });
+    },
+
+
     groupaction: function(evt) {
 
       evt.preventDefault();
@@ -75,6 +90,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
 
       var job_id = $(evt.currentTarget).closest(".js-actions").data("jobid");
       var action = $(evt.currentTarget).data("action");
+      self.$(".js-jobs-modal").unbind();
 
       if (action == "viewresult") {
 
@@ -104,6 +120,16 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
         });
         self.refresh_logs(job_id);
 
+      } else if (action == "viewstacktrace") {
+
+        self.$(".js-jobs-modal .js-jobs-modal-content").html("Loading...");
+        self.$(".js-jobs-modal h4").html("Stack Trace");
+        self.$(".js-jobs-modal").modal({});
+
+        self.$(".js-jobs-modal").on("poll", function() {
+          self.refreshStackTrace(job_id);
+        });
+        self.refreshStackTrace(job_id);
       } else {
 
         self.jobaction(evt, {
@@ -256,6 +282,8 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
                 return "<div class='js-actions' data-jobid='"+source._id+"'>"+
                   "<button class='btn btn-xs btn-default' data-action='viewlogs'><span class='glyphicon glyphicon-align-left'></span> Logs</button>"+
                   "<button class='pull-right btn btn-xs btn-default' data-action='viewresult'><span class='glyphicon glyphicon-file'></span> Result</button>"+
+                  "<br/><br/>"+
+                  "<button class='btn btn-xs btn-default' data-action='viewstacktrace'><span class='glyphicon glyphicon-align-left'></span> Stack Trace</button>"+
                   "<br/><br/>"+
                   "<button class='btn btn-xs btn-danger pull-right' data-action='cancel'><span class='glyphicon glyphicon-remove-circle'></span> Cancel</button>"+
                   "<button class='btn btn-xs btn-warning' data-action='requeue'><span class='glyphicon glyphicon-refresh'></span> Requeue</button>"+

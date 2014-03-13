@@ -90,7 +90,7 @@ class Job(object):
 
     return self
 
-  def save_status(self, status, result=None, traceback=None, dateretry=None, queue=None, w=1):
+  def save_status(self, status, result=None, traceback=None, exceptiontype=None, dateretry=None, queue=None, w=1):
 
     now = datetime.datetime.utcnow()
     updates = {
@@ -104,6 +104,8 @@ class Job(object):
       updates["result"] = result
     if traceback is not None:
       updates["traceback"] = traceback
+    if exceptiontype is not None:
+      updates["exceptiontype"] = exceptiontype
     if dateretry is not None:
       updates["dateretry"] = dateretry
     if queue is not None:

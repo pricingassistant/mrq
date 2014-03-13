@@ -157,6 +157,20 @@ def api_job_result(job_id):
   })
 
 
+@app.route('/api/job/<job_id>/traceback')
+@requires_auth
+def api_job_traceback(job_id):
+  collection = connections.mongodb_jobs.mrq_jobs
+  job_data = collection.find_one({"_id": ObjectId(job_id)}, fields=["traceback"])
+
+  if not job_data:
+    job_data = {}
+
+  return jsonify({
+    "traceback": job_data.get("traceback", "No exception raised")
+  })
+
+
 @app.route('/api/jobaction', methods=["POST"])
 @requires_auth
 def api_job_action():
