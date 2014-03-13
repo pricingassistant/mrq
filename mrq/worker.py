@@ -122,13 +122,6 @@ class Worker(object):
       self.mongodb_logs.mrq_logs.ensure_index([("job", 1)], background=False)
       self.mongodb_logs.mrq_logs.ensure_index([("worker", 1)], background=False, sparse=True)
 
-      if self.config["mongodb_logs_size"] > 0:
-
-        try:
-          self.mongodb_logs.command("convertToCapped", "mrq_logs", size=self.config["mongodb_logs_size"])
-        except:
-          pass
-
     self.mongodb_jobs.mrq_workers.ensure_index([("status", 1)], background=False)
     self.mongodb_jobs.mrq_workers.ensure_index([("datereported", 1)], background=False, expireAfterSeconds=3600)
 
