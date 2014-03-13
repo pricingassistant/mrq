@@ -37,9 +37,11 @@ def api_task_exceptions():
   ])["result"])
 
   stats.sort(key=lambda x: -x["jobs"])
+  start = int(request.args.get("iDisplayStart", 0))
+  end = int(request.args.get("iDisplayLength", 20)) + start
 
   data = {
-    "aaData": stats,
+    "aaData": stats[start:end],
     "iTotalDisplayRecords": len(stats)
   }
 
