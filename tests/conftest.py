@@ -127,25 +127,14 @@ class WorkerFixture(ProcessFixture):
     self.started = True
 
     if deps:
-      self.fixture_mongodb.start()
-      self.fixture_redis.start()
-
-    # Will auto-connect
-    connections.reset()
-    self.mongodb_jobs = connections.mongodb_jobs
-    self.mongodb_logs = connections.mongodb_logs
-    self.redis = connections.redis
-
-    if flush and deps:
-      self.fixture_mongodb.flush()
-      self.fixture_redis.flush()
+      self.start_deps(flush=flush)
 
     processes = 0
     m = re.search(r"--processes (\d+)", kwargs.get("flags", ""))
     if m:
       processes = int(m.group(1))
 
-    cmdline = "python mrq/bin/mrq_worker.py --mongodb_logs_size 0 %s %s %s %s" % (
+    cmdline = "python mrq/bin/mrq_worker.py --print_mongodb --trace_mongodb --mongodb_logs_size 0 %s %s %s %s" % (
       "--admin_port 20020" if (processes <= 1) else "",
       "--trace_greenlets" if trace else "",
       kwargs.get("flags", ""),
@@ -157,9 +146,26 @@ class WorkerFixture(ProcessFixture):
       processes += 1
     ProcessFixture.start(self, cmdline=cmdline, env=kwargs.get("env"), expected_children=processes)
 
+  def start_deps(self, flush=True):
+
+    self.fixture_mongodb.start()
+    self.fixture_redis.start()
+
+    # Will auto-connect
+    connections.reset()
+
+    self.mongodb_jobs = connections.mongodb_jobs
+    self.mongodb_logs = connections.mongodb_logs
+    self.redis = connections.redis
+
+    if flush:
+      self.fixture_mongodb.flush()
+      self.fixture_redis.flush()
+
   def stop(self, deps=True, sig=2, **kwargs):
 
-    ProcessFixture.stop(self, sig=sig, **kwargs)
+    if self.started:
+      ProcessFixture.stop(self, sig=sig, **kwargs)
 
     if deps:
       self.stop_deps(**kwargs)

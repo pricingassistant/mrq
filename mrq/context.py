@@ -101,11 +101,11 @@ def _connections_factory(attr):
 
       log.debug("Connecting to MongoDB at %s/%s..." % (mongoHosts, mongoDbName))
 
-      value = MongoClient(mongoHosts)[mongoDbName]
+      db = MongoClient(mongoHosts)[mongoDbName]
       if mongoUsername:
-        value.authenticate(mongoUsername, mongoPassword)
+        db.authenticate(mongoUsername, mongoPassword)
 
-      return value
+      return db
 
     # Let's just assume we got a MongoDB-like object!
     else:

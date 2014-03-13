@@ -10,6 +10,7 @@ import gevent
 import objgraph
 import random
 import gc
+from collections import defaultdict
 
 
 class Job(object):
@@ -39,12 +40,18 @@ class Job(object):
     self.datestarted = None
 
     self.collection = connections.mongodb_jobs.mrq_jobs
-    self.id = ObjectId(job_id)
+
+    if job_id is None:
+      self.id = None
+    else:
+      self.id = ObjectId(job_id)
 
     self.data = None
     self.task = None
     self.greenlet_switches = 0
     self.greenlet_time = 0
+
+    self._trace_mongodb = defaultdict(int)
 
     if start:
       self.fetch(start=True, full_data=False)
@@ -56,6 +63,9 @@ class Job(object):
 
   def fetch(self, start=False, full_data=True):
     """ Get the current job data and possibly flag it as started. """
+
+    if self.id is None:
+      return self
 
     if full_data is True:
       fields = None
@@ -94,6 +104,9 @@ class Job(object):
     return self
 
   def save_status(self, status, result=None, traceback=None, dateretry=None, queue=None, w=1):
+
+    if self.id is None:
+      return
 
     now = datetime.datetime.utcnow()
     updates = {
@@ -208,6 +221,8 @@ class Job(object):
       log.debug("Job %s success: %0.6fs total" % (
         self.id, (datetime.datetime.utcnow() - self.datestarted).total_seconds()
       ))
+
+    return result
 
   def wait(self, poll_interval=1, timeout=None, full_data=False):
     """ Wait for this job to finish. """
