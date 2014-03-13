@@ -6,6 +6,8 @@ from flask import Flask, request
 import os
 import sys
 from bson import ObjectId
+from HTMLParser import HTMLParser
+import json
 
 sys.path.insert(0, os.getcwd())
 
@@ -25,6 +27,29 @@ app = Flask("dashboard", static_folder=os.path.join(CURRENT_DIRECTORY, "static")
 @requires_auth
 def root():
   return app.send_static_file("index.html")
+
+
+@app.route('/api/datatables/taskexceptions')
+@requires_auth
+def api_task_exceptions():
+  stats = list(connections.mongodb_jobs.mrq_jobs.aggregate([
+    {"$sort": {"status": 1}},  # https://jira.mongodb.org/browse/SERVER-11447
+    {"$match": {"status": "failed"}},
+    {"$group": {"_id": {"path": "$path", "exceptiontype": "$exceptiontype"}, "jobs": {"$sum": 1}}},
+  ])["result"])
+
+  stats.sort(key=lambda x: -x["jobs"])
+  start = int(request.args.get("iDisplayStart", 0))
+  end = int(request.args.get("iDisplayLength", 20)) + start
+
+  data = {
+    "aaData": stats[start:end],
+    "iTotalDisplayRecords": len(stats)
+  }
+
+  data["sEcho"] = request.args["sEcho"]
+
+  return jsonify(data)
 
 
 @app.route('/api/datatables/status')
@@ -67,6 +92,41 @@ def api_taskpaths():
   return jsonify(data)
 
 
+@app.route('/workers')
+@requires_auth
+def get_workers():
+  collection = connections.mongodb_logs.mrq_workers
+  cursor = collection.find({"status": {"$ne": "stop"}})
+  data = {"workers": list(cursor)}
+  return jsonify(data)
+
+def build_api_datatables_query(request):
+  query = {}
+
+  if request.args.get("redisqueue"):
+    query["_id"] = {"$in": [ObjectId(x) for x in Queue(request.args.get("redisqueue")).list_job_ids(limit=1000)]}
+  else:
+
+    for param in ["queue", "path", "status", "exceptiontype"]:
+      if request.args.get(param):
+        query[param] = request.args.get(param)
+    if request.args.get("id"):
+      query["_id"] = ObjectId(request.args.get("id"))
+    if request.args.get("worker"):
+      query["worker"] = ObjectId(request.args.get("worker"))
+
+    if request.args.get("params"):
+      try:
+        params_dict = json.loads(HTMLParser().unescape(request.args.get("params")))
+
+        for key in params_dict.keys():
+          query["params.%s" % key] = params_dict[key]
+      except Exception as e:
+        print "Error will converting form JSON: %s" % e
+
+  return query
+
+
 @app.route('/api/datatables/<unit>')
 @requires_auth
 def api_datatables(unit):
@@ -105,20 +165,8 @@ def api_datatables(unit):
   elif unit == "jobs":
 
     fields = None
-    query = {}
+    query = build_api_datatables_query(request)
     sort = [("_id", 1)]
-
-    if request.args.get("redisqueue"):
-      query["_id"] = {"$in": [ObjectId(x) for x in Queue(request.args.get("redisqueue")).list_job_ids(limit=1000)]}
-    else:
-
-      for param in ["queue", "path", "status"]:
-        if request.args.get(param):
-          query[param] = request.args.get(param)
-      if request.args.get("id"):
-        query["_id"] = ObjectId(request.args.get("id"))
-      if request.args.get("worker"):
-        query["worker"] = ObjectId(request.args.get("worker"))
 
     # We can't search easily params because we store it as decoded JSON in mongo :(
     # Add a string index?
@@ -154,6 +202,20 @@ def api_job_result(job_id):
 
   return jsonify({
     "result": job_data.get("result")
+  })
+
+
+@app.route('/api/job/<job_id>/traceback')
+@requires_auth
+def api_job_traceback(job_id):
+  collection = connections.mongodb_jobs.mrq_jobs
+  job_data = collection.find_one({"_id": ObjectId(job_id)}, fields=["traceback"])
+
+  if not job_data:
+    job_data = {}
+
+  return jsonify({
+    "traceback": job_data.get("traceback", "No exception raised")
   })
 
 

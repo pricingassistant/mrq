@@ -103,7 +103,7 @@ class Job(object):
 
     return self
 
-  def save_status(self, status, result=None, traceback=None, dateretry=None, queue=None, w=1):
+  def save_status(self, status, result=None, traceback=None, exceptiontype=None, dateretry=None, queue=None, w=1):
 
     if self.id is None:
       return
@@ -120,6 +120,8 @@ class Job(object):
       updates["result"] = result
     if traceback is not None:
       updates["traceback"] = traceback
+    if exceptiontype is not None:
+      updates["exceptiontype"] = exceptiontype
     if dateretry is not None:
       updates["dateretry"] = dateretry
     if queue is not None:
@@ -140,7 +142,7 @@ class Job(object):
     if self.data:
       self.data.update(updates)
 
-  def save_retry(self, exc, traceback=None):
+  def save_retry(self, exc, traceback=None, exceptiontype=None):
 
     countdown = 24 * 3600
 
@@ -157,6 +159,7 @@ class Job(object):
       self.save_status(
         "retry",
         traceback=traceback,
+        exceptiontype=exceptiontype,
         dateretry=datetime.datetime.utcnow() + datetime.timedelta(seconds=countdown),
         queue=queue
       )
