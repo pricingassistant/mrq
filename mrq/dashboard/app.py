@@ -95,10 +95,11 @@ def api_taskpaths():
 @app.route('/workers')
 @requires_auth
 def get_workers():
-  collection = connections.mongodb_logs.mrq_workers
+  collection = connections.mongodb_jobs.mrq_workers
   cursor = collection.find({"status": {"$ne": "stop"}})
   data = {"workers": list(cursor)}
   return jsonify(data)
+
 
 def build_api_datatables_query(request):
   query = {}
