@@ -26,14 +26,17 @@ def get_config(sources=("file", "env", "args"), env_prefix="MRQ_"):
   parser.add_argument('--trace_memory', action='store_true', default=False,
                       help='Collect stats about memory for each task. Incompatible with gevent > 1')
 
+  parser.add_argument('--trace_mongodb', action='store_true', default=False,
+                      help='Collect stats about MongoDB requests')
+
+  parser.add_argument('--print_mongodb', action='store_true', default=False,
+                      help='Print all MongoDB requests')
+
   parser.add_argument('--trace_memory_type', action='store', default="",
                       help='Create a .png object graph in trace_memory_output_dir with a random object of this type.')
 
   parser.add_argument('--trace_memory_output_dir', action='store', default="memory_traces",
                       help='Directory where to output .pngs with object graphs')
-
-  # parser.add_argument('--mongodebug', action='store_true', default=False,
-  #                     help='Print all Mongo requests')
 
   parser.add_argument('--profile', action='store_true', default=False,
                       help='Run profiling on the whole worker')
