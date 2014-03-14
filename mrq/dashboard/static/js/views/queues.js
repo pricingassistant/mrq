@@ -27,11 +27,21 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
             }
           },
           {
-            "sTitle": "Jobs",
+            "sTitle": "MongoDB Jobs",
+            "sClass": "col-mongodb-jobs",
+            "sType":"numeric",
+            "mData":function(source, type, val) {
+              var cnt = source.jobs || 0;
+
+              return "<a href='/#jobs?queue="+source.name+"&status=queued'>"+cnt+"</a>"
+            }
+          },
+          {
+            "sTitle": "Redis Jobs",
             "sClass": "col-jobs",
             "sType":"numeric",
             "mData":function(source, type, val) {
-              var cnt = source.count || 0;
+              var cnt = source.size || 0;
 
               if (type == "display") {
                 return "<a href='/#jobs?queue="+source.name+"&status=queued'>"+cnt+"</a>"

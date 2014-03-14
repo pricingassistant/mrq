@@ -394,9 +394,6 @@ class Worker(object):
 
     return self.exitcode
 
-  def get_stack_trace_info(self):
-    return traceback.format_exc(), sys.exc_info()[0].__name__
-
   def perform_job(self, job):
     """ Wraps a job.perform() call with timeout logic and exception handlers.
 
@@ -418,37 +415,26 @@ class Worker(object):
       job.perform()
 
     except job.retry_on_exceptions:
-      trace, exception_name = self.get_stack_trace_info()
       self.log.error("Caught exception => retry")
-      self.log.error(trace)
-      job.save_retry(sys.exc_info()[1], traceback=trace, exceptiontype=exception_name)
+      job.save_retry(sys.exc_info()[1], exception=True)
 
     except job.cancel_on_exceptions:
-      trace, exception_name = self.get_stack_trace_info()
       self.log.error("Job cancelled")
-      self.log.error(trace)
-      job.save_status("cancel", traceback=trace, exceptiontype=exception_name)
+      job.save_status("cancel", exception=True)
 
     except JobTimeoutException:
-      trace, exception_name = self.get_stack_trace_info()
-      self.log.error(trace)
-
       if job.task.cancel_on_timeout:
         self.log.error("Job timeouted after %s seconds, cancelled" % job.timeout)
-        job.save_status("cancel", traceback=trace, exceptiontype=exception_name)
+        job.save_status("cancel", exception=True)
       else:
         self.log.error("Job timeouted after %s seconds" % job.timeout)
-        job.save_status("timeout", traceback=trace, exceptiontype=exception_name)
+        job.save_status("timeout", exception=True)
 
     except JobInterrupt:
-      trace, exception_name = self.get_stack_trace_info()
-      self.log.error(trace)
-      job.save_status("interrupt", traceback=trace, exceptiontype=exception_name)
+      job.save_status("interrupt", exception=True)
 
     except Exception:
-      trace, exception_name = self.get_stack_trace_info()
-      self.log.error(trace)
-      job.save_status("failed", traceback=trace, exceptiontype=exception_name)
+      job.save_status("failed", exception=True)
 
     finally:
       gevent_timeout.cancel()

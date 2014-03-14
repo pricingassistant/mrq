@@ -45,7 +45,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
               if (type == "display") {
                 return "<a href='/#jobs?path="+source._id+"'>"+cnt+"</a>"
                  + "<br/>"
-                 + '<span class="inlinesparkline" values="'+self.addToCounter("taskpath."+source._id.path+source._id.exceptiontype, cnt, 50).join(",")+'"></span>';
+                 + '<span class="inlinesparkline" values="'+self.addToCounter("taskexceptions."+source._id.path+" "+source._id.exceptiontype, cnt, 50).join(",")+'"></span>';
               } else {
                 return cnt;
               }
@@ -61,7 +61,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
             "sClass": "col-eta",
             "sType":"numeric",
             "mData":function(source, type, val) {
-              return (Math.round(self.getCounterSpeed("taskpath."+source._id) * 100) / 100) + " jobs/second";
+              return (Math.round(self.getCounterSpeed("taskexceptions."+source._id.path+" "+source._id.exceptiontype) * 100) / 100) + " jobs/second";
             }
           },
           {
@@ -69,7 +69,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
             "sClass": "col-eta",
             "sType":"numeric",
             "mData":function(source, type, val) {
-              return self.getCounterEta("taskpath."+source._id, source.jobs || 0);
+              return self.getCounterEta("taskexceptions."+source._id.path+" "+source._id.exceptiontype, source.jobs || 0);
             }
           }
 

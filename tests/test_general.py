@@ -102,4 +102,12 @@ def test_general_simple_task_multiple(worker):
 
 def test_general_exception_status(worker):
 
-  worker.send_task("mrq.basetasks.tests.general.RaiseException", {"message": "xxx"}, block=True, accept_statuses=["failed"])
+  worker.send_task("mrq.basetasks.tests.general.RaiseException", {"message": "xyz"}, block=True, accept_statuses=["failed"])
+
+  job1 = worker.mongodb_jobs.mrq_jobs.find_one()
+  assert job1
+  assert job1["exceptiontype"] == "Exception"
+  assert job1["status"] == "failed"
+  assert "raise" in job1["traceback"]
+  assert "xyz" in job1["traceback"]
+
