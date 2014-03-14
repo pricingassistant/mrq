@@ -147,7 +147,7 @@ class Job(object):
     if self.data:
       self.data.update(updates)
 
-  def save_retry(self, exc, traceback=None, exceptiontype=None):
+  def save_retry(self, exc, exception=False):
 
     countdown = 24 * 3600
 
@@ -163,8 +163,7 @@ class Job(object):
     else:
       self.save_status(
         "retry",
-        traceback=traceback,
-        exceptiontype=exceptiontype,
+        exception=exception,
         dateretry=datetime.datetime.utcnow() + datetime.timedelta(seconds=countdown),
         queue=queue
       )
