@@ -33,7 +33,6 @@ def root():
 @requires_auth
 def api_task_exceptions():
   stats = list(connections.mongodb_jobs.mrq_jobs.aggregate([
-    {"$sort": {"status": 1}},  # https://jira.mongodb.org/browse/SERVER-11447
     {"$match": {"status": "failed"}},
     {"$group": {"_id": {"path": "$path", "exceptiontype": "$exceptiontype"}, "jobs": {"$sum": 1}}},
   ])["result"])
@@ -138,11 +137,12 @@ def api_datatables(unit):
   if unit == "queues":
     # TODO MongoDB distinct?
     queues = [{
-      "name": queue.id,
-      "count": queue.size()
-    } for queue in Queue.all()]
+      "name": queue[0],
+      "jobs": queue[1],  # MongoDB size
+      "size": Queue(queue[0]).size()  # Redis size
+    } for queue in Queue.all().items()]
 
-    queues.sort(key=lambda x: -x["count"])
+    queues.sort(key=lambda x: -x["jobs"])
 
     data = {
       "aaData": queues,

@@ -10,6 +10,9 @@ import gevent
 import objgraph
 import random
 import gc
+from collections import defaultdict
+import traceback
+import sys
 
 
 class Job(object):
@@ -39,12 +42,18 @@ class Job(object):
     self.datestarted = None
 
     self.collection = connections.mongodb_jobs.mrq_jobs
-    self.id = ObjectId(job_id)
+
+    if job_id is None:
+      self.id = None
+    else:
+      self.id = ObjectId(job_id)
 
     self.data = None
     self.task = None
     self.greenlet_switches = 0
     self.greenlet_time = 0
+
+    self._trace_mongodb = defaultdict(int)
 
     if start:
       self.fetch(start=True, full_data=False)
@@ -56,6 +65,9 @@ class Job(object):
 
   def fetch(self, start=False, full_data=True):
     """ Get the current job data and possibly flag it as started. """
+
+    if self.id is None:
+      return self
 
     if full_data is True:
       fields = None
@@ -93,7 +105,10 @@ class Job(object):
 
     return self
 
-  def save_status(self, status, result=None, traceback=None, exceptiontype=None, dateretry=None, queue=None, w=1):
+  def save_status(self, status, result=None, exception=False, dateretry=None, queue=None, w=1):
+
+    if self.id is None:
+      return
 
     now = datetime.datetime.utcnow()
     updates = {
@@ -105,10 +120,7 @@ class Job(object):
       updates["totaltime"] = (now - self.datestarted).total_seconds()
     if result is not None:
       updates["result"] = result
-    if traceback is not None:
-      updates["traceback"] = traceback
-    if exceptiontype is not None:
-      updates["exceptiontype"] = exceptiontype
+
     if dateretry is not None:
       updates["dateretry"] = dateretry
     if queue is not None:
@@ -117,6 +129,12 @@ class Job(object):
       current_greenlet = gevent.getcurrent()
       updates["time"] = current_greenlet._trace_time
       updates["switches"] = current_greenlet._trace_switches
+
+    if exception:
+      trace = traceback.format_exc()
+      log.error(trace)
+      updates["traceback"] = trace
+      updates["exceptiontype"] = sys.exc_info()[0].__name__
 
     # Make the job document expire
     if status in ("success", "cancel"):
@@ -129,7 +147,7 @@ class Job(object):
     if self.data:
       self.data.update(updates)
 
-  def save_retry(self, exc, traceback=None, exceptiontype=None):
+  def save_retry(self, exc, exception=False):
 
     countdown = 24 * 3600
 
@@ -145,8 +163,7 @@ class Job(object):
     else:
       self.save_status(
         "retry",
-        traceback=traceback,
-        exceptiontype=exceptiontype,
+        exception=exception,
         dateretry=datetime.datetime.utcnow() + datetime.timedelta(seconds=countdown),
         queue=queue
       )
@@ -211,6 +228,8 @@ class Job(object):
       log.debug("Job %s success: %0.6fs total" % (
         self.id, (datetime.datetime.utcnow() - self.datestarted).total_seconds()
       ))
+
+    return result
 
   def wait(self, poll_interval=1, timeout=None, full_data=False):
     """ Wait for this job to finish. """

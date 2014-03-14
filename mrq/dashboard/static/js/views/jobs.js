@@ -171,7 +171,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
           {
             "sTitle": "Path &amp; ID",
             "sClass": "col-jobs-path",
-            "sWidth":"30%",
+            "sWidth":"35%",
             "mDataProp": "path",
             "fnRender": function ( o /*, val */) {
               return "<a href='/#jobs?path="+o.aData.path+"'>"+o.aData.path+"</a>"+
@@ -180,7 +180,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
           },
           {
             "sTitle": "Params",
-            "sWidth":"70%",
+            "sWidth":"65%",
             "sClass": "col-jobs-params",
             "mDataProp": "params",
             "fnRender": function ( o /*, val */) {
@@ -208,7 +208,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
 
                 html = "<div class='js-actions' data-jobid="+source._id+"><a href='/#jobs?status=" + (source.status || "queued")+ "'>" + "<span class='label " + css_class + "'>" + (source.status || "queued") + "</span></a>";
                 html += "<br/><br/>";
-                html += "<button class='btn btn-xs btn-default' data-action='viewstacktrace'><span class='glyphicon glyphicon-align-left'></span>Stacktrace</button>";
+                html += "<button class='btn btn-xs btn-default' data-action='viewstacktrace'><span class='glyphicon glyphicon-align-left'></span> Trace</button>";
                 html += "</div>";
                 return (html);
               } else {

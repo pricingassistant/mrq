@@ -16,6 +16,7 @@ from .job import Job
 from .exceptions import JobTimeoutException, StopRequested, JobInterrupt
 from .context import set_current_worker, set_current_job, get_current_job, connections, enable_greenlet_tracing
 from .queue import Queue
+from .monkey import patch_pymongo
 
 # https://groups.google.com/forum/#!topic/gevent/EmZw9CVBC2g
 # if "__pypy__" in sys.builtin_module_names:
@@ -99,6 +100,9 @@ class Worker(object):
 
     if self.connected and not force:
       return
+
+    if self.config["trace_mongodb"] or self.config["print_mongodb"]:
+      patch_pymongo(verbose=self.config["print_mongodb"], trace=self.config["trace_mongodb"])
 
     # Accessing connections attributes will automatically connect
     self.redis = connections.redis
@@ -193,6 +197,8 @@ class Worker(object):
         g["id"] = job.id
         g["time"] = getattr(greenlet, "_trace_time", 0)
         g["switches"] = getattr(greenlet, "_trace_switches", None)
+        if self.config["trace_mongodb"]:
+          g["mongodb"] = dict(job._trace_mongodb)
       greenlets.append(g)
 
     cpu = self.process.get_cpu_times()
@@ -388,9 +394,6 @@ class Worker(object):
 
     return self.exitcode
 
-  def get_stack_trace_info(self):
-    return traceback.format_exc(), sys.exc_info()[0].__name__
-
   def perform_job(self, job):
     """ Wraps a job.perform() call with timeout logic and exception handlers.
 
@@ -412,37 +415,26 @@ class Worker(object):
       job.perform()
 
     except job.retry_on_exceptions:
-      trace, exception_name = self.get_stack_trace_info()
       self.log.error("Caught exception => retry")
-      self.log.error(trace)
-      job.save_retry(sys.exc_info()[1], traceback=trace, exceptiontype=exception_name)
+      job.save_retry(sys.exc_info()[1], exception=True)
 
     except job.cancel_on_exceptions:
-      trace, exception_name = self.get_stack_trace_info()
       self.log.error("Job cancelled")
-      self.log.error(trace)
-      job.save_status("cancel", traceback=trace, exceptiontype=exception_name)
+      job.save_status("cancel", exception=True)
 
     except JobTimeoutException:
-      trace, exception_name = self.get_stack_trace_info()
-      self.log.error(trace)
-
       if job.task.cancel_on_timeout:
         self.log.error("Job timeouted after %s seconds, cancelled" % job.timeout)
-        job.save_status("cancel", traceback=trace, exceptiontype=exception_name)
+        job.save_status("cancel", exception=True)
       else:
         self.log.error("Job timeouted after %s seconds" % job.timeout)
-        job.save_status("timeout", traceback=trace, exceptiontype=exception_name)
+        job.save_status("timeout", exception=True)
 
     except JobInterrupt:
-      trace, exception_name = self.get_stack_trace_info()
-      self.log.error(trace)
-      job.save_status("interrupt", traceback=trace, exceptiontype=exception_name)
+      job.save_status("interrupt", exception=True)
 
     except Exception:
-      trace, exception_name = self.get_stack_trace_info()
-      self.log.error(trace)
-      job.save_status("failed", traceback=trace, exceptiontype=exception_name)
+      job.save_status("failed", exception=True)
 
     finally:
       gevent_timeout.cancel()
