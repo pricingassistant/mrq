@@ -6,6 +6,7 @@ from mrq.context import log, connections
 from collections import defaultdict
 from mrq.utils import group_iter
 import datetime
+import ujson as json
 
 
 class JobAction(Task):
@@ -24,9 +25,15 @@ class JobAction(Task):
     if self.params.get("id"):
       query["_id"] = ObjectId(self.params.get("id"))
 
-    for k in ["queue", "status", "worker", "path", "dateretry"]:  # TODO use redis for queue
+    for k in ["queue", "status", "worker", "path", "dateretry", "exceptiontype"]:  # TODO use redis for queue
       if self.params.get(k):
         query[k] = self.params.get(k)
+
+    if self.params.get("params"):
+      params_dict = json.loads(self.params.get("params"))
+
+      for key in params_dict.keys():
+        query["params.%s" % key] = params_dict[key]
 
     return query
 
