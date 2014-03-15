@@ -8,6 +8,8 @@ import sys
 from bson import ObjectId
 from HTMLParser import HTMLParser
 import json
+from gevent.pywsgi import WSGIServer
+from werkzeug.serving import run_with_reloader
 
 sys.path.insert(0, os.getcwd())
 
@@ -257,7 +259,8 @@ def api_logs():
 
 def main():
   app.debug = True
-  app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 5555)))
+  http = WSGIServer(('', int(os.environ.get("PORT", 5555))), app)
+  run_with_reloader(http.serve_forever)
 
 
 if __name__ == '__main__':
