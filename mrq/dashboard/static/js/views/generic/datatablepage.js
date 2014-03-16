@@ -17,6 +17,7 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
       dataTablePage.__super__.init.apply(self);
       this.filters = {};
 
+      this.loading = false;
 
       this.delegateEvents(_.extend({
         "click .js-datatable-filters-submit": "filterschanged"
@@ -77,12 +78,15 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
         "bDestroy": true,
         "sAjaxSource": "/api/datatables/"+unit_name,
         "fnServerData": function (sSource, aoData, fnCallback) {
+          self.loading = true;
           _.each(self.filters, function(v, k) {
             aoData.push({"name": k, "value": v});
           });
 
           $.getJSON( sSource, aoData, function (json) {
             fnCallback(json);
+          }).always(function() {
+            self.loading = false;
             self.trigger("loaded");
           });
         }
@@ -128,29 +132,41 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
 
     },
 
+    getRefreshInterval:function() {
+
+      var interval = parseInt($(".js-autorefresh").val(), 10) * 1000;
+
+      if (!this.app.rootView.isTabVisible) {
+        interval = 0;
+      }
+
+      return interval;
+
+    },
+
+    queueDataTableRefresh:function() {
+
+      var self = this;
+
+      var interval = self.getRefreshInterval();
+
+      if (!interval) return console.log("cancel queue");
+
+      self.refreshDataTableTimeout = setTimeout(function() {
+        self.refreshDataTable();
+      }, interval);
+
+    },
+
     refreshDataTable:function(justQueue) {
 
       if (!this.dataTable) return this.flush();
 
       var self = this;
 
-      var REFRESH_INTERVAL = parseInt($(".js-autorefresh").val(), 10) * 1000;
-
-      if (!this.app.rootView.isTabVisible) {
-        REFRESH_INTERVAL = 0;
-      }
+      var el = self.$(".js-datatable");
 
       clearTimeout(self.refreshDataTableTimeout);
-
-      if (!REFRESH_INTERVAL) return;
-
-      var queue = function() {
-        self.refreshDataTableTimeout = setTimeout(function() {
-          self.refreshDataTable();
-        }, REFRESH_INTERVAL);
-      };
-
-      var el = self.$(".js-datatable");
 
       // We may have navigated away in the meantime
       if (!el.is(":visible")) return;
@@ -161,10 +177,23 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
         justQueue = true;
       }
 
+      // Don't reload when user is selecting text
+      if (window.getSelection && window.getSelection().extentOffset > 0) {
+        justQueue = true;
+      }
+
+      // Don't do multiple ajax requests at the same time
+      if (self.loading) {
+        justQueue = true;
+      }
+
       if (justQueue) {
-        queue();
+        self.queueDataTableRefresh();
       } else {
-        this.once("loaded", queue);
+
+        this.once("loaded", function() {
+          self.queueDataTableRefresh();
+        });
 
         // This will call fnDraw which will reload the data
         this.dataTable.fnAdjustColumnSizing();
