@@ -40,9 +40,9 @@ setup(
             'mrq-dashboard = mrq.dashboard.app:main'
         ]
     },
-    dependency_links=[
-        "http://github.com/mongodb/mongo-python-driver/archive/cb4adb2193a83413bc5545d89b7bbde4d6087761.zip#egg=pymongo-2.7rc1"
-    ],
+    # dependency_links=[
+    #     "http://github.com/mongodb/mongo-python-driver/archive/cb4adb2193a83413bc5545d89b7bbde4d6087761.zip#egg=pymongo-2.7rc1"
+    # ],
     zip_safe=False,
     install_requires=get_requirements(),
     classifiers=[
