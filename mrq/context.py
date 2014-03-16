@@ -56,6 +56,10 @@ def set_current_config(config):
   _CONFIG = config
   log.quiet = config["quiet"]
 
+  if config["trace_mongodb"] or config["print_mongodb"]:
+    from mrq.monkey import patch_pymongo
+    patch_pymongo(config)
+
 
 def get_current_config():
   global _CONFIG
@@ -103,7 +107,8 @@ def _connections_factory(attr):
 
       log.debug("Connecting to MongoDB at %s/%s..." % (mongoHosts, mongoDbName))
 
-      options = {"use_greenlets": True}
+      kwargs = {"use_greenlets": True}
+      options = {}
       if mongoDbOptions:
         options = {k: v[0] for k, v in urlparse.parse_qs(mongoDbOptions[1:]).iteritems()}
 
@@ -111,11 +116,9 @@ def _connections_factory(attr):
       # This should cover most use-cases.
       # http://api.mongodb.org/python/current/examples/high_availability.html#mongoreplicasetclient
       if options.get("replicaSet"):
-        db = MongoReplicaSetClient(mongoHosts, **options)[mongoDbName]
+        db = MongoReplicaSetClient(config_obj, **kwargs)[mongoDbName]
       else:
-        db = MongoClient(mongoHosts, **options)[mongoDbName]
-      if mongoUsername:
-        db.authenticate(mongoUsername, mongoPassword)
+        db = MongoClient(config_obj, **kwargs)[mongoDbName]
 
       return db
 

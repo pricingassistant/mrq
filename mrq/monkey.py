@@ -1,31 +1,29 @@
-from .context import get_current_config, get_current_job
+from .context import get_current_job
 
 
-def patch_pymongo(verbose=False, trace=False):
+def patch_pymongo(config):
   """ Monkey-patch pymongo's collections to add some logging """
 
   # Nothing to change!
-  if not verbose and not trace:
+  if not config["print_mongodb"] and not config["trace_mongodb"]:
     return
 
-  from pymongo.collection import Collection
+  # Print because we are very early and log() may not be ready yet.
+  print "Monkey-patching MongoDB methods..."
+
   from termcolor import cprint
 
-  methods = ["find", "update", "insert", "remove", "find_and_modify", "aggregate"]
-
-  config = get_current_config()
-
-  def gen_monkey_patch(method):
-    base_method = getattr(Collection, method)
+  def gen_monkey_patch(base_object, method):
+    base_method = getattr(base_object, method)
 
     def monkey_patched(self, *args, **kwargs):
-      if verbose:
+      if config["print_mongodb"]:
         if self.full_name in config.get("print_mongodb_hidden_collections", []):
           cprint("[MONGO] %s.%s%s %s" % (self.full_name, method, "-hidden-", kwargs), "magenta")
         else:
           cprint("[MONGO] %s.%s%s %s" % (self.full_name, method, args, kwargs), "magenta")
 
-      if trace:
+      if config["trace_mongodb"]:
         job = get_current_job()
         if job:
           job._trace_mongodb[method] += 1
@@ -33,5 +31,16 @@ def patch_pymongo(verbose=False, trace=False):
 
     return monkey_patched
 
-  for method in methods:
-    setattr(Collection, method, gen_monkey_patch(method))
+  from pymongo.collection import Collection
+  for method in ["find", "update", "insert", "remove", "find_and_modify", "aggregate"]:
+    setattr(Collection, method, gen_monkey_patch(Collection, method))
+
+  # MongoKit completely replaces the code from PyMongo's find() function, so we
+  # need to monkey-patch that as well.
+  try:
+    from mongokit.collection import Collection as MongoKitCollection
+    for method in ["find"]:
+      setattr(MongoKitCollection, method, gen_monkey_patch(MongoKitCollection, method))
+
+  except:
+    pass

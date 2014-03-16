@@ -1,6 +1,8 @@
 #!/usr/bin/env python
-# from gevent import monkey
-# monkey.patch_all()
+
+# We must still monkey-patch the methods for job sub-pools.
+from gevent import monkey
+monkey.patch_all()
 
 import sys
 import os
