@@ -2,3 +2,5 @@
 # As the main usecase is to deploy the dashboard there, this is the default setting.
 -r requirements-base.txt
 -r requirements-dashboard.txt
+
+-r requirements-heroku.txt
