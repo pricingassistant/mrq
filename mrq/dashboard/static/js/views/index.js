@@ -65,14 +65,13 @@ define(["jquery", "underscore", "views/generic/page", "models", "moment", "circl
     renderStats: function (poolSize, currentJobs, utilization, doneJobs) {
       var self = this;
       var scope = ".js-circle-row";
-      var values = self.addToCounter("overall-done-jobs", 0, 50).join(",");
       var jobSpeed = Math.round(self.getCounterSpeed("overall-done-jobs") * 100) / 100;
+      var values = self.addToCounter("overall-done-jobs", jobSpeed, 50).join(",");
 
       this.renderCircleStats(scope, "poolSizeStat", poolSize, 100, "Pool Size", true);
       this.renderCircleStats(scope, "utilizationStat", utilization + "%", utilization, "Utilization (" + currentJobs + " jobs)")
       this.renderCircleStats(scope, "jobspeed", jobSpeed, 100, "jobs/sec");
 
-      values = self.addToCounter("overall-done-jobs", doneJobs, 50).join(",")
       $(scope).append('<div class=stat><span class="inlinesparkline" values="' + values + '"></span><span class="sparkline-title">Done Jobs</span></div>');
       $(".inlinesparkline").sparkline("html", {"width": "250px", "height": "200px", "defaultPixelsPerValue": 1});
     },

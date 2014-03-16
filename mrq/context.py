@@ -9,8 +9,10 @@ from .utils import LazyObject
 try:
   # MongoKit's Connection object is just a wrapped MongoClient.
   from mongokit import Connection as MongoClient
+  from mongokit import ReplicaSetConnection as MongoReplicaSetClient
 except:
   from pymongo import MongoClient
+  from pymongo import MongoReplicaSetClient
 
 
 # greenletid => Job object
@@ -96,12 +98,22 @@ def _connections_factory(attr):
 
     if type(config_obj) in [str, unicode]:
 
-      (mongoAuth, mongoUsername, mongoPassword, mongoHosts, mongoDbName) = re.match(
-        "mongodb://((\w+):(\w+)@)?([\w\.:,-]+)/([\w-]+)", config_obj).groups()
+      (mongoAuth, mongoUsername, mongoPassword, mongoHosts, mongoDbName, mongoDbOptions) = re.match(
+        "mongodb://((\w+):(\w+)@)?([\w\.:,-]+)/([\w-]+)(\?.*)?", config_obj).groups()
 
       log.debug("Connecting to MongoDB at %s/%s..." % (mongoHosts, mongoDbName))
 
-      db = MongoClient(mongoHosts)[mongoDbName]
+      options = {"use_greenlets": True}
+      if mongoDbOptions:
+        options = {k: v[0] for k, v in urlparse.parse_qs(mongoDbOptions[1:]).iteritems()}
+
+      # We automatically switch to MongoReplicaSetClient when getting a replicaSet option.
+      # This should cover most use-cases.
+      # http://api.mongodb.org/python/current/examples/high_availability.html#mongoreplicasetclient
+      if options.get("replicaSet"):
+        db = MongoReplicaSetClient(mongoHosts, **options)[mongoDbName]
+      else:
+        db = MongoClient(mongoHosts, **options)[mongoDbName]
       if mongoUsername:
         db.authenticate(mongoUsername, mongoPassword)
 

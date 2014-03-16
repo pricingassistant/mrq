@@ -8,6 +8,8 @@ import sys
 from bson import ObjectId
 from HTMLParser import HTMLParser
 import json
+from gevent.pywsgi import WSGIServer
+from werkzeug.serving import run_with_reloader
 
 sys.path.insert(0, os.getcwd())
 
@@ -33,7 +35,6 @@ def root():
 @requires_auth
 def api_task_exceptions():
   stats = list(connections.mongodb_jobs.mrq_jobs.aggregate([
-    {"$sort": {"status": 1}},  # https://jira.mongodb.org/browse/SERVER-11447
     {"$match": {"status": "failed"}},
     {"$group": {"_id": {"path": "$path", "exceptiontype": "$exceptiontype"}, "jobs": {"$sum": 1}}},
   ])["result"])
@@ -95,10 +96,11 @@ def api_taskpaths():
 @app.route('/workers')
 @requires_auth
 def get_workers():
-  collection = connections.mongodb_logs.mrq_workers
+  collection = connections.mongodb_jobs.mrq_workers
   cursor = collection.find({"status": {"$ne": "stop"}})
   data = {"workers": list(cursor)}
   return jsonify(data)
+
 
 def build_api_datatables_query(request):
   query = {}
@@ -137,11 +139,12 @@ def api_datatables(unit):
   if unit == "queues":
     # TODO MongoDB distinct?
     queues = [{
-      "name": queue.id,
-      "count": queue.size()
-    } for queue in Queue.all()]
+      "name": queue[0],
+      "jobs": queue[1],  # MongoDB size
+      "size": Queue(queue[0]).size()  # Redis size
+    } for queue in Queue.all().items()]
 
-    queues.sort(key=lambda x: -x["count"])
+    queues.sort(key=lambda x: -x["jobs"])
 
     data = {
       "aaData": queues,
@@ -256,7 +259,8 @@ def api_logs():
 
 def main():
   app.debug = True
-  app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 5555)))
+  http = WSGIServer(('', int(os.environ.get("PORT", 5555))), app)
+  run_with_reloader(http.serve_forever)
 
 
 if __name__ == '__main__':

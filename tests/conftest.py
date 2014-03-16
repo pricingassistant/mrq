@@ -134,7 +134,7 @@ class WorkerFixture(ProcessFixture):
     if m:
       processes = int(m.group(1))
 
-    cmdline = "python mrq/bin/mrq_worker.py --print_mongodb --trace_mongodb --mongodb_logs_size 0 %s %s %s %s" % (
+    cmdline = "python mrq/bin/mrq_worker.py --trace_mongodb --mongodb_logs_size 0 %s %s %s %s" % (
       "--admin_port 20020" if (processes <= 1) else "",
       "--trace_greenlets" if trace else "",
       kwargs.get("flags", ""),
