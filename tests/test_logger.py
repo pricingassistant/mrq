@@ -1,14 +1,21 @@
-from bson import ObjectId
-import urllib2
-import json
 import time
 import pytest
 
+OPTS = []
+for cls in ["string", "unicode", "latin-1", "bytes1"]:
+  for utf8_sys_stdout in [True, False]:
+    OPTS.append([cls, utf8_sys_stdout])
 
-@pytest.mark.parametrize(["class_name"], [["string"], ["unicode"], ["latin-1"]])
-def test_supports_string_and_unicode(worker, class_name):
 
-  result = worker.send_task("mrq.basetasks.tests.logger.Simple", {"class_name": class_name})
+@pytest.mark.parametrize(["class_name", "utf8_sys_stdout"], OPTS)
+def test_supports_string_and_unicode(worker, class_name, utf8_sys_stdout):
+
+  result = worker.send_task("mrq.basetasks.tests.logger.Simple", {
+    "class_name": class_name,
+    "utf8_sys_stdout": utf8_sys_stdout
+  })
+
+  # Force-flush the logs
   worker.stop(deps=False)
   assert result
 

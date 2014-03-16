@@ -34,7 +34,7 @@ class LogHandler(object):
 
   def encode_if_unicode(self, string):
     if isinstance(string, unicode):
-      return string.encode("utf-8", "ignore")
+      return string.encode("utf-8", "replace")
     else:
       return string
 
@@ -53,7 +53,10 @@ class LogHandler(object):
     formatted = u"%s [%s] %s" % (datetime.datetime.utcnow(), level.upper(), joined_unicode_args)
 
     if not self.quiet:
-      print self.encode_if_unicode(formatted)
+      try:
+        print self.encode_if_unicode(formatted)
+      except UnicodeDecodeError:
+        print formatted
 
     if self.collection is False:
       return
