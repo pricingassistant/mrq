@@ -5,7 +5,7 @@ from pip.req import parse_requirements
 
 def get_requirements():
     reqs = []
-    for filename in ["requirements-base.txt", "requirements-dashboard.txt"]:
+    for filename in ["requirements-base.txt", "requirements-dashboard.txt", "requirements-setuptools.txt"]:
         # parse_requirements() returns generator of pip.req.InstallRequirement objects
         install_reqs = parse_requirements(filename)
         reqs += [str(ir.req) for ir in install_reqs]

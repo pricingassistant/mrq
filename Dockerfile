@@ -22,6 +22,9 @@ RUN echo 1 > /proc/sys/vm/overcommit_memory
 RUN mkdir -p /data/db
 VOLUME ["/data"]
 
+ADD requirements-heroku.txt requirements-heroku.txt
+RUN pip install --use-mirrors -r requirements-heroku.txt
+
 ADD requirements-base.txt requirements-base.txt
 RUN pip install --use-mirrors -r requirements-base.txt
 
