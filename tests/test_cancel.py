@@ -31,6 +31,8 @@ def test_cancel_by_path(worker):
   assert job1["result"] == {"a": 41, "sleep": 2}
 
   assert job2["status"] == "cancel"
+  assert job2["dateexpires"] > job2["dateupdated"]
+
   assert job2.get("result") is None
 
   assert worker.mongodb_logs.tests_inserts.count() == 1
