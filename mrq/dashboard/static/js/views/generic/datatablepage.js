@@ -152,6 +152,7 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
 
       if (!interval) return console.log("cancel queue");
 
+      clearTimeout(self.refreshDataTableTimeout);
       self.refreshDataTableTimeout = setTimeout(function() {
         self.refreshDataTable();
       }, interval);
@@ -166,8 +167,6 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
 
       var el = self.$(".js-datatable");
 
-      clearTimeout(self.refreshDataTableTimeout);
-
       // We may have navigated away in the meantime
       if (!el.is(":visible")) return;
 
@@ -178,7 +177,7 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
       }
 
       // Don't reload when user is selecting text
-      if (window.getSelection && window.getSelection().extentOffset > 0) {
+      if (window.getSelection && window.getSelection().extentOffset > 0 && window.getSelection().type == "Range") {
         justQueue = true;
       }
 
