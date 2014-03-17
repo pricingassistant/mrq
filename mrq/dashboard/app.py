@@ -6,7 +6,6 @@ from flask import Flask, request
 import os
 import sys
 from bson import ObjectId
-from HTMLParser import HTMLParser
 import json
 from gevent.pywsgi import WSGIServer
 from werkzeug.serving import run_with_reloader
@@ -119,7 +118,7 @@ def build_api_datatables_query(request):
 
     if request.args.get("params"):
       try:
-        params_dict = json.loads(HTMLParser().unescape(request.args.get("params")))
+        params_dict = json.loads(request.args.get("params"))
 
         for key in params_dict.keys():
           query["params.%s" % key] = params_dict[key]

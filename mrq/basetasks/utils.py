@@ -82,8 +82,8 @@ class JobAction(Task):
             "dateupdated": datetime.datetime.utcnow()
           }}, multi=True)
 
-        # Between these two lines, jobs can become "lost" too.
+          # Between these two lines, jobs can become "lost" too.
 
-        Queue(queue).enqueue_job_ids([str(x) for x in jobs_by_queue[queue]])
+          Queue(queue).enqueue_job_ids([str(x) for x in jobs_by_queue[queue]])
 
     return stats
