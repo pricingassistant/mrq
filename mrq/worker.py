@@ -136,6 +136,7 @@ class Worker(object):
     try:
       # This will be default in MongoDB 2.6
       self.mongodb_jobs.command({"collMod": "mrq_jobs", "usePowerOf2Sizes": True})
+      self.mongodb_jobs.command({"collMod": "mrq_workers", "usePowerOf2Sizes": True})
     except:
       pass
 

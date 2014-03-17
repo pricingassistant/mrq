@@ -165,7 +165,7 @@ class Job(object):
 
     self.collection.update({
       "_id": self.id
-    }, {"$set": updates}, w=w)
+    }, {"$set": updates}, w=w, manipulate=False)
 
     if self.data:
       self.data.update(updates)

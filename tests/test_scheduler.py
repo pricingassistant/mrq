@@ -20,7 +20,7 @@ def test_scheduler_simple(worker, p_flags):
   collection = worker.mongodb_logs.tests_inserts
   scheduled_jobs = worker.mongodb_jobs.mrq_scheduled_jobs
 
-  time.sleep(2)
+  time.sleep(3)
 
   # There are 4 test tasks with 5 second interval
   inserts = list(collection.find())
@@ -42,7 +42,7 @@ def test_scheduler_simple(worker, p_flags):
   # Start with new config
   worker.start(deps=False, flags="--scheduler --config tests/fixtures/config-scheduler2.py %s" % p_flags)
 
-  time.sleep(2)
+  time.sleep(3)
 
   jobs2 = list(scheduled_jobs.find())
   assert len(jobs2) == 4
