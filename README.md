@@ -28,6 +28,31 @@ The main features of MRQ are:
  * **Greenlet tracing:** See how much time was spent in each greenlet to debug CPU-intensive jobs.
  * **Integrated memory leak debugger:** Track down jobs leaking memory and find the leaks with objgraph.
 
+
+
+Dashboard
+=========
+
+A strong focus was put on the tools and particularly the dashboard. After all it is what you will work with most of the time!
+
+![Job view](http://i.imgur.com/xaXmrvX.png)
+
+![Worker view](http://i.imgur.com/yYUMCbm.png)
+
+There are too much features on the dashboard to list, but the goal is to have complete visibility and control over what your workers are doing!
+
+
+Design
+======
+
+A talk+slides about MRQ's design is upcoming.
+
+A couple things to know:
+- We use Redis as a main queue for task IDs
+- We store metadata on the tasks in MongoDB so they can be browsable and managed more easily.
+
+
+
 Performance
 ===========
 
@@ -66,6 +91,23 @@ You can also open a shell inside the docker (just like you would enter in a virt
 $ make docker (if it wasn't build before)
 $ make ssh
 ```
+
+
+Configuration
+=============
+
+Check all the [available config options](mrq/config.py)
+
+For each of these values, configuration is loaded in this order by default:
+- Command-line arguments (`mrq-worker --redis=redis://127.0.0.1:6379`)
+- Environment variables prefixed by MRQ_ (`MRQ_REDIS=redis://127.0.0.1:6379 mrq-worker`)
+- Python variables in a config file, by default `mrq-config.py` (`REDIS="redis://127.0.0.1:6379"` in this file)
+
+Most of the time, you want to set all your configuration in a `mrq-config.py` file in the directory where you will launch your workers, and override some of it from the command line.
+
+On Heroku, environment variables are very handy because they can be set like `heroku config:set MRQ_REDIS=redis://127.0.0.1:6379`
+
+
 
 Use in your application
 =======================
