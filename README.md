@@ -143,34 +143,6 @@ Useful third-party utils
 * http://superlance.readthedocs.org/en/latest/
 
 
-TODO
-====
-
-**alpha**
-
- * Max Retries
- * MongoDB/Redis disconnect tests in more contexts (long-running queries, ...)
-
-
-**public beta**
-
- * Full linting
- * Code coverage
- * Public docs
- * PyPI
-
-**whishlist**
-
- * task progress
- * uniquestarted/uniquequeued via bulk sets?
- * Base cleaning/retry tasks: move
- * Current greenlet traces in dashboard
- * Move monitoring in a thread to protect against CPU-intensive tasks
- * Bulk queues
- * Tasksets
- * Full PyPy support
- * Search in dashboard
-
 Credits
 =======
 
