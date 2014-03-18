@@ -108,14 +108,28 @@ Most of the time, you want to set all your configuration in a `mrq-config.py` fi
 On Heroku, environment variables are very handy because they can be set like `heroku config:set MRQ_REDIS=redis://127.0.0.1:6379`
 
 
-
 Use in your application
 =======================
 
-- install `mrq==0.0.6` in your application virtualenv
+- `pip install mrq` in your application virtualenv
 - then you can run `mrq-worker` and `mrq-dashboard`
 - To run a task you can use `mrq-run`. If you add the `--async` option that will enqueue it to be later ran by a worker
 - you may want to convert your logs db to a capped collection : ie. run db.runCommand({"convertToCapped": "mrq_jobs", "size": 10737418240})
+
+
+Worker concurrency
+==================
+
+The default is to run tasks one at a time. You should obviously change this behaviour to use Gevent's full capabilities with something like:
+
+`mrq-worker --processes 3 --gevent 10`
+
+This will start 30 greenlets over 3 UNIX processes. Each of them will run 10 jobs at the same time.
+
+As soon as you use the `--processes` option (even with `--processes=1`) then supervisord will be used to control the processes. It is quite useful to manage long-running instances.
+
+On Heroku's 512M dynos, we have found that for IO-bound jobs, `--processes 4 --gevent 30` may be a good setting.
+
 
 PyPy
 ====
