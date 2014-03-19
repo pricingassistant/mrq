@@ -6,8 +6,9 @@ from flask import Flask, request
 import os
 import sys
 from bson import ObjectId
-from HTMLParser import HTMLParser
 import json
+from gevent.pywsgi import WSGIServer
+from werkzeug.serving import run_with_reloader
 
 sys.path.insert(0, os.getcwd())
 
@@ -117,7 +118,7 @@ def build_api_datatables_query(request):
 
     if request.args.get("params"):
       try:
-        params_dict = json.loads(HTMLParser().unescape(request.args.get("params")))
+        params_dict = json.loads(request.args.get("params"))
 
         for key in params_dict.keys():
           query["params.%s" % key] = params_dict[key]
@@ -130,6 +131,9 @@ def build_api_datatables_query(request):
 @app.route('/api/datatables/<unit>')
 @requires_auth
 def api_datatables(unit):
+
+  # import time
+  # time.sleep(5)
 
   collection = None
   sort = None
@@ -257,7 +261,8 @@ def api_logs():
 
 def main():
   app.debug = True
-  app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 5555)))
+  http = WSGIServer(('', int(os.environ.get("PORT", 5555))), app)
+  run_with_reloader(http.serve_forever)
 
 
 if __name__ == '__main__':

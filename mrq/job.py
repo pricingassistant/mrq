@@ -5,7 +5,7 @@ import time
 from .exceptions import RetryInterrupt, CancelInterrupt
 from .utils import load_class_by_path
 from .queue import Queue
-from .context import get_current_worker, log, connections, get_current_config
+from .context import get_current_worker, log, connections, get_current_config, set_current_job
 import gevent
 import objgraph
 import random
@@ -13,6 +13,7 @@ import gc
 from collections import defaultdict
 import traceback
 import sys
+from itertools import count as itertools_count
 
 
 class Job(object):
@@ -105,6 +106,28 @@ class Job(object):
 
     return self
 
+  def subpool_map(self, pool_size, func, iterable):
+    """ Starts a Gevent pool and run a map. Takes care of setting current_job and cleaning up. """
+
+    counter = itertools_count()
+
+    def inner_func(*args, **kwargs):
+      next(counter)
+      set_current_job(self)
+      ret = func(*args, **kwargs)
+      set_current_job(None)
+      return ret
+
+    start_time = time.time()
+    pool = gevent.pool.Pool(size=pool_size)
+    ret = pool.map(inner_func, iterable)
+    pool.join(raise_error=True)
+    total_time = time.time() - start_time
+
+    log.debug("SubPool ran %s greenlets in %0.6fs" % (counter, total_time))
+
+    return ret
+
   def save_status(self, status, result=None, exception=False, dateretry=None, queue=None, w=1):
 
     if self.id is None:
@@ -142,7 +165,7 @@ class Job(object):
 
     self.collection.update({
       "_id": self.id
-    }, {"$set": updates}, w=w)
+    }, {"$set": updates}, w=w, manipulate=False)
 
     if self.data:
       self.data.update(updates)

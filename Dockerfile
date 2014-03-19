@@ -3,7 +3,7 @@ FROM pricingassistant/ubuntu:13.10
 RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10
 RUN echo 'deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' | tee /etc/apt/sources.list.d/10gen.list
 
-RUN apt-get update && echo "Updated on 2014-01-15"
+RUN apt-get update && echo "Updated on 2014-03-15"
 RUN apt-get upgrade -y
 
 RUN apt-get install -y gcc make g++ build-essential libc6-dev tcl curl adduser mongodb-10gen python python-pip python-dev strace git software-properties-common libev-dev nginx graphviz
@@ -21,6 +21,9 @@ RUN echo 1 > /proc/sys/vm/overcommit_memory
 
 RUN mkdir -p /data/db
 VOLUME ["/data"]
+
+ADD requirements-heroku.txt requirements-heroku.txt
+RUN pip install --use-mirrors -r requirements-heroku.txt
 
 ADD requirements-base.txt requirements-base.txt
 RUN pip install --use-mirrors -r requirements-base.txt

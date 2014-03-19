@@ -2,10 +2,11 @@ from mrq.task import Task
 from mrq.job import Job
 from mrq.queue import Queue
 from bson import ObjectId
-from mrq.context import log, connections
+from mrq.context import connections, get_current_config
 from collections import defaultdict
 from mrq.utils import group_iter
 import datetime
+import ujson as json
 
 
 class JobAction(Task):
@@ -24,9 +25,15 @@ class JobAction(Task):
     if self.params.get("id"):
       query["_id"] = ObjectId(self.params.get("id"))
 
-    for k in ["queue", "status", "worker", "path", "dateretry"]:  # TODO use redis for queue
+    for k in ["queue", "status", "worker", "path", "dateretry", "exceptiontype"]:  # TODO use redis for queue
       if self.params.get(k):
         query[k] = self.params.get(k)
+
+    if self.params.get("params"):
+      params_dict = json.loads(self.params.get("params"))
+
+      for key in params_dict.keys():
+        query["params.%s" % key] = params_dict[key]
 
     return query
 
@@ -39,15 +46,30 @@ class JobAction(Task):
 
     if action == "cancel":
 
+      # Finding the ttl here to expire is a bit hard because we may have mixed paths
+      # and hence mixed ttls.
+      # If we are cancelling by path, get this ttl
+      if query.get("path"):
+
+        task_def = get_current_config().get("tasks", {}).get(query["path"]) or {}
+        result_ttl = task_def.get("result_ttl", Job.result_ttl)
+
+      # If not, get the maxmimum ttl of all tasks.
+      else:
+        result_ttl = max([Job.result_ttl] + [task_def.get("result_ttl", Job.result_ttl) for task_def in get_current_config().get("tasks", {}).values()])
+
+      now = datetime.datetime.utcnow()
       ret = self.collection.update(query, {"$set": {
         "status": "cancel",
-        "dateupdated": datetime.datetime.utcnow()
+        "dateexpires": now + datetime.timedelta(seconds=result_ttl),
+        "dateupdated": now
       }}, multi=True)
       stats["cancelled"] = ret["n"]
 
       # Special case when emptying just by queue name: empty it directly!
       # In this case we could also loose some jobs that were queued after
-      # the MongoDB update. They will be "lost" and requeued later like the others.
+      # the MongoDB update. They will be "lost" and requeued later like the other case
+      # after the Redis BLPOP
       if query.keys() == ["queue"]:
         Queue(query["queue"]).empty()
 
@@ -75,8 +97,8 @@ class JobAction(Task):
             "dateupdated": datetime.datetime.utcnow()
           }}, multi=True)
 
-        # Between these two lines, jobs can become "lost" too.
+          # Between these two lines, jobs can become "lost" too.
 
-        Queue(queue).enqueue_job_ids([str(x) for x in jobs_by_queue[queue]])
+          Queue(queue).enqueue_job_ids([str(x) for x in jobs_by_queue[queue]])
 
     return stats

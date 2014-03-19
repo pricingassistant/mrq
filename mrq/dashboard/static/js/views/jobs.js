@@ -19,7 +19,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
         "path": this.options.params.path||"",
         "status": this.options.params.status||"",
         "exceptiontype": this.options.params.exceptiontype||"",
-        "params": (this.options.params.params||"").replace(/"/g, '&quot;'),
+        "params": this.options.params.params||"",
         "id": this.options.params.id||"",
       };
     },

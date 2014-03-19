@@ -4,7 +4,7 @@ from mrq.queue import Queue
 
 def benchmark_task(worker, taskpath, taskparams, tasks=1000, greenlets=50, processes=0, max_seconds=10, profile=False, quiet=True):
 
-  worker.start(flags="--processes %s --gevent %s%s%s" % (processes, greenlets, " --profile" if profile else "", " --quiet" if quiet else ""))
+  worker.start(flags="--profile --processes %s --gevent %s%s%s" % (processes, greenlets, " --profile" if profile else "", " --quiet" if quiet else ""))
 
   start_time = time.time()
 
@@ -25,9 +25,9 @@ def benchmark_task(worker, taskpath, taskparams, tasks=1000, greenlets=50, proce
 def test_performance_simpleadds(worker):
 
   n_tasks = 10000
-  n_greenlets = 50
+  n_greenlets = 30
   n_processes = 0
-  max_seconds = 25
+  max_seconds = 35
 
   result, total_time = benchmark_task(worker,
                                       "mrq.basetasks.tests.general.Add",

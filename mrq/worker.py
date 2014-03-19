@@ -16,7 +16,6 @@ from .job import Job
 from .exceptions import JobTimeoutException, StopRequested, JobInterrupt
 from .context import set_current_worker, set_current_job, get_current_job, connections, enable_greenlet_tracing
 from .queue import Queue
-from .monkey import patch_pymongo
 
 # https://groups.google.com/forum/#!topic/gevent/EmZw9CVBC2g
 # if "__pypy__" in sys.builtin_module_names:
@@ -101,9 +100,6 @@ class Worker(object):
     if self.connected and not force:
       return
 
-    if self.config["trace_mongodb"] or self.config["print_mongodb"]:
-      patch_pymongo(verbose=self.config["print_mongodb"], trace=self.config["trace_mongodb"])
-
     # Accessing connections attributes will automatically connect
     self.redis = connections.redis
     self.mongodb_jobs = connections.mongodb_jobs
@@ -140,6 +136,7 @@ class Worker(object):
     try:
       # This will be default in MongoDB 2.6
       self.mongodb_jobs.command({"collMod": "mrq_jobs", "usePowerOf2Sizes": True})
+      self.mongodb_jobs.command({"collMod": "mrq_workers", "usePowerOf2Sizes": True})
     except:
       pass
 
