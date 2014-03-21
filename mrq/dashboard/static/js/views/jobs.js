@@ -287,7 +287,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
                   "<button class='pull-right btn btn-xs btn-default' data-action='viewresult'><span class='glyphicon glyphicon-file'></span> Result</button>"+
                   "<br/><br/>"+
                   "<button class='pull-right btn btn-xs btn-default' data-action='copycommand' data-command='"+
-                  "mrq-run " + source.path + " " + JSON.stringify(source.params) +
+                  "mrq-run " + source.path + " &#39" + JSON.stringify(source.params) + "&#39" +
                   "'><span class='glyphicon glyphicon-floppy-save'></span> Command</button>"+
                   "<br/><br/>"+
                   "<button class='btn btn-xs btn-danger pull-right' data-action='cancel'><span class='glyphicon glyphicon-remove-circle'></span> Cancel</button>"+
