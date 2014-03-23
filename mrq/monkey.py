@@ -32,7 +32,7 @@ def patch_pymongo(config):
     return monkey_patched
 
   from pymongo.collection import Collection
-  for method in ["find", "update", "insert", "remove", "find_and_modify", "aggregate"]:
+  for method in ["find", "update", "insert", "remove", "find_and_modify"]:
     setattr(Collection, method, gen_monkey_patch(Collection, method))
 
   # MongoKit completely replaces the code from PyMongo's find() function, so we
