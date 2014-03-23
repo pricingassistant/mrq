@@ -118,6 +118,8 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
         });
         self.refresh_logs(job_id);
 
+      } else if (action == "copycommand") {
+        window.prompt("There is you command", $(evt.currentTarget).data("command"))
       } else if (action == "viewstacktrace") {
 
         self.$(".js-jobs-modal .js-jobs-modal-content").html("Loading...");
@@ -173,9 +175,9 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
             "sClass": "col-jobs-path",
             "sWidth":"35%",
             "mDataProp": "path",
-            "fnRender": function ( o /*, val */) {
-              return "<a href='/#jobs?path="+o.aData.path+"'>"+o.aData.path+"</a>"+
-                "<br/><br/><a href='/#jobs?id="+o.aData._id+"'><small>"+o.aData._id+"</small></a>";
+            "mData": function ( source /*, val */) {
+              return "<a href='/#jobs?path="+source.path+"'>"+source.path+"</a>"+
+                "<br/><br/><a href='/#jobs?id="+source._id+"'><small>"+source._id+"</small></a>";
             }
           },
           {
@@ -183,8 +185,8 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
             "sWidth":"65%",
             "sClass": "col-jobs-params",
             "mDataProp": "params",
-            "fnRender": function ( o /*, val */) {
-              return "<pre class='js-oxpre'>"+JSON.stringify(o.aData.params, null, 2)+"</pre>";
+            "mData": function ( source /*, val */) {
+              return "<pre class='js-oxpre'>"+JSON.stringify(source.params, null, 2)+"</pre>";
             }
           },
           {
@@ -283,6 +285,10 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
                 return "<div class='js-actions' data-jobid='"+source._id+"'>"+
                   "<button class='btn btn-xs btn-default' data-action='viewlogs'><span class='glyphicon glyphicon-align-left'></span> Logs</button>"+
                   "<button class='pull-right btn btn-xs btn-default' data-action='viewresult'><span class='glyphicon glyphicon-file'></span> Result</button>"+
+                  "<br/><br/>"+
+                  "<button class='pull-right btn btn-xs btn-default' data-action='copycommand' data-command='"+
+                  "mrq-run " + source.path + " &#39" + JSON.stringify(source.params) + "&#39" +
+                  "'><span class='glyphicon glyphicon-floppy-save'></span> Command</button>"+
                   "<br/><br/>"+
                   "<button class='btn btn-xs btn-danger pull-right' data-action='cancel'><span class='glyphicon glyphicon-remove-circle'></span> Cancel</button>"+
                   "<button class='btn btn-xs btn-warning' data-action='requeue'><span class='glyphicon glyphicon-refresh'></span> Requeue</button>"+
