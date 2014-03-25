@@ -48,3 +48,6 @@ stack:
 	mongod --smallfiles --noprealloc --nojournal &
 	redis-server &
 	python mrq/dashboard/app.py &
+
+pypi:
+	python setup.py sdist upload
