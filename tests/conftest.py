@@ -222,7 +222,7 @@ class WorkerFixture(ProcessFixture):
 
 class RedisFixture(ProcessFixture):
   def flush(self):
-    connections.redis.flushdb()
+    connections.redis.flushall()
 
 
 class MongoFixture(ProcessFixture):

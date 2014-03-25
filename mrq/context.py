@@ -77,7 +77,7 @@ def _connections_factory(attr):
   # Connection strings may be stored directly in config
   config_obj = config.get(attr)
 
-  if attr == "redis":
+  if attr.startswith("redis"):
 
     if type(config_obj) in [str, unicode]:
 
@@ -89,7 +89,7 @@ def _connections_factory(attr):
       redis_pool = pyredis.ConnectionPool(
         host=redis_url.hostname,
         port=redis_url.port,
-        db=0,
+        db=int((redis_url.path or "").replace("/", "") or "0"),
         password=redis_url.password
       )
       return pyredis.StrictRedis(connection_pool=redis_pool)
