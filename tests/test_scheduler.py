@@ -56,34 +56,26 @@ def test_scheduler_simple(worker, p_flags):
 @pytest.mark.parametrize(["p_flags"], PROCESS_CONFIGS)
 def test_scheduler_dailytime(worker, p_flags):
 
-  # TODO fixme
-  if "processes" in p_flags:
-    return pytest.skip()
-
   # Task is scheduled in 3 seconds
   worker.start(
     flags="--scheduler --config tests/fixtures/config-scheduler3.py %s" % p_flags,
     env={
-
       # We need to pass this in the environment so that each worker has the exact same hash
       "MRQ_TEST_SCHEDULER_TIME": str(time.time() + 4)
     })
 
-  # It will be done a first time immediately
-
-  time.sleep(3)
-
   collection = worker.mongodb_logs.tests_inserts
+  assert collection.find().count() == 0
 
+  # It should be done a first time immediately
+  time.sleep(2)
   assert collection.find().count() == 1
 
   # Then a second time once the dailytime passes
-  time.sleep(4)
-
+  time.sleep(7)
   assert collection.find().count() == 2
 
   # Nothing more should happen today
   time.sleep(4)
-
   assert collection.find().count() == 2
 
