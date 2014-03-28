@@ -7,6 +7,7 @@ import os
 import sys
 from bson import ObjectId
 import json
+import argparse
 from gevent.pywsgi import WSGIServer
 from werkzeug.serving import run_with_reloader
 
@@ -20,7 +21,11 @@ from utils import jsonify, requires_auth
 
 CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 
-set_current_config(get_config())
+parser = argparse.ArgumentParser(description='Start the MRQ dashboard')
+
+cfg = get_config(parser=parser, config_type="dashboard")
+set_current_config(cfg)
+
 app = Flask("dashboard", static_folder=os.path.join(CURRENT_DIRECTORY, "static"))
 
 

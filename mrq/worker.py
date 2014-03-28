@@ -88,13 +88,6 @@ class Worker(object):
     # Keep references to main greenlets
     self.greenlets = {}
 
-    self.profiler = None
-    if self.config["profile"]:
-      print "Starting profiler..."
-      import cProfile
-      self.profiler = cProfile.Profile()
-      self.profiler.enable()
-
   def connect(self, force=False):
 
     if self.connected and not force:
@@ -381,9 +374,6 @@ class Worker(object):
 
       self.report_worker(w=1)
       self.flush_logs(w=1)
-
-      if self.profiler:
-        self.profiler.print_stats(sort="cumulative")
 
       g_time = getattr(self.greenlet, "_trace_time", 0)
       g_switches = getattr(self.greenlet, "_trace_switches", None)

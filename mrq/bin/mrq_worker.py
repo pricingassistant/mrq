@@ -8,6 +8,7 @@ import tempfile
 import signal
 import subprocess32 as subprocess
 import psutil
+import argparse
 
 sys.path.insert(0, os.getcwd())
 
@@ -17,7 +18,9 @@ from mrq.utils import load_class_by_path
 
 def main():
 
-  cfg = config.get_config()
+  parser = argparse.ArgumentParser(description='Start a RQ worker')
+
+  cfg = config.get_config(parser=parser, config_type="worker")
 
   # If we are launching with a --processes option and without the SUPERVISOR_ENABLED env
   # then we should just call supervisord.

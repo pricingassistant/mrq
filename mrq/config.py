@@ -1,24 +1,13 @@
 import argparse
 import os
 import sys
+from .version import VERSION
+import atexit
 
 
-def get_config(sources=("file", "env", "args"), env_prefix="MRQ_"):
+def add_parser_args(parser, config_type):
 
-  parser = argparse.ArgumentParser(description='Starts an RQ worker')
-
-  parser.add_argument('--max_jobs', default=0, type=int, action='store',
-                      help='Gevent: max number of jobs to do before quitting. Temp workaround for memory leaks')
-
-  parser.add_argument('--gevent', '-g', default=1, type=int, action='store',
-                      help='Gevent: max number of greenlets')
-
-  parser.add_argument('--processes', '-p', default=0, type=int, action='store',
-                      help='Number of processes to launch with supervisord')
-
-  default_template = os.path.abspath(os.path.join(os.path.dirname(__file__), "supervisord_templates/default.conf"))
-  parser.add_argument('--supervisord_template', default=default_template, action='store',
-                      help='Path of supervisord template to use')
+  # General arguments
 
   parser.add_argument('--trace_greenlets', action='store_true', default=False,
                       help='Collect stats about each greenlet execution time and switches.')
@@ -62,34 +51,85 @@ def get_config(sources=("file", "env", "args"), env_prefix="MRQ_"):
   parser.add_argument('--quiet', default=False, action='store_true',
                       help='Don\'t output task logs')
 
-  parser.add_argument('--scheduler', default=False, action='store_true',
-                      help='Run the scheduler')
-
-  parser.add_argument('--scheduler_interval', default=60, action='store', type=int,
-                      help='Seconds between scheduler checks')
-
-  parser.add_argument('--report_interval', default=10, action='store', type=int,
-                      help='Seconds between worker reports to MongoDB')
-
   parser.add_argument('--config', '-c', default=None, action="store",
                       help='Path of a config file')
-
-  parser.add_argument('--admin_port', default=0, action="store", type=int,
-                      help='Start an admin server on this port, if provided. Incompatible with --processes')
 
   parser.add_argument('--worker_class', default="mrq.worker.Worker", action="store",
                       help='Path to a custom worker class')
 
-  parser.add_argument('--dashboard_httpauth', default="", action="store",
-                      help='HTTP Auth for the Dashboard. Format is user:pass')
+  parser.add_argument('--version', '-v', default=False, action="store_true",
+                      help='Prints current MRQ version')
 
-  parser.add_argument('--dashboard_queue', default=None, action="store",
-                      help='Default queue for dashboard actions.')
+  # mrq-run-specific arguments
 
-  parser.add_argument('queues', nargs='*', default=["default"],
-                      help='The queues to listen on (default: \'default\')')
+  if config_type == "run":
 
-  default_config = parser.parse_args([]).__dict__
+    parser.add_argument('--async', action='store_true', default=False,
+                        help='Queue the task instead of running it right away')
+
+    parser.add_argument('--queue', action='store', default="default",
+                        help='Queue where to put the task when async')
+
+    parser.add_argument('taskpath', action='store',
+                        help='Task to run')
+
+    parser.add_argument('taskargs', action='store', default='{}', nargs='*',
+                        help='JSON-encoded arguments, or "key value" pairs')
+
+  # Dashboard-specific arguments
+
+  elif config_type == "dashboard":
+
+    parser.add_argument('--dashboard_httpauth', default="", action="store",
+                        help='HTTP Auth for the Dashboard. Format is user:pass')
+
+    parser.add_argument('--dashboard_queue', default=None, action="store",
+                        help='Default queue for dashboard actions.')
+
+  # Worker-specific args
+
+  elif config_type == "worker":
+
+    parser.add_argument('--max_jobs', default=0, type=int, action='store',
+                        help='Gevent: max number of jobs to do before quitting. Temp workaround for memory leaks')
+
+    parser.add_argument('--gevent', '-g', default=1, type=int, action='store',
+                        help='Gevent: max number of greenlets')
+
+    parser.add_argument('--processes', '-p', default=0, type=int, action='store',
+                        help='Number of processes to launch with supervisord')
+
+    default_template = os.path.abspath(os.path.join(os.path.dirname(__file__), "supervisord_templates/default.conf"))
+    parser.add_argument('--supervisord_template', default=default_template, action='store',
+                        help='Path of supervisord template to use')
+
+    parser.add_argument('--scheduler', default=False, action='store_true',
+                        help='Run the scheduler')
+
+    parser.add_argument('--scheduler_interval', default=60, action='store', type=int,
+                        help='Seconds between scheduler checks')
+
+    parser.add_argument('--report_interval', default=10, action='store', type=int,
+                        help='Seconds between worker reports to MongoDB')
+
+    parser.add_argument('queues', nargs='*', default=["default"],
+                        help='The queues to listen on (default: \'default\')')
+
+    parser.add_argument('--admin_port', default=0, action="store", type=int,
+                        help='Start an admin server on this port, if provided. Incompatible with --processes')
+
+
+def get_config(sources=("file", "env", "args"), env_prefix="MRQ_", parser=None, config_type="worker"):
+
+  if not parser:
+    parser = argparse.ArgumentParser()
+
+  add_parser_args(parser, config_type)
+
+  if config_type in ["run"]:
+    default_config = parser.parse_args(["x"]).__dict__
+  else:
+    default_config = parser.parse_args([]).__dict__
 
   # Keys that can't be passed from the command line
   default_config["tasks"] = {}
@@ -137,5 +177,20 @@ def get_config(sources=("file", "env", "args"), env_prefix="MRQ_"):
         merged_config[name] = from_args[name]
       elif part == "file" and name in from_file:
         merged_config[name] = from_file[name]
+
+  if merged_config["profile"]:
+    import cProfile
+    profiler = cProfile.Profile()
+    profiler.enable()
+
+    def print_profiling():
+      profiler.print_stats(sort="cumulative")
+
+    atexit.register(print_profiling)
+
+  if merged_config["version"]:
+    print "MRQ version: %s" % VERSION
+    print "Python version: %s" % sys.version
+    sys.exit(1)
 
   return merged_config
