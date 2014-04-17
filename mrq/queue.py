@@ -1,8 +1,11 @@
 from .utils import load_class_by_path, group_iter
-from .context import connections, get_current_config
+from .context import connections, get_current_config, log
 
 
 class Queue(object):
+
+  is_bulk = False
+  is_timed = False
 
   def __init__(self, queue_id):
     if isinstance(queue_id, Queue):
@@ -48,6 +51,41 @@ class Queue(object):
     ])["result"])
 
     return {x["_id"]: x["jobs"] for x in stats}
+
+  @classmethod
+  def dequeue_jobs(self, queues, max_jobs=1, job_class=None):
+    """ Fetch a maximum of max_jobs from this worker's queues. """
+
+    if job_class is None:
+      from .job import Job
+      job_class = Job
+
+    queue_objects = [Queue(q) for q in queues]
+
+    log.debug("Fetching %s jobs from Redis" % max_jobs)
+
+    jobs = []
+    queue, job_id = connections.redis.blpop([q.redis_key for q in queue_objects], 0)
+    self.status = "spawn"
+
+    # From this point until job.fetch_and_start(), job is only local to this worker.
+    # If we die here, job will be lost in redis without having been marked as "started".
+
+    jobs.append(job_class(job_id, queue=queue, start=True))
+
+    # Bulk-fetch other jobs from that queue to fill the pool.
+    # We take the chance that if there was one job on that queue, there should be more.
+    if max_jobs > 1:
+
+      with connections.redis.pipeline(transaction=False) as pipe:
+        for _ in range(max_jobs - 1):
+          pipe.lpop(queue)
+        job_ids = pipe.execute()
+
+      jobs += [job_class(_job_id, queue=queue, start=True)
+               for _job_id in job_ids if _job_id]
+
+    return jobs
 
 
 def send_task(path, params, **kwargs):

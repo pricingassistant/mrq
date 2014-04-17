@@ -59,7 +59,6 @@ class Worker(object):
 
     self.datestarted = datetime.datetime.utcnow()
     self.queues = [x for x in self.config["queues"] if x]
-    self.redis_queues = [Queue(x).redis_key for x in self.queues]
     self.done_jobs = 0
     self.max_jobs = self.config["max_jobs"]
 
@@ -270,34 +269,6 @@ class Worker(object):
   def flush_logs(self, w=0):
     self.log_handler.flush(w=w)
 
-  def dequeue_jobs(self, max_jobs=1):
-    """ Fetch a maximum of max_jobs from this worker's queues. """
-
-    self.log.debug("Fetching %s jobs from Redis" % max_jobs)
-
-    jobs = []
-    queue, job_id = self.redis.blpop(self.redis_queues, 0)
-    self.status = "spawn"
-
-    # From this point until job.fetch_and_start(), job is only local to this worker.
-    # If we die here, job will be lost in redis without having been marked as "started".
-
-    jobs.append(self.job_class(job_id, worker=self, queue=queue, start=True))
-
-    # Bulk-fetch other jobs from that queue to fill the pool.
-    # We take the chance that if there was one job on that queue, there should be more.
-    if max_jobs > 1:
-
-      with self.redis.pipeline(transaction=False) as pipe:
-        for _ in range(max_jobs - 1):
-          pipe.lpop(queue)
-        job_ids = pipe.execute()
-
-      jobs += [self.job_class(_job_id, worker=self, queue=queue, start=True)
-               for _job_id in job_ids if _job_id]
-
-    return jobs
-
   def work_loop(self):
     """Starts the work loop.
 
@@ -333,7 +304,7 @@ class Worker(object):
 
         self.log.info('Listening on %s' % self.queues)
 
-        jobs = self.dequeue_jobs(max_jobs=free_pool_slots)
+        jobs = Queue.dequeue_jobs(self.queues, max_jobs=free_pool_slots, job_class=self.job_class)
 
         for job in jobs:
 

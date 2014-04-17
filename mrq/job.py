@@ -37,7 +37,7 @@ class Job(object):
     CancelInterrupt
   )
 
-  def __init__(self, job_id, worker=None, queue=None, start=False, fetch=False):
+  def __init__(self, job_id, queue=None, start=False, fetch=False):
     self.worker = get_current_worker()
     self.queue = queue
     self.datestarted = None
