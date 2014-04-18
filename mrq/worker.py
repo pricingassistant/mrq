@@ -315,6 +315,11 @@ class Worker(object):
           self.log.info("Reached max_jobs=%s" % self.done_jobs)
           break
 
+        # We seem to have exhausted available jobs, we can sleep for a while.
+        # TODO we shouldn't do that when we know that only blpop is being used by the queues.
+        if len(jobs) < free_pool_slots:
+          gevent.sleep(1)
+
     except StopRequested:
       pass
 

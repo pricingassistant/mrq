@@ -24,6 +24,26 @@ return data
   """)
 
 
+@memoize
+def _redis_command_zpopbyscore():
+  """ Pops multiple keys by score """
+
+  return connections.redis.register_script("""
+local zset = KEYS[1]
+local min = ARGV[1]
+local max = ARGV[2]
+local offset = ARGV[3]
+local count = ARGV[4]
+
+local data = redis.call('zrangebyscore', zset, min, max, 'LIMIT', offset, count)
+if #data > 0 then
+  redis.call('zremrangebyrank', zset, 0, #data - 1)
+end
+
+return data
+  """)
+
+
 class Queue(object):
 
   is_raw = False
@@ -37,18 +57,19 @@ class Queue(object):
     else:
       self.id = queue_id
 
-    if ".set" in self.id:
+    if "_raw" in self.id:
+      self.is_raw = True
+
+    if "_set" in self.id:
       self.is_set = True
       self.is_raw = True
 
-    if ".timed" in self.id:
+    if "_timed" in self.id:
       self.is_timed = True
       self.is_sorted = True
-      self.is_raw = True
 
-    if ".sorted" in self.id:
+    if "_sorted" in self.id:
       self.is_sorted = True
-      self.is_raw = True
 
   @property
   def redis_key(self):
@@ -59,7 +80,18 @@ class Queue(object):
     if self.is_raw:
       raise Exception("Can't queue job ids in a raw queue")
 
-    connections.redis.rpush(self.redis_key, *job_ids)
+    # ZSET
+    if self.is_sorted:
+
+      if type(job_ids) is not dict and self.is_timed:
+        now = int(time.time())
+        job_ids = {x: now for x in job_ids}
+
+      connections.redis.zadd(self.redis_key, **job_ids)
+
+    # LIST
+    else:
+      connections.redis.rpush(self.redis_key, *job_ids)
 
   def enqueue_raw_jobs(self, params_list):
 
@@ -68,8 +100,11 @@ class Queue(object):
 
     # ZSET
     if self.is_sorted:
-      if type(params_list) is not dict:
-        raise Exception("Must enqueue dict in sorted queues")
+
+      if type(params_list) is not dict and self.is_timed:
+        now = int(time.time())
+        params_list = {x: now for x in params_list}
+
       connections.redis.zadd(self.redis_key, **params_list)
     # SET
     elif self.is_set:
@@ -94,7 +129,19 @@ class Queue(object):
     return connections.redis.delete(self.redis_key)
 
   def list_job_ids(self, skip=0, limit=20):
-    return connections.redis.lrange(self.redis_key, skip, skip + limit - 1)
+
+    if not self.is_raw:
+      raise Exception("Can't list job ids from a raw queue")
+
+    # ZSET
+    if self.is_sorted:
+      return connections.redis.zrange(self.redis_key, skip, skip + limit - 1)
+    # SET
+    elif self.is_set:
+      return connections.redis.srandmember(self.redis_key, limit)
+    # LIST
+    else:
+      return connections.redis.lrange(self.redis_key, skip, skip + limit - 1)
 
   @classmethod
   def all_active(cls):
@@ -130,69 +177,92 @@ class Queue(object):
     queue_objects = [Queue(q) for q in queues]
 
     # TODO: we may allow dequeueing from several raw queues in the future
-    has_raw = any(q.is_raw for q in queue_objects)
+    has_raw = any(q.is_raw or q.is_timed for q in queue_objects)
     if has_raw and len(queues) != 1:
-      raise Exception("Can't dequeue from more multiple queues when one is raw")
+      raise Exception("Can't dequeue from more multiple queues when one is raw or timed")
 
     log.debug("Fetching %s jobs from Redis" % max_jobs)
 
     if not has_raw:
 
       jobs = []
-      queue, job_id = connections.redis.blpop([q.redis_key for q in queue_objects], 0)
-      self.status = "spawn"
 
-      # From this point until job.fetch_and_start(), job is only local to this worker.
-      # If we die here, job will be lost in redis without having been marked as "started".
+      if queue_objects[0].is_timed:
+        queue = queue_objects[0]
+        with connections.redis.pipeline(transaction=True) as pipe:
+          pipe.zrange(queue.redis_key, 0, max_jobs)
+          pipe.zremrangebyrank(queue.redis_key, 0, max_jobs)
+          job_ids = pipe.execute()
 
-      jobs.append(job_class(job_id, queue=queue, start=True))
+        # From this point until job.fetch_and_start(), job is only local to this worker.
+        # If we die here, job will be lost in redis without having been marked as "started".
 
-      # Bulk-fetch other jobs from that queue to fill the pool.
-      # We take the chance that if there was one job on that queue, there should be more.
-      if max_jobs > 1:
-        job_ids = _redis_group_command("lpop", max_jobs - 1, queue)
+        self.status = "spawn"
+        jobs = [job_class(_job_id, queue=queue.redis_key, start=True) for _job_id in job_ids]
 
-        jobs += [job_class(_job_id, queue=queue, start=True)
-                 for _job_id in job_ids if _job_id]
+      else:
+
+        queue, job_id = connections.redis.blpop([q.redis_key for q in queue_objects], 0)
+        self.status = "spawn"
+
+        # From this point until job.fetch_and_start(), job is only local to this worker.
+        # If we die here, job will be lost in redis without having been marked as "started".
+
+        jobs.append(job_class(job_id, queue=queue, start=True))
+
+        # Bulk-fetch other jobs from that queue to fill the pool.
+        # We take the chance that if there was one job on that queue, there should be more.
+        if max_jobs > 1:
+          job_ids = _redis_group_command("lpop", max_jobs - 1, queue)
+
+          jobs += [job_class(_job_id, queue=queue, start=True)
+                   for _job_id in job_ids if _job_id]
 
       return jobs
 
     else:
       queue = queue_objects[0]
 
+      queue_config = get_current_config().get("raw_queues", {}).get(queue.id, {})
+
+      job_factory = queue_config.get("job_factory")
+      if not job_factory:
+        raise Exception("No job_factory configured for queue %s" % queue.id)
+
       params = []
+
+      # ZSET with times
       if queue.is_timed:
 
         current_time = int(time.time())
-        pushback_time = current_time + (24 * 3600)  # TODO configuration
-        params = _redis_command_zaddbyscore()(keys=[queue.redis_key], args=["-inf", current_time, 0, max_jobs, pushback_time])
 
-        # Unsafe version
-        # with connections.redis.pipeline(transaction=True) as pipe:
-        #   pipe.zrangebyscore(queue.redis_key, "-inf", current_time, start=0, num=max_jobs)
-        #   pipe.zremrangebyrank(queue.redis_key, 0, max_jobs - 1)
-        #   params = pipe.execute()
+        # When we have a pushback_seconds argument, we never pop items from the queue, instead
+        # we push them back by an amount of time so that they don't get dequeued again until
+        # the task finishes.
+        if queue_config.get("pushback_seconds"):
+          pushback_time = current_time + queue_config.get("pushback_seconds")
+          params = _redis_command_zaddbyscore()(keys=[queue.redis_key], args=["-inf", current_time, 0, max_jobs, pushback_time])
+        else:
+          params = _redis_command_zpopbyscore()(keys=[queue.redis_key], args=["-inf", current_time, 0, max_jobs])
 
+      # ZSET
       elif queue.is_sorted:
 
         with connections.redis.pipeline(transaction=True) as pipe:
           pipe.zrange(queue.redis_key, 0, max_jobs - 1)
           pipe.zremrangebyrank(queue.redis_key, 0, max_jobs - 1)
-          params = pipe.execute()
+          params = pipe.execute()[0]
 
+      # SET
       elif queue.is_set:
         params = _redis_group_command("spop", max_jobs, queue.redis_key)
 
+      # LIST
       else:
         params = _redis_group_command("lpop", max_jobs, queue.redis_key)
 
       if len(params) == 0:
-        time.sleep(1)
         return []
-
-      job_factory = get_current_config().get("raw_queues", {}).get(queue.id, {}).get("job_factory")
-      if not job_factory:
-        raise Exception("No job_factory configured for queue %s" % queue.id)
 
       job_data = [job_factory(p) for p in params]
       for j in job_data:
@@ -206,12 +276,12 @@ def _redis_group_command(command, cnt, redis_key):
   with connections.redis.pipeline(transaction=False) as pipe:
     for _ in range(cnt):
       getattr(pipe, command)(redis_key)
-    return pipe.execute()
+    return [x for x in pipe.execute() if x]
 
 
 def send_raw_tasks(queue, params_list, **kwargs):
   q = Queue(queue)
-  return q.enqueue_raw_jobs(params_list, **kwargs)
+  q.enqueue_raw_jobs(params_list, **kwargs)
 
 
 def send_task(path, params, **kwargs):
