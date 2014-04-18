@@ -100,11 +100,29 @@ class Job(object):
     if self.data is None:
       log.info("Job %s not found in MongoDB or status was cancelled!" % self.id)
     else:
-      task_def = get_current_config().get("tasks", {}).get(self.data["path"]) or {}
-      self.timeout = task_def.get("timeout", self.timeout)
-      self.result_ttl = task_def.get("result_ttl", self.result_ttl)
+      self.populate_properties()
 
     return self
+
+  def populate_properties(self):
+
+    task_def = get_current_config().get("tasks", {}).get(self.data["path"]) or {}
+    self.timeout = task_def.get("timeout", self.timeout)
+    self.result_ttl = task_def.get("result_ttl", self.result_ttl)
+
+  @classmethod
+  def insert(self, data, queue=None):
+
+    if data["status"] == "started":
+      data["datestarted"] = datetime.datetime.utcnow()
+    connections.mongodb_jobs.mrq_jobs.insert(data, manipulate=True)
+    job = Job(data["_id"], queue=queue)
+    job.data = data
+    job.populate_properties()
+    if data["status"] == "started":
+      job.datestarted = data["datestarted"]
+
+    return job
 
   def subpool_map(self, pool_size, func, iterable):
     """ Starts a Gevent pool and run a map. Takes care of setting current_job and cleaning up. """

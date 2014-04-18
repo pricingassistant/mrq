@@ -14,7 +14,7 @@ import urllib2
 sys.path.append(os.getcwd())
 
 from mrq.job import Job
-from mrq.queue import send_tasks
+from mrq.queue import send_tasks, send_raw_tasks
 from mrq.config import get_config
 from mrq.utils import wait_for_net_service
 from mrq.context import connections, set_current_config
@@ -174,11 +174,7 @@ class WorkerFixture(ProcessFixture):
      self.fixture_mongodb.stop(sig=2, **kwargs)
      self.fixture_redis.stop(sig=2, **kwargs)
 
-  def send_tasks(self, path, params_list, block=True, queue=None, accept_statuses=["success"]):
-    if not self.started:
-      self.start()
-
-    job_ids = send_tasks(path, params_list, queue=queue)
+  def wait_for_tasks_results(self, job_ids, block=True, accept_statuses=["success"]):
 
     if not block:
       return job_ids
@@ -192,6 +188,22 @@ class WorkerFixture(ProcessFixture):
       results.append(job.get("result"))
 
     return results
+
+  def send_raw_tasks(self, queue, params_list, block=True, accept_statuses=["success"]):
+    if not self.started:
+      self.start()
+
+    job_ids = send_raw_tasks(queue, params_list)
+
+    return self.wait_for_tasks_results(job_ids, block=block, accept_statuses=accept_statuses)
+
+  def send_tasks(self, path, params_list, block=True, queue=None, accept_statuses=["success"]):
+    if not self.started:
+      self.start()
+
+    job_ids = send_tasks(path, params_list, queue=queue)
+
+    return self.wait_for_tasks_results(job_ids, block=block, accept_statuses=accept_statuses)
 
   def send_task(self, path, params, **kwargs):
     return self.send_tasks(path, [params], **kwargs)[0]
