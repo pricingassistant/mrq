@@ -189,8 +189,8 @@ class WorkerFixture(ProcessFixture):
 
     return results
 
-  def send_raw_tasks(self, queue, params_list):
-    if not self.started:
+  def send_raw_tasks(self, queue, params_list, start=True):
+    if not self.started and start:
       self.start()
 
     send_raw_tasks(queue, params_list)

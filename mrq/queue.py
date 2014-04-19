@@ -148,6 +148,25 @@ class Queue(object):
     else:
       return connections.redis.lrange(self.redis_key, skip, skip + limit - 1)
 
+  def get_sorted_graph(self, start, stop, slices=100, include_inf=False, exact=False):
+
+    if not self.is_sorted:
+      raise Exception("Not a sorted queue")
+
+    with connections.redis.pipeline(transaction=exact) as pipe:
+      interval = float(stop - start) / slices
+      for i in range(0, slices):
+        pipe.zcount(self.redis_key, (start + i * interval), "(%s" % (start + (i + 1) * interval))
+      if include_inf:
+        pipe.zcount(self.redis_key, stop, "+inf")
+        pipe.zcount(self.redis_key, "-inf", "(%s" % start)
+      data = pipe.execute()
+
+    if include_inf:
+      return data[-1:] + data[:-1]
+
+    return data
+
   @classmethod
   def all_active(cls):
     """ List active queues, based on their lengths in Redis. """
