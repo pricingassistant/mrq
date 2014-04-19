@@ -3,6 +3,13 @@ import importlib
 import time
 
 
+def get_local_ip():
+  """ Returns the local IP. Can be overwritten in the config with --local-ip so don't call
+  this function directly, instead get the current value from the config """
+  import socket
+  return socket.gethostbyname(socket.gethostname())
+
+
 def group_iter(iterator, n=2):
   """ Given an iterator, it returns sub-lists made of n items.
   (except the last that can have len < n)

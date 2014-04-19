@@ -199,7 +199,8 @@ class Worker(object):
       "processes",
       "queues",
       "scheduler",
-      "name"
+      "name",
+      "local_ip"
     ]
 
     return {

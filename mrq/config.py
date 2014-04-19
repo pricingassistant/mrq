@@ -2,6 +2,7 @@ import argparse
 import os
 import sys
 from .version import VERSION
+from .utils import get_local_ip
 import atexit
 
 
@@ -120,6 +121,9 @@ def add_parser_args(parser, config_type):
 
     parser.add_argument('--admin_port', default=0, action="store", type=int,
                         help='Start an admin server on this port, if provided. Incompatible with --processes')
+
+    parser.add_argument('--local_ip', default=get_local_ip(), action="store", type=str,
+                        help='Overwrite the local IP, to be displayed in the dashboard.')
 
 
 def get_config(sources=("file", "env", "args"), env_prefix="MRQ_", parser=None, config_type="worker"):
