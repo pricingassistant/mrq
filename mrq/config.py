@@ -60,6 +60,9 @@ def add_parser_args(parser, config_type):
   parser.add_argument('--version', '-v', default=False, action="store_true",
                       help='Prints current MRQ version')
 
+  parser.add_argument('--no_import_patch', default=False, action='store_true',
+                      help='Skips patching __import__ to fix gevent bug #108')
+
   # mrq-run-specific arguments
 
   if config_type == "run":

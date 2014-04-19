@@ -111,7 +111,13 @@ MongoInsert2 = MongoInsert
 class SubPool(Task):
 
   def inner(self, x):
+
     assert get_current_job() == self.job
+
+    if x == "import-large-file":
+      from mrq.basetasks.tests.largefile import a
+      assert a == 1
+      return True
 
     if x == "exception":
       raise Exception(x)

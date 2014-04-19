@@ -60,6 +60,10 @@ def set_current_config(config):
     from mrq.monkey import patch_pymongo
     patch_pymongo(config)
 
+  if not config["no_import_patch"]:
+    from mrq.monkey import patch_import
+    patch_import()
+
 
 def get_current_config():
   global _CONFIG
