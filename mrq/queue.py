@@ -148,7 +148,7 @@ class Queue(object):
     else:
       return connections.redis.lrange(self.redis_key, skip, skip + limit - 1)
 
-  def get_sorted_graph(self, start, stop, slices=100, include_inf=False, exact=False):
+  def get_sorted_graph(self, start=0, stop=100, slices=100, include_inf=False, exact=False):
 
     if not self.is_sorted:
       raise Exception("Not a sorted queue")
@@ -181,14 +181,21 @@ class Queue(object):
 
   @classmethod
   def all(cls):
-    """ List all queues, based on their MongoDB existence. """
+    """ List all known queues (Raw + MongoDB)"""
+
+    # Start with raw queues we know exist from the config
+    queues = {x: 0 for x in get_current_config().get("raw_queues", {})}
 
     stats = list(connections.mongodb_jobs.mrq_jobs.aggregate([
       {"$match": {"status": "queued"}},
       {"$group": {"_id": "$queue", "jobs": {"$sum": 1}}}
     ])["result"])
 
-    return {x["_id"]: x["jobs"] for x in stats}
+    queues.update({x["_id"]: x["jobs"] for x in stats})
+
+    print "Q", queues
+
+    return queues
 
   @classmethod
   def dequeue_jobs(self, queues, max_jobs=1, job_class=None):

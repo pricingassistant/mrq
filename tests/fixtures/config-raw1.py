@@ -1,3 +1,5 @@
+import time
+
 RAW_QUEUES = {
   "pushback_timed_set": {
     "pushback_seconds": 24 * 3600,
@@ -9,6 +11,13 @@ RAW_QUEUES = {
     }
   },
   "test_timed_set": {
+    "dashboard_graph": lambda: {
+      "start": time.time() - (24 * 3600),
+      "stop": time.time() + (24 * 3600),
+      "slices": 30,
+      "include_inf": True,
+      "exact": False
+    },
     "job_factory": lambda rawparam: {
       "path": "mrq.basetasks.tests.general.MongoInsert",
       "params": {

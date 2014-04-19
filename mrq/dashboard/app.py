@@ -3,6 +3,7 @@ monkey.patch_all()
 
 from flask import Flask, request
 
+import time
 import os
 import sys
 from bson import ObjectId
@@ -144,14 +145,36 @@ def api_datatables(unit):
   sort = None
 
   if unit == "queues":
-    # TODO MongoDB distinct?
-    queues = [{
-      "name": queue[0],
-      "jobs": queue[1],  # MongoDB size
-      "size": Queue(queue[0]).size()  # Redis size
-    } for queue in Queue.all().items()]
 
-    queues.sort(key=lambda x: -x["jobs"])
+    queues = []
+    for name, jobs in Queue.all().items():
+      queue = Queue(name)
+      q = {
+        "name": name,
+        "jobs": jobs,  # MongoDB size
+        "size": queue.size(),  # Redis size
+        "is_sorted": queue.is_sorted,
+        "is_timed": queue.is_timed,
+        "is_raw": queue.is_raw,
+        "is_set": queue.is_set
+      }
+
+      if queue.is_sorted:
+        q["graph_config"] = cfg.get("raw_queues", {}).get(name, {}).get("dashboard_graph", lambda: {
+          "start": time.time() - (7 * 24 * 3600),
+          "stop": time.time() + (7 * 24 * 3600),
+          "slices": 30
+        } if queue.is_timed else {
+          "start": 0,
+          "stop": 100,
+          "slices": 30
+        })()
+        if q["graph_config"]:
+          q["graph"] = queue.get_sorted_graph(**q["graph_config"])
+
+      queues.append(q)
+
+    queues.sort(key=lambda x: -(x["jobs"] + x["size"]))
 
     data = {
       "aaData": queues,
