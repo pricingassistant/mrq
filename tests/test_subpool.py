@@ -40,6 +40,7 @@ def test_subpool_exception(worker):
 
 
 @pytest.mark.parametrize(["p_size"], [
+  [0],
   [1],
   [2],
   [100]

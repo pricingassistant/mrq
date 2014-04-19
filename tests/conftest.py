@@ -183,7 +183,7 @@ class WorkerFixture(ProcessFixture):
 
     for job_id in job_ids:
       job = Job(job_id).wait(poll_interval=0.01)
-      assert job.get("status") in accept_statuses
+      assert job.get("status") in accept_statuses, "Job had status %s, not in %s. Dump: %s" % (job.get("status"), accept_statuses, job.fetch())
 
       results.append(job.get("result"))
 

@@ -127,12 +127,15 @@ class Job(object):
   def subpool_map(self, pool_size, func, iterable):
     """ Starts a Gevent pool and run a map. Takes care of setting current_job and cleaning up. """
 
+    if not pool_size:
+      return [func(*args) for args in iterable]
+
     counter = itertools_count()
 
-    def inner_func(*args, **kwargs):
+    def inner_func(*args):
       next(counter)
       set_current_job(self)
-      ret = func(*args, **kwargs)
+      ret = func(*args)
       set_current_job(None)
       return ret
 
