@@ -101,3 +101,77 @@ def test_raw_set(worker, p_queue, p_set):
     assert test_collection.count() == 4
 
 
+def test_raw_exception(worker):
+
+  p_queue = "testexception_raw"
+
+  worker.start(flags="--gevent 10 --config tests/fixtures/config-raw1.py", queues=p_queue)
+
+  jobs_collection = worker.mongodb_jobs.mrq_jobs
+  assert jobs_collection.count() == 0
+  assert Queue(p_queue).size() == 0
+
+  worker.send_raw_tasks(p_queue, ["msg1"])
+
+  time.sleep(1)
+
+  failjob = list(jobs_collection.find())[0]
+
+  assert Queue("default").size() == 0
+  assert Queue(p_queue).size() == 0
+  assert jobs_collection.count() == 1
+  assert failjob["status"] == "failed"
+
+  worker.stop(deps=False)
+
+  worker.start(deps=False, flags="--gevent 10 --config tests/fixtures/config-raw1.py", queues="default")
+
+  worker.send_task(
+    "mrq.basetasks.utils.JobAction",
+    {
+      "id": failjob["_id"],
+      "action": "requeue"
+    },
+    block=True
+  )
+
+  assert Queue("default").size() == 0
+  assert Queue(p_queue).size() == 0
+  assert Queue("testx").size() == 1
+  assert jobs_collection.count() == 2
+  assert list(jobs_collection.find({"_id": failjob["_id"]}))[0]["status"] == "queued"
+  assert list(jobs_collection.find({"_id": {"$ne": failjob["_id"]}}))[0]["status"] == "success"
+
+  worker.stop(deps=False)
+
+  worker.start(deps=False, flags="--gevent 10 --config tests/fixtures/config-raw1.py", queues="default testx")
+
+  time.sleep(1)
+
+  assert Queue(p_queue).size() == 0
+  assert jobs_collection.count() == 2
+  assert Queue("testx").size() == 0
+  assert list(jobs_collection.find({"_id": failjob["_id"]}))[0]["status"] == "failed"
+
+
+def test_raw_retry(worker):
+
+  p_queue = "testretry_raw"
+
+  worker.start(flags="--gevent 10 --config tests/fixtures/config-raw1.py", queues=p_queue)
+
+  jobs_collection = worker.mongodb_jobs.mrq_jobs
+  assert jobs_collection.count() == 0
+  assert Queue(p_queue).size() == 0
+
+  worker.send_raw_tasks(p_queue, [0])
+
+  time.sleep(1)
+
+  failjob = list(jobs_collection.find())[0]
+
+  assert Queue("testx").size() == 1
+  assert Queue("default").size() == 0
+  assert Queue(p_queue).size() == 0
+  assert jobs_collection.count() == 1
+  assert failjob["status"] == "queued"

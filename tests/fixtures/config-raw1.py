@@ -39,5 +39,24 @@ RAW_QUEUES = {
         "sorted_set": rawparam
       }
     }
-  }
+  },
+  "testexception_raw": {
+    "retry_queue": "testx",
+    "job_factory": lambda rawparam: {
+      "path": "mrq.basetasks.tests.general.RaiseException",
+      "params": {
+        "message": rawparam
+      }
+    }
+  },
+  "testretry_raw": {
+    "retry_queue": "testx",
+    "job_factory": lambda rawparam: {
+      "path": "mrq.basetasks.tests.general.Retry",
+      "params": {
+        "sleep": int(rawparam),
+        "countdown": 0
+      }
+    }
+  },
 }

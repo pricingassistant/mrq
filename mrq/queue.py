@@ -78,20 +78,25 @@ class Queue(object):
   def enqueue_job_ids(self, job_ids):
 
     if self.is_raw:
-      raise Exception("Can't queue job ids in a raw queue")
+
+      retry_queue = get_current_config().get("raw_queues", {}).get(self.id, {}).get("retry_queue", "default")
+
+      queue = Queue(retry_queue)
+    else:
+      queue = self
 
     # ZSET
-    if self.is_sorted:
+    if queue.is_sorted:
 
-      if type(job_ids) is not dict and self.is_timed:
+      if type(job_ids) is not dict and queue.is_timed:
         now = int(time.time())
         job_ids = {x: now for x in job_ids}
 
-      connections.redis.zadd(self.redis_key, **job_ids)
+      connections.redis.zadd(queue.redis_key, **job_ids)
 
     # LIST
     else:
-      connections.redis.rpush(self.redis_key, *job_ids)
+      connections.redis.rpush(queue.redis_key, *job_ids)
 
   def enqueue_raw_jobs(self, params_list):
 
@@ -130,7 +135,7 @@ class Queue(object):
 
   def list_job_ids(self, skip=0, limit=20):
 
-    if not self.is_raw:
+    if self.is_raw:
       raise Exception("Can't list job ids from a raw queue")
 
     # ZSET
@@ -267,6 +272,7 @@ class Queue(object):
       job_data = [job_factory(p) for p in params]
       for j in job_data:
         j["status"] = "started"
+        j["queue"] = queue.id
 
       from .job import Job
       return [Job.insert(j) for j in job_data]  # TODO could be optimized by bulk inserts
@@ -323,30 +329,3 @@ def send_tasks(path, params_list, queue=None, sync=False, batch_size=1000):
     all_ids += job_ids
 
   return all_ids
-
-
-    # # Cf code in send_task
-    # if kwargs.get("uniquestarted") or kwargs.get("uniquequeued"):
-    #   descriptions = {json.dumps([task, params, {}]):i for i, params in enumerate(params_list)}
-    #   cancelled_indexes = []
-
-    #   if kwargs.get("uniquestarted"):
-    #     del kwargs["uniquestarted"]
-    #     started_queue = Queue("started", connection=connection)
-
-    #     for job in started_queue.jobs:
-    #       if job.description in descriptions:
-    #         cancelled_indexes.append(descriptions.get(job.description))
-
-    #   if kwargs.get("uniquequeued"):
-    #     params_list = uniqify_params_list(params_list)
-    #     del kwargs["uniquequeued"]
-    #     started_queue = Queue(task, connection=connection)
-
-    #     for job in started_queue.jobs:
-    #       if job.description in descriptions and job.status != "finished":
-    #         cancelled_indexes.append(descriptions.get(job.description))
-
-    #   # http://stackoverflow.com/questions/11303225/how-to-remove-multiple-indexes-from-a-list-at-the-same-time
-    #   for i in sorted(set(cancelled_indexes), reverse=True):
-    #     params_list.pop(i)
