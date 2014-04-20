@@ -1,7 +1,5 @@
-from time import sleep
 from mrq.task import Task
-from mrq.context import log, connections
-import urllib2
+from mrq.context import connections
 
 
 class MultiRedis(Task):

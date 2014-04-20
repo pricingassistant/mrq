@@ -42,7 +42,7 @@ def patch_pymongo(config):
     for method in ["find"]:
       setattr(MongoKitCollection, method, gen_monkey_patch(MongoKitCollection, method))
 
-  except:
+  except ImportError:
     pass
 
 

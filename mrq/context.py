@@ -10,7 +10,7 @@ try:
   # MongoKit's Connection object is just a wrapped MongoClient.
   from mongokit import Connection as MongoClient
   from mongokit import ReplicaSetConnection as MongoReplicaSetClient
-except:
+except ImportError:
   from pymongo import MongoClient
   from pymongo import MongoReplicaSetClient
 
@@ -107,7 +107,7 @@ def _connections_factory(attr):
     if type(config_obj) in [str, unicode]:
 
       (mongoAuth, mongoUsername, mongoPassword, mongoHosts, mongoDbName, mongoDbOptions) = re.match(
-        "mongodb://((\w+):(\w+)@)?([\w\.:,-]+)/([\w-]+)(\?.*)?", config_obj).groups()
+        r"mongodb://((\w+):(\w+)@)?([\w\.:,-]+)/([\w-]+)(\?.*)?", config_obj).groups()
 
       log.debug("Connecting to MongoDB at %s/%s..." % (mongoHosts, mongoDbName))
 

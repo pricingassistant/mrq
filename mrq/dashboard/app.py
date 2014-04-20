@@ -18,7 +18,7 @@ from mrq.queue import send_task, Queue
 from mrq.context import connections, set_current_config, get_current_config
 from mrq.config import get_config
 
-from utils import jsonify, requires_auth
+from .utils import jsonify, requires_auth
 
 CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 
@@ -107,24 +107,24 @@ def get_workers():
   return jsonify(data)
 
 
-def build_api_datatables_query(request):
+def build_api_datatables_query(req):
   query = {}
 
-  if request.args.get("redisqueue"):
-    query["_id"] = {"$in": [ObjectId(x) for x in Queue(request.args.get("redisqueue")).list_job_ids(limit=1000)]}
+  if req.args.get("redisqueue"):
+    query["_id"] = {"$in": [ObjectId(x) for x in Queue(req.args.get("redisqueue")).list_job_ids(limit=1000)]}
   else:
 
     for param in ["queue", "path", "status", "exceptiontype"]:
-      if request.args.get(param):
-        query[param] = request.args.get(param)
-    if request.args.get("id"):
-      query["_id"] = ObjectId(request.args.get("id"))
-    if request.args.get("worker"):
-      query["worker"] = ObjectId(request.args.get("worker"))
+      if req.args.get(param):
+        query[param] = req.args.get(param)
+    if req.args.get("id"):
+      query["_id"] = ObjectId(req.args.get("id"))
+    if req.args.get("worker"):
+      query["worker"] = ObjectId(req.args.get("worker"))
 
-    if request.args.get("params"):
+    if req.args.get("params"):
       try:
-        params_dict = json.loads(request.args.get("params"))
+        params_dict = json.loads(req.args.get("params"))
 
         for key in params_dict.keys():
           query["params.%s" % key] = params_dict[key]

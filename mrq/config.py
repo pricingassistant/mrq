@@ -174,7 +174,7 @@ def get_config(sources=("file", "env", "args"), env_prefix="MRQ_", parser=None, 
   # Merge the config in the order given by the user
   merged_config = default_config
   for part in sources:
-    for name, arg_value in merged_config.iteritems():
+    for name in merged_config:
 
       if part == "env":
         value = os.environ.get(env_prefix + name.upper())

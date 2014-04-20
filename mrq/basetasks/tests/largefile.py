@@ -1,3 +1,4 @@
+#pylint: disable-all
 """
 Generate some random code:
 

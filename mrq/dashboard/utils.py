@@ -23,32 +23,32 @@ def jsonify(*args, **kwargs):
 
 
 def check_auth(username, pwd):
-    """This function is called to check if a username /
-    password combination is valid.
-    """
-    cfg = get_current_config()
-    return username == cfg["dashboard_httpauth"].split(":")[0] and pwd == cfg["dashboard_httpauth"].split(":")[1]
+  """This function is called to check if a username /
+  password combination is valid.
+  """
+  cfg = get_current_config()
+  return username == cfg["dashboard_httpauth"].split(":")[0] and pwd == cfg["dashboard_httpauth"].split(":")[1]
 
 
 def authenticate():
-    """Sends a 401 response that enables basic auth"""
-    return Response(
-      'Could not verify your access level for that URL.\n'
-      'You have to login with proper credentials', 401,
-      {'WWW-Authenticate': 'Basic realm="Login Required"'}
-    )
+  """Sends a 401 response that enables basic auth"""
+  return Response(
+    'Could not verify your access level for that URL.\n'
+    'You have to login with proper credentials', 401,
+    {'WWW-Authenticate': 'Basic realm="Login Required"'}
+  )
 
 
 def requires_auth(f):
 
-    cfg = get_current_config()
-    if not cfg["dashboard_httpauth"]:
-      return f
+  cfg = get_current_config()
+  if not cfg["dashboard_httpauth"]:
+    return f
 
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        auth = request.authorization
-        if not auth or not check_auth(auth.username, auth.password):
-            return authenticate()
-        return f(*args, **kwargs)
-    return decorated
+  @wraps(f)
+  def decorated(*args, **kwargs):
+    auth = request.authorization
+    if not auth or not check_auth(auth.username, auth.password):
+      return authenticate()
+    return f(*args, **kwargs)
+  return decorated

@@ -49,5 +49,5 @@ stack:
 	redis-server &
 	python mrq/dashboard/app.py &
 
-pypi:
+pypi: linterrors
 	python setup.py sdist upload

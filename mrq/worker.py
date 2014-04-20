@@ -33,15 +33,14 @@ class Worker(object):
   # Allow easy overloading
   job_class = Job
 
-  """ Valid statuses:
-        * init: General worker initialization
-        * wait: Waiting for new jobs from Redis (BLPOP in progress)
-        * spawn: Got some new jobs, greenlets are being spawned
-        * full: All the worker pool is busy executing jobs
-        * join: Waiting for current jobs to finish, no new one will be accepted
-        * kill: Killing all current jobs
-        * stop: Worker is stopped, no jobs should remain
-  """
+  # Valid statuses:
+  #       * init: General worker initialization
+  #       * wait: Waiting for new jobs from Redis (BLPOP in progress)
+  #       * spawn: Got some new jobs, greenlets are being spawned
+  #       * full: All the worker pool is busy executing jobs
+  #       * join: Waiting for current jobs to finish, no new one will be accepted
+  #       * kill: Killing all current jobs
+  #       * stop: Worker is stopped, no jobs should remain
   status = "init"
 
   mongodb_jobs = None

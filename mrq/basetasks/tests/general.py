@@ -2,8 +2,6 @@ from time import sleep
 from mrq.task import Task
 from mrq.context import log, retry_current_job, connections, get_current_config, get_current_job
 import urllib2
-import string
-import random
 
 
 class Add(Task):
