@@ -288,6 +288,8 @@ class Worker(object):
 
     self.install_signal_handlers()
 
+    has_raw = any(q.is_raw or q.is_sorted for q in [Queue(x) for x in self.queues])
+
     try:
 
       while True:
@@ -316,8 +318,7 @@ class Worker(object):
           break
 
         # We seem to have exhausted available jobs, we can sleep for a while.
-        # TODO we shouldn't do that when we know that only blpop is being used by the queues.
-        if len(jobs) < free_pool_slots:
+        if has_raw and len(jobs) < free_pool_slots:
           gevent.sleep(1)
 
     except StopRequested:

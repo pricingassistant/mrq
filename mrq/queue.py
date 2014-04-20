@@ -207,13 +207,11 @@ class Queue(object):
 
     queue_objects = [Queue(q) for q in queues]
 
-    # TODO: we may allow dequeueing from several raw queues in the future
-    has_raw = any(q.is_raw or q.is_timed for q in queue_objects)
-    if has_raw and len(queues) != 1:
-      raise Exception("Can't dequeue from more multiple queues when one is raw or timed")
+    has_raw = any(q.is_raw or q.is_sorted for q in queue_objects)
 
     log.debug("Fetching %s jobs from Redis" % max_jobs)
 
+    # When none of the queues is a raw queue, we can have an optimized mode where we BLPOP from the queues.
     if not has_raw:
 
       jobs = []
@@ -252,56 +250,72 @@ class Queue(object):
       return jobs
 
     else:
-      queue = queue_objects[0]
 
-      queue_config = get_current_config().get("raw_queues", {}).get(queue.id, {})
+      jobs = []
 
-      job_factory = queue_config.get("job_factory")
-      if not job_factory:
-        raise Exception("No job_factory configured for queue %s" % queue.id)
+      # Try to dequeue from each of the queues until we have filled max_jobs.
+      for queue in queue_objects:
 
-      params = []
+        queue_config = get_current_config().get("raw_queues", {}).get(queue.id, {})
 
-      # ZSET with times
-      if queue.is_timed:
+        job_factory = queue_config.get("job_factory")
+        if not job_factory and queue.is_raw:
+          raise Exception("No job_factory configured for raw queue %s" % queue.id)
 
-        current_time = int(time.time())
+        params = []
 
-        # When we have a pushback_seconds argument, we never pop items from the queue, instead
-        # we push them back by an amount of time so that they don't get dequeued again until
-        # the task finishes.
-        if queue_config.get("pushback_seconds"):
-          pushback_time = current_time + queue_config.get("pushback_seconds")
-          params = _redis_command_zaddbyscore()(keys=[queue.redis_key], args=["-inf", current_time, 0, max_jobs, pushback_time])
+        # ZSET with times
+        if queue.is_timed:
+
+          current_time = int(time.time())
+
+          # When we have a pushback_seconds argument, we never pop items from the queue, instead
+          # we push them back by an amount of time so that they don't get dequeued again until
+          # the task finishes.
+          if queue_config.get("pushback_seconds"):
+            pushback_time = current_time + queue_config.get("pushback_seconds")
+            params = _redis_command_zaddbyscore()(keys=[queue.redis_key], args=["-inf", current_time, 0, max_jobs, pushback_time])
+          else:
+            params = _redis_command_zpopbyscore()(keys=[queue.redis_key], args=["-inf", current_time, 0, max_jobs])
+
+        # ZSET
+        elif queue.is_sorted:
+
+          with connections.redis.pipeline(transaction=True) as pipe:
+            pipe.zrange(queue.redis_key, 0, max_jobs - 1)
+            pipe.zremrangebyrank(queue.redis_key, 0, max_jobs - 1)
+            params = pipe.execute()[0]
+
+        # SET
+        elif queue.is_set:
+          params = _redis_group_command("spop", max_jobs, queue.redis_key)
+
+        # LIST
         else:
-          params = _redis_command_zpopbyscore()(keys=[queue.redis_key], args=["-inf", current_time, 0, max_jobs])
+          params = _redis_group_command("lpop", max_jobs, queue.redis_key)
 
-      # ZSET
-      elif queue.is_sorted:
+        if len(params) == 0:
+          continue
 
-        with connections.redis.pipeline(transaction=True) as pipe:
-          pipe.zrange(queue.redis_key, 0, max_jobs - 1)
-          pipe.zremrangebyrank(queue.redis_key, 0, max_jobs - 1)
-          params = pipe.execute()[0]
+        max_jobs -= len(params)
 
-      # SET
-      elif queue.is_set:
-        params = _redis_group_command("spop", max_jobs, queue.redis_key)
+        if queue.is_raw:
+          job_data = [job_factory(p) for p in params]
+          for j in job_data:
+            j["status"] = "started"
+            j["queue"] = queue.id
 
-      # LIST
-      else:
-        params = _redis_group_command("lpop", max_jobs, queue.redis_key)
+          from .job import Job
+          jobs += [Job.insert(j) for j in job_data]  # TODO could be optimized by bulk inserts
 
-      if len(params) == 0:
-        return []
+        else:
+          jobs += [job_class(_job_id, queue=queue, start=True)
+                   for _job_id in params if _job_id]
 
-      job_data = [job_factory(p) for p in params]
-      for j in job_data:
-        j["status"] = "started"
-        j["queue"] = queue.id
+        if max_jobs == 0:
+          break
 
-      from .job import Job
-      return [Job.insert(j) for j in job_data]  # TODO could be optimized by bulk inserts
+      return jobs
 
 
 def _redis_group_command(command, cnt, redis_key):

@@ -195,8 +195,8 @@ class WorkerFixture(ProcessFixture):
 
     send_raw_tasks(queue, params_list)
 
-  def send_tasks(self, path, params_list, block=True, queue=None, accept_statuses=["success"]):
-    if not self.started:
+  def send_tasks(self, path, params_list, block=True, queue=None, accept_statuses=["success"], start=True):
+    if not self.started and start:
       self.start()
 
     job_ids = send_tasks(path, params_list, queue=queue)

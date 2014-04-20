@@ -175,3 +175,43 @@ def test_raw_retry(worker):
   assert Queue(p_queue).size() == 0
   assert jobs_collection.count() == 1
   assert failjob["status"] == "queued"
+
+
+@pytest.mark.parametrize(["p_queue", "p_greenlets"], [x1 + x2 for x1 in [
+  ["test_raw default test"],
+  ["default test_raw test"],
+  ["default test_raw test_set"],
+  ["test_set test_raw default"],
+  ["test test2 test_set test_raw default"]
+] for x2 in [
+  [1],
+  [2],
+  [10]
+]])
+def test_raw_mixed(worker, p_queue, p_greenlets):
+
+  worker.start_deps()
+
+  worker.send_raw_tasks("test_raw", ["aaa", "bbb", "ccc"], start=False)
+
+  worker.send_task("mrq.basetasks.tests.general.MongoInsert", {
+    "not_raw": "ddd"
+  }, start=False, block=False)
+
+  assert Queue("test_raw").size() == 3
+  assert Queue("default").size() == 1
+
+  worker.start(flags="--gevent %s --config tests/fixtures/config-raw1.py" % p_greenlets, queues=p_queue, deps=False)
+
+  test_collection = worker.mongodb_logs.tests_inserts
+  jobs_collection = worker.mongodb_jobs.mrq_jobs
+
+  time.sleep(1)
+
+  assert Queue("test_raw").size() == 0
+  assert Queue("default").size() == 0
+
+  assert test_collection.count() == 4
+  assert jobs_collection.count() == 4
+  assert jobs_collection.find({"status": "success"}).count() == 4
+
