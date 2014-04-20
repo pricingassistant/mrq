@@ -89,8 +89,8 @@ class Queue(object):
     if queue.is_sorted:
 
       if type(job_ids) is not dict and queue.is_timed:
-        now = int(time.time())
-        job_ids = {x: now for x in job_ids}
+        now = time.time()
+        job_ids = {str(x): now for x in job_ids}
 
       connections.redis.zadd(queue.redis_key, **job_ids)
 
@@ -107,8 +107,8 @@ class Queue(object):
     if self.is_sorted:
 
       if type(params_list) is not dict and self.is_timed:
-        now = int(time.time())
-        params_list = {x: now for x in params_list}
+        now = time.time()
+        params_list = {str(x): now for x in params_list}
 
       connections.redis.zadd(self.redis_key, **params_list)
     # SET
@@ -306,7 +306,7 @@ class Queue(object):
             j["queue"] = queue.id
 
           from .job import Job
-          jobs += [Job.insert(j) for j in job_data]  # TODO could be optimized by bulk inserts
+          jobs += Job.insert(job_data)
 
         else:
           jobs += [job_class(_job_id, queue=queue, start=True)

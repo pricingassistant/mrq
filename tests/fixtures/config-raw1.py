@@ -68,4 +68,44 @@ RAW_QUEUES = {
       }
     }
   },
+  "testperformance_raw": {
+    "job_factory": lambda rawparam: {
+      "path": "mrq.basetasks.tests.general.Add",
+      "params": {
+        "a": int(rawparam),
+        "b": 0,
+        "sleep": 0
+      }
+    }
+  },
+  "testperformance_set": {
+    "job_factory": lambda rawparam: {
+      "path": "mrq.basetasks.tests.general.Add",
+      "params": {
+        "a": int(rawparam),
+        "b": 0,
+        "sleep": 0
+      }
+    }
+  },
+  "testperformance_timed_set": {
+    "job_factory": lambda rawparam: {
+      "path": "mrq.basetasks.tests.general.Add",
+      "params": {
+        "a": int(rawparam),
+        "b": 0,
+        "sleep": 0
+      }
+    }
+  },
+  "testperformance_sorted_set": {
+    "job_factory": lambda rawparam: {
+      "path": "mrq.basetasks.tests.general.Add",
+      "params": {
+        "a": int(rawparam),
+        "b": 0,
+        "sleep": 0
+      }
+    }
+  }
 }

@@ -14,7 +14,7 @@ import urllib2
 sys.path.append(os.getcwd())
 
 from mrq.job import Job
-from mrq.queue import send_tasks, send_raw_tasks
+from mrq.queue import send_tasks, send_raw_tasks, Queue
 from mrq.config import get_config
 from mrq.utils import wait_for_net_service
 from mrq.context import connections, set_current_config
@@ -189,11 +189,18 @@ class WorkerFixture(ProcessFixture):
 
     return results
 
-  def send_raw_tasks(self, queue, params_list, start=True):
+  def send_raw_tasks(self, queue, params_list, start=True, block=True):
     if not self.started and start:
       self.start()
 
     send_raw_tasks(queue, params_list)
+
+    if block:
+      # Wait for the queue to be empty. Might be error-prone when tasks are in-memory between the 2
+      q = Queue(queue)
+      while q.size() > 0 or self.mongodb_jobs.mrq_jobs.find({"status": "started"}).count() > 0:
+        print "S", q.size(), self.mongodb_jobs.mrq_jobs.find({"status": "started"}).count()
+        time.sleep(0.1)
 
   def send_tasks(self, path, params_list, block=True, queue=None, accept_statuses=["success"], start=True):
     if not self.started and start:

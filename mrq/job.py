@@ -114,18 +114,23 @@ class Job(object):
     self.result_ttl = task_def.get("result_ttl", self.result_ttl)
 
   @classmethod
-  def insert(self, data, queue=None):
+  def insert(self, jobs_data, queue=None):
 
-    if data["status"] == "started":
-      data["datestarted"] = datetime.datetime.utcnow()
-    connections.mongodb_jobs.mrq_jobs.insert(data, manipulate=True)
-    job = Job(data["_id"], queue=queue)
-    job.data = data
-    job.populate_properties()
-    if data["status"] == "started":
-      job.datestarted = data["datestarted"]
+    for data in jobs_data:
+      if data["status"] == "started":
+        data["datestarted"] = datetime.datetime.utcnow()
+    connections.mongodb_jobs.mrq_jobs.insert(jobs_data, manipulate=True)
 
-    return job
+    jobs = []
+    for data in jobs_data:
+      job = Job(data["_id"], queue=queue)
+      job.data = data
+      job.populate_properties()
+      if data["status"] == "started":
+        job.datestarted = data["datestarted"]
+      jobs.append(job)
+
+    return jobs
 
   def subpool_map(self, pool_size, func, iterable):
     """ Starts a Gevent pool and run a map. Takes care of setting current_job and cleaning up. """

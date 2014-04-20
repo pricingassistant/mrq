@@ -28,12 +28,12 @@ def test_raw_sorted(worker, p_queue, p_pushback, p_timed, p_flags):
     "aaa": current_time - 10,
     "bbb": current_time + 2,
     "ccc": current_time + 5
-  })
+  }, block=False)
 
   # Re-schedule
   worker.send_raw_tasks(p_queue, {
     "ccc": current_time + 2
-  })
+  }, block=False)
 
   time.sleep(1)
 
@@ -90,9 +90,7 @@ def test_raw_set(worker, p_queue, p_set):
   assert Queue(p_queue).size() == 0
 
   # Schedule one in the past, one in the future
-  worker.send_raw_tasks(p_queue, ["aaa", "bbb", "ccc", "bbb"])
-
-  time.sleep(1)
+  worker.send_raw_tasks(p_queue, ["aaa", "bbb", "ccc", "bbb"], block=True)
 
   if p_set:
     assert test_collection.count() == 3
@@ -111,9 +109,7 @@ def test_raw_exception(worker):
   assert jobs_collection.count() == 0
   assert Queue(p_queue).size() == 0
 
-  worker.send_raw_tasks(p_queue, ["msg1"])
-
-  time.sleep(1)
+  worker.send_raw_tasks(p_queue, ["msg1"], block=True)
 
   failjob = list(jobs_collection.find())[0]
 
@@ -164,9 +160,7 @@ def test_raw_retry(worker):
   assert jobs_collection.count() == 0
   assert Queue(p_queue).size() == 0
 
-  worker.send_raw_tasks(p_queue, [0])
-
-  time.sleep(1)
+  worker.send_raw_tasks(p_queue, [0], block=True)
 
   failjob = list(jobs_collection.find())[0]
 
@@ -192,7 +186,7 @@ def test_raw_mixed(worker, p_queue, p_greenlets):
 
   worker.start_deps()
 
-  worker.send_raw_tasks("test_raw", ["aaa", "bbb", "ccc"], start=False)
+  worker.send_raw_tasks("test_raw", ["aaa", "bbb", "ccc"], start=False, block=False)
 
   worker.send_task("mrq.basetasks.tests.general.MongoInsert", {
     "not_raw": "ddd"

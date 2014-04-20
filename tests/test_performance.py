@@ -1,17 +1,27 @@
 import time
 from mrq.queue import Queue
+import pytest
 
 
-def benchmark_task(worker, taskpath, taskparams, tasks=1000, greenlets=50, processes=0, max_seconds=10, profile=False, quiet=True):
+def benchmark_task(worker, taskpath, taskparams, tasks=1000, greenlets=50, processes=0, max_seconds=10, profile=False, quiet=True, raw=False, queues="default", config=None):
 
-  worker.start(flags="--profile --processes %s --gevent %s%s%s" % (processes, greenlets, " --profile" if profile else "", " --quiet" if quiet else ""))
+  worker.start(flags="--profile --processes %s --gevent %s%s%s%s" % (
+    processes,
+    greenlets,
+    " --profile" if profile else "",
+    " --quiet" if quiet else "",
+    " --config %s" % config if config else ""
+  ), queues=queues)
 
   start_time = time.time()
 
   # result = worker.send_tasks("mrq.basetasks.tests.general.Add",
   #                            [{"a": i, "b": 0, "sleep": 0} for i in range(n_tasks)])
 
-  result = worker.send_tasks(taskpath, taskparams)
+  if raw:
+    result = worker.send_raw_tasks(taskpath, taskparams)
+  else:
+    result = worker.send_tasks(taskpath, taskparams)
 
   total_time = time.time() - start_time
 
@@ -22,7 +32,7 @@ def benchmark_task(worker, taskpath, taskparams, tasks=1000, greenlets=50, proce
   return result, total_time
 
 
-def test_performance_simpleadds(worker):
+def test_performance_simpleadds_regular(worker):
 
   n_tasks = 10000
   n_greenlets = 30
@@ -39,6 +49,32 @@ def test_performance_simpleadds(worker):
 
   # ... and return correct results
   assert result == range(n_tasks)
+
+
+@pytest.mark.parametrize(["p_queue", "p_greenlets"], [x1 + x2 for x1 in [
+  ["testperformance_raw"],
+  ["testperformance_set"],
+  ["testperformance_timed_set"]
+] for x2 in [
+  [100]
+]])
+def test_performance_simpleadds_raw(worker, p_queue, p_greenlets):
+
+  n_tasks = 10000
+  n_greenlets = p_greenlets
+  n_processes = 0
+  max_seconds = 35
+
+  result, total_time = benchmark_task(worker,
+                                      p_queue,
+                                      range(n_tasks),
+                                      tasks=n_tasks,
+                                      greenlets=n_greenlets,
+                                      processes=n_processes,
+                                      max_seconds=max_seconds,
+                                      raw=True,
+                                      queues=p_queue,
+                                      config="tests/fixtures/config-raw1.py")
 
 
 # TODO add network latency

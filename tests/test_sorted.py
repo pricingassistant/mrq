@@ -19,8 +19,8 @@ def test_sorted_graph(worker):
     "aaa2": 1.5,
     "bbb": 2,
     "ccc": 4
-  }, start=False)
-  time.sleep(1)
+  }, start=False, block=False)
+  time.sleep(0.5)
 
   assert Queue(p_queue).size() == 5
   assert Queue(p_queue).get_sorted_graph(1, 4, slices=3, include_inf=True) == [1, 2, 1, 0, 1]
