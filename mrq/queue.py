@@ -118,6 +118,24 @@ class Queue(object):
     else:
       connections.redis.rpush(self.redis_key, *params_list)
 
+  def remove_raw_jobs(self, params_list):
+
+    if not self.is_raw:
+      raise Exception("Can't remove raw jobs in a regular queue")
+
+    # ZSET
+    if self.is_sorted:
+      connections.redis.zrem(self.redis_key, *iter(params_list))
+
+    # SET
+    elif self.is_set:
+      connections.redis.srem(self.redis_key, *params_list)
+
+    else:
+      # O(n)! Use with caution.
+      for k in params_list:
+        connections.redis.lrem(self.redis_key, 1, k)
+
   def size(self):
 
     # ZSET

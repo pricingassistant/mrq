@@ -99,6 +99,25 @@ def test_raw_set(worker, p_queue, p_set):
     assert test_collection.count() == 4
 
 
+@pytest.mark.parametrize(["p_queue"], [
+  ["test_raw"],
+  ["test_set"],
+  ["test_timed_set"]
+
+])
+def test_raw_remove(worker, p_queue):
+
+  worker.start_deps()
+
+  worker.send_raw_tasks(p_queue, ["aa", "bb", "cc"], block=False, start=False)
+
+  assert Queue(p_queue).size() == 3
+
+  Queue(p_queue).remove_raw_jobs(["aa", "cc"])
+
+  assert Queue(p_queue).size() == 1
+
+
 def test_raw_exception(worker):
 
   p_queue = "testexception_raw"
