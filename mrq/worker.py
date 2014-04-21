@@ -306,10 +306,8 @@ class Worker(object):
 
         self.log.info('Listening on %s' % self.queues)
 
-        jobs = Queue.dequeue_jobs(self.queues, max_jobs=free_pool_slots, job_class=self.job_class)
-
-        if len(jobs) > 0:
-          self.status = "spawn"
+        # worker.status will be set to "spawn" as soon as we're not waiting anymore.
+        jobs = Queue.dequeue_jobs(self.queues, max_jobs=free_pool_slots, job_class=self.job_class, worker=self)
 
         for job in jobs:
 
@@ -322,6 +320,7 @@ class Worker(object):
 
         # We seem to have exhausted available jobs, we can sleep for a while.
         if has_raw and len(jobs) < free_pool_slots:
+          self.status = "wait"
           gevent.sleep(1)
 
     except StopRequested:

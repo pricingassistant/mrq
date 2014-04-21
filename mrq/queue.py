@@ -216,7 +216,7 @@ class Queue(object):
     return queues
 
   @classmethod
-  def dequeue_jobs(self, queues, max_jobs=1, job_class=None):
+  def dequeue_jobs(self, queues, max_jobs=1, job_class=None, worker=None):
     """ Fetch a maximum of max_jobs from this worker's queues. """
 
     if job_class is None:
@@ -235,6 +235,10 @@ class Queue(object):
       jobs = []
 
       if queue_objects[0].is_timed:
+
+        if worker:
+          worker.status = "spawn"
+
         queue = queue_objects[0]
         with connections.redis.pipeline(transaction=True) as pipe:
           pipe.zrange(queue.redis_key, 0, max_jobs)
@@ -244,13 +248,13 @@ class Queue(object):
         # From this point until job.fetch_and_start(), job is only local to this worker.
         # If we die here, job will be lost in redis without having been marked as "started".
 
-        self.status = "spawn"
         jobs = [job_class(_job_id, queue=queue.redis_key, start=True) for _job_id in job_ids]
 
       else:
 
         queue, job_id = connections.redis.blpop([q.redis_key for q in queue_objects], 0)
-        self.status = "spawn"
+        if worker:
+          worker.status = "spawn"
 
         # From this point until job.fetch_and_start(), job is only local to this worker.
         # If we die here, job will be lost in redis without having been marked as "started".
@@ -268,6 +272,9 @@ class Queue(object):
       return jobs
 
     else:
+
+      if worker:
+        worker.status = "spawn"
 
       jobs = []
 
