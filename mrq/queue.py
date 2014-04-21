@@ -323,8 +323,7 @@ class Queue(object):
             j["status"] = "started"
             j["queue"] = queue.id
 
-          from .job import Job
-          jobs += Job.insert(job_data)
+          jobs += job_class.insert(job_data)
 
         else:
           jobs += [job_class(_job_id, queue=queue, start=True)

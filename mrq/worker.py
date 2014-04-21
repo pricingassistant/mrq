@@ -308,6 +308,9 @@ class Worker(object):
 
         jobs = Queue.dequeue_jobs(self.queues, max_jobs=free_pool_slots, job_class=self.job_class)
 
+        if len(jobs) > 0:
+          self.status = "spawn"
+
         for job in jobs:
 
           # TODO investigate spawn_raw?

@@ -123,7 +123,7 @@ class Job(object):
 
     jobs = []
     for data in jobs_data:
-      job = Job(data["_id"], queue=queue)
+      job = self(data["_id"], queue=queue)
       job.data = data
       job.populate_properties()
       if data["status"] == "started":
