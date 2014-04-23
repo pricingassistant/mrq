@@ -77,6 +77,9 @@ class Queue(object):
 
   def enqueue_job_ids(self, job_ids):
 
+    if len(job_ids) == 0:
+      return
+
     if self.is_raw:
 
       retry_queue = get_current_config().get("raw_queues", {}).get(self.id, {}).get("retry_queue", "default")
@@ -103,6 +106,9 @@ class Queue(object):
     if not self.is_raw:
       raise Exception("Can't queue raw jobs in a regular queue")
 
+    if len(params_list) == 0:
+      return
+
     # ZSET
     if self.is_sorted:
 
@@ -122,6 +128,9 @@ class Queue(object):
 
     if not self.is_raw:
       raise Exception("Can't remove raw jobs in a regular queue")
+
+    if len(params_list) == 0:
+      return
 
     # ZSET
     if self.is_sorted:

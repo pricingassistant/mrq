@@ -18,7 +18,7 @@ from mrq.queue import send_task, Queue
 from mrq.context import connections, set_current_config, get_current_config
 from mrq.config import get_config
 
-from .utils import jsonify, requires_auth
+from mrq.dashboard.utils import jsonify, requires_auth
 
 CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 
