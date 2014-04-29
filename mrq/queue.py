@@ -157,6 +157,14 @@ class Queue(object):
     else:
       return connections.redis.llen(self.redis_key)
 
+  def count_jobs_to_dequeue(self):
+    if self.is_timed:
+      # timed ZSET
+      current_time = int(time.time())
+      return connections.redis.zcount(self.redis_key, "-inf", current_time)
+    else:
+      return self.size()
+
   def empty(self):
     return connections.redis.delete(self.redis_key)
 
