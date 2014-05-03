@@ -160,8 +160,7 @@ class Queue(object):
   def count_jobs_to_dequeue(self):
     if self.is_timed:
       # timed ZSET
-      current_time = int(time.time())
-      return connections.redis.zcount(self.redis_key, "-inf", current_time)
+      return connections.redis.zcount(self.redis_key, "-inf", time.time())
     else:
       return self.size()
 
@@ -227,8 +226,6 @@ class Queue(object):
     ])["result"])
 
     queues.update({x["_id"]: x["jobs"] for x in stats})
-
-    print "Q", queues
 
     return queues
 
@@ -309,13 +306,13 @@ class Queue(object):
         # ZSET with times
         if queue.is_timed:
 
-          current_time = int(time.time())
+          current_time = time.time()
 
           # When we have a pushback_seconds argument, we never pop items from the queue, instead
           # we push them back by an amount of time so that they don't get dequeued again until
           # the task finishes.
           if queue_config.get("pushback_seconds"):
-            pushback_time = current_time + queue_config.get("pushback_seconds")
+            pushback_time = current_time + float(queue_config.get("pushback_seconds"))
             params = _redis_command_zaddbyscore()(keys=[queue.redis_key], args=["-inf", current_time, 0, max_jobs, pushback_time])
           else:
             params = _redis_command_zpopbyscore()(keys=[queue.redis_key], args=["-inf", current_time, 0, max_jobs])
