@@ -71,6 +71,8 @@ def test_raw_sorted(worker, p_queue, p_pushback, p_timed, p_flags):
   assert list(jobs_collection.find())[1]["status"] == "success"
   assert list(jobs_collection.find())[2]["status"] == "success"
 
+  assert list(jobs_collection.find())[2]["worker"]
+
   assert test_collection.count() == 3
 
 
@@ -227,4 +229,7 @@ def test_raw_mixed(worker, p_queue, p_greenlets):
   assert test_collection.count() == 4
   assert jobs_collection.count() == 4
   assert jobs_collection.find({"status": "success"}).count() == 4
+
+  assert list(jobs_collection.find({"status": "success"}))[0]["worker"]
+
 

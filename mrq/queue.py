@@ -343,6 +343,8 @@ class Queue(object):
           for j in job_data:
             j["status"] = "started"
             j["queue"] = queue.id
+            if worker:
+              j["worker"] = worker.id
 
           jobs += job_class.insert(job_data)
 
