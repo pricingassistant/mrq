@@ -2,6 +2,8 @@ import re
 import importlib
 import time
 
+""" Utils are functions that should be independent from the rest of MRQ's codebase """
+
 
 def get_local_ip():
   """ Returns the local IP. Can be overwritten in the config with --local-ip so don't call
