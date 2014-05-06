@@ -44,6 +44,9 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
               var cnt = source.size || 0;
 
               if (type == "display") {
+                if (source.jobs_to_dequeue) {
+                  cnt = source.jobs_to_dequeue + " (" + cnt + "&nbsp;total)";
+                }
                 return "<a href='/#jobs?queue="+source.name+"&status=queued'>"+cnt+"</a>"
                  + "<br/>"
                  + '<span class="inlinesparkline"></span>';

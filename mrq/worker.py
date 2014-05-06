@@ -179,6 +179,7 @@ class Worker(object):
 
       job = get_current_job(id(greenlet))
       if job:
+        job.save()
         if job.data:
           g["path"] = job.data["path"]
         g["datestarted"] = job.datestarted

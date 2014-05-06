@@ -1,6 +1,6 @@
 from time import sleep
 from mrq.task import Task
-from mrq.context import log, retry_current_job, connections, get_current_config, get_current_job
+from mrq.context import log, retry_current_job, connections, get_current_config, get_current_job, progress
 import urllib2
 
 
@@ -89,6 +89,15 @@ class ReturnParams(Task):
     sleep(params.get("sleep", 0))
 
     return params
+
+
+class Progress(Task):
+
+  def run(self, params):
+
+    for i in range(1, 100):
+      progress(0.01 * i, save=params["save"])
+      sleep(0.1)
 
 
 class MongoInsert(Task):

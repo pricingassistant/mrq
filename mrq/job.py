@@ -24,6 +24,8 @@ class Job(object):
   # Seconds the results are kept in MongoDB
   result_ttl = 7 * 24 * 3600
 
+  progress = 0
+
   # Exceptions that don't mark the task as failed but as retry
   retry_on_exceptions = (
     pymongo.errors.AutoReconnect,
@@ -53,6 +55,8 @@ class Job(object):
       self.id = ObjectId(job_id)
 
     self.data = None
+    self.saved = True
+
     self.task = None
     self.greenlet_switches = 0
     self.greenlet_time = 0
@@ -106,6 +110,24 @@ class Job(object):
       self.populate_properties()
 
     return self
+
+  def set_progress(self, ratio, save=False):
+    self.data["progress"] = ratio
+    self.saved = False
+
+    # If not saved, will be updated in the next worker report
+    if save:
+      self.save()
+
+  def save(self):
+    """ Will be called at each worker report. """
+
+    if not self.saved and self.data and "progress" in self.data:
+      # TODO should we save more fields?
+      self.collection.update({"_id": self.id}, {"$set": {
+        "progress": self.data["progress"]
+      }})
+      self.saved = True
 
   def populate_properties(self):
 
@@ -191,6 +213,9 @@ class Job(object):
     # Make the job document expire
     if status in ("success", "cancel"):
       updates["dateexpires"] = now + datetime.timedelta(seconds=self.result_ttl)
+
+    if status == "success" and "progress" in self.data:
+      updates["progress"] = 1
 
     self.collection.update({
       "_id": self.id

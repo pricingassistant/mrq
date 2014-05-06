@@ -162,3 +162,10 @@ def enable_greenlet_tracing():
   trace.last_switch = time.time()
 
   greenlet.settrace(trace)
+
+
+def progress(ratio, save=False):
+  job = get_current_job()
+  if not job:
+    return
+  job.set_progress(ratio, save=save)

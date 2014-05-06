@@ -172,6 +172,9 @@ def api_datatables(unit):
         if q["graph_config"]:
           q["graph"] = queue.get_sorted_graph(**q["graph_config"])
 
+      if queue.is_timed:
+        q["jobs_to_dequeue"] = queue.count_jobs_to_dequeue()
+
       queues.append(q)
 
     queues.sort(key=lambda x: -(x["jobs"] + x["size"]))
