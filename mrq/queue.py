@@ -44,6 +44,31 @@ return data
   """)
 
 
+@memoize
+def _redis_command_lpopsafe():
+  """ Increments multiple keys in a sorted set & returns them """
+
+  return connections.redis.register_script("""
+local key = KEYS[1]
+local zset_started = KEYS[2]
+local count = ARGV[1]
+local now = ARGV[2]
+local data = {}
+local current = nil
+
+for i=1, count do
+  current = redis.call('lpop', key)
+  if current == false then
+    return data
+  end
+  data[i] = current
+  redis.call('zadd', zset_started, now, current)
+end
+
+return data
+""")
+
+
 class Queue(object):
 
   is_raw = False
@@ -74,6 +99,10 @@ class Queue(object):
   @property
   def redis_key(self):
     return "%s:q:%s" % (get_current_config()["redis_prefix"], self.id)
+
+  @property
+  def redis_key_started(self):
+    return "%s:s:started" % get_current_config()["redis_prefix"]
 
   def enqueue_job_ids(self, job_ids):
 
@@ -266,22 +295,32 @@ class Queue(object):
 
       else:
 
-        queue, job_id = connections.redis.blpop([q.redis_key for q in queue_objects], 0)
-        if worker:
-          worker.status = "spawn"
+        for queue in queue_objects:
 
-        # From this point until job.fetch_and_start(), job is only local to this worker.
-        # If we die here, job will be lost in redis without having been marked as "started".
+          job_ids = _redis_command_lpopsafe()(keys=[
+            queue.redis_key,
+            self.redis_key_started
+          ], args=[
+            max_jobs,
+            time.time()
+          ])
 
-        jobs.append(job_class(job_id, queue=queue, start=True))
+          if len(job_ids) == 0:
+            continue
 
-        # Bulk-fetch other jobs from that queue to fill the pool.
-        # We take the chance that if there was one job on that queue, there should be more.
-        if max_jobs > 1:
-          job_ids = _redis_group_command("lpop", max_jobs - 1, queue)
+          if worker:
+            worker.status = "spawn"
 
           jobs += [job_class(_job_id, queue=queue, start=True)
                    for _job_id in job_ids if _job_id]
+
+          # Now the jobs have been marked as started in Mongo, we can remove them from the started queue.
+          connections.redis.zrem(self.redis_key_started, *job_ids)
+
+          max_jobs -= len(job_ids)
+
+          if max_jobs == 0:
+            break
 
       return jobs
 

@@ -3,6 +3,7 @@ from mrq.task import Task
 from mrq.job import Job
 from mrq.context import log, connections
 import datetime
+import time
 
 
 class RequeueInterruptedJobs(Task):
@@ -44,7 +45,7 @@ class RequeueStartedJobs(Task):
 
     # There shouldn't be that much "started" jobs so we can quite safely iterate over them.
     self.collection = connections.mongodb_jobs.mrq_jobs
-    for job_data in self.collection.find({"status": "started"}, fields={"_id": 1, "datestarted": 1}):
+    for job_data in self.collection.find({"status": "started"}, fields={"_id": 1, "datestarted": 1, "queue": 1, "path": 1}):
       job = Job(job_data["_id"])
 
       stats["started"] += 1
@@ -59,11 +60,49 @@ class RequeueStartedJobs(Task):
     return stats
 
 
+class RequeueRedisStartedJobs(Task):
+  """ Requeue jobs that were started in Redis but not in Mongo.
+
+      They could have been lost by a worker interrupt between
+      redis.lpop and mongodb.update
+  """
+
+  def run(self, params):
+
+    self.collection = connections.mongodb_jobs.mrq_jobs
+
+    redis_key_started = Queue("q").redis_key_started
+
+    stats = {
+      "fetched": 0,
+      "requeued": 0
+    }
+
+    # Fetch all the jobs started more than a minute ago - they should not be in redis:started anymore
+    job_ids = connections.redis.zrangebyscore(redis_key_started, "-inf", time.time() - 60)
+    for job_id in job_ids:
+
+      queue = Job(job_id, start=False, fetch=True).data["queue"]
+
+      stats["fetched"] += 1
+
+      log.info("Requeueing %s on %s" % (job_id, queue))
+
+      # TODO LUA script & don't rpush if not in zset anymore.
+      with connections.redis.pipeline(transaction=True) as pipeline:
+        pipeline.zrem(redis_key_started, job_id)
+        pipeline.rpush(Queue(queue).redis_key, job_id)
+        pipeline.execute()
+
+      stats["requeued"] += 1
+
+    return stats
+
+
 class RequeueLostJobs(Task):
   """ Requeue jobs that were queued but don't appear in Redis anymore.
 
-      They could have been lost either by a Redis flush or by a worker interrupt between
-      redis.blpop and mongodb.update
+      They could have been lost either by a Redis flush
   """
 
   def run(self, params):

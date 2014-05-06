@@ -289,7 +289,7 @@ class Worker(object):
 
     self.install_signal_handlers()
 
-    has_raw = any(q.is_raw or q.is_sorted for q in [Queue(x) for x in self.queues])
+    # has_raw = any(q.is_raw or q.is_sorted for q in [Queue(x) for x in self.queues])
 
     try:
 
@@ -320,7 +320,7 @@ class Worker(object):
           break
 
         # We seem to have exhausted available jobs, we can sleep for a while.
-        if has_raw and len(jobs) < free_pool_slots:
+        if len(jobs) < free_pool_slots:
           self.status = "wait"
           gevent.sleep(1)
 
