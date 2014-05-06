@@ -44,6 +44,10 @@ class Worker(object):
   """
   status = "init"
 
+  mongodb_jobs = None
+  mongodb_logs = None
+  redis = None
+
   def __init__(self, config):
 
     self.config = config
@@ -99,9 +103,12 @@ class Worker(object):
     # Accessing connections attributes will automatically connect
     self.redis = connections.redis
     self.mongodb_jobs = connections.mongodb_jobs
-    self.mongodb_logs = connections.mongodb_logs
 
-    self.log_handler.set_collection(self.mongodb_logs.mrq_logs)
+    if self.config["mongodb_logs"] == "0":
+      self.log_handler.set_collection(False)  # Disable
+    else:
+      self.mongodb_logs = connections.mongodb_logs
+      self.log_handler.set_collection(self.mongodb_logs.mrq_logs)
 
     self.connected = True
 
@@ -110,18 +117,13 @@ class Worker(object):
 
   def ensure_indexes(self):
 
-    self.mongodb_logs.mrq_logs.ensure_index([("job", 1)], background=False)
-    self.mongodb_logs.mrq_logs.ensure_index([("worker", 1)], background=False, sparse=True)
+    if self.mongodb_logs:
 
-    if self.config["mongodb_logs_size"] > 0:
+      self.mongodb_logs.mrq_logs.ensure_index([("job", 1)], background=False)
+      self.mongodb_logs.mrq_logs.ensure_index([("worker", 1)], background=False, sparse=True)
 
-      try:
-        self.mongodb_logs.command("convertToCapped", "mrq_logs", size=self.config["mongodb_logs_size"])
-      except:
-        pass
-
-    self.mongodb_logs.mrq_workers.ensure_index([("status", 1)], background=False)
-    self.mongodb_logs.mrq_workers.ensure_index([("datereported", 1)], background=False, expireAfterSeconds=3600)
+    self.mongodb_jobs.mrq_workers.ensure_index([("status", 1)], background=False)
+    self.mongodb_jobs.mrq_workers.ensure_index([("datereported", 1)], background=False, expireAfterSeconds=3600)
 
     self.mongodb_jobs.mrq_jobs.ensure_index([("status", 1)], background=False)
     self.mongodb_jobs.mrq_jobs.ensure_index([("path", 1), ("status", 1)], background=False)
@@ -134,6 +136,7 @@ class Worker(object):
     try:
       # This will be default in MongoDB 2.6
       self.mongodb_jobs.command({"collMod": "mrq_jobs", "usePowerOf2Sizes": True})
+      self.mongodb_jobs.command({"collMod": "mrq_workers", "usePowerOf2Sizes": True})
     except:
       pass
 
@@ -166,6 +169,9 @@ class Worker(object):
       self.flush_logs(w=0)
       time.sleep(int(self.config["report_interval"]))
 
+  def get_memory(self):
+    return self.process.get_memory_info().rss
+
   def get_worker_report(self):
 
     greenlets = []
@@ -188,6 +194,8 @@ class Worker(object):
         g["id"] = job.id
         g["time"] = getattr(greenlet, "_trace_time", 0)
         g["switches"] = getattr(greenlet, "_trace_switches", None)
+        if self.config["trace_mongodb"]:
+          g["mongodb"] = dict(job._trace_mongodb)
       greenlets.append(g)
 
     cpu = self.process.get_cpu_times()
@@ -217,7 +225,7 @@ class Worker(object):
           "percent": self.process.get_cpu_percent(0)
         },
         "mem": {
-          "rss": self.process.get_memory_info().rss
+          "rss": self.get_memory()
         }
         # https://code.google.com/p/psutil/wiki/Documentation
         # get_open_files
@@ -233,7 +241,7 @@ class Worker(object):
   def report_worker(self, w=0):
 
     try:
-      self.mongodb_logs.mrq_workers.update({
+      self.mongodb_jobs.mrq_workers.update({
         "_id": ObjectId(self.id)
       }, {"$set": self.get_worker_report()}, upsert=True, w=w)
     except pymongo.errors.AutoReconnect:
@@ -321,7 +329,9 @@ class Worker(object):
       while True:
 
         while True:
+
           free_pool_slots = self.gevent_pool.free_count()
+
           if free_pool_slots > 0:
             self.status = "wait"
             break
@@ -387,6 +397,9 @@ class Worker(object):
         This is the first call happening inside the greenlet.
     """
 
+    if self.config["trace_memory"]:
+      job.trace_memory_start()
+
     set_current_job(job)
 
     gevent_timeout = gevent.Timeout(job.timeout, JobTimeoutException(
@@ -399,43 +412,35 @@ class Worker(object):
       job.perform()
 
     except job.retry_on_exceptions:
-      trace = traceback.format_exc()
       self.log.error("Caught exception => retry")
-      self.log.error(trace)
-      job.save_retry(sys.exc_info()[1], traceback=trace)
+      job.save_retry(sys.exc_info()[1], exception=True)
 
     except job.cancel_on_exceptions:
-      trace = traceback.format_exc()
       self.log.error("Job cancelled")
-      self.log.error(trace)
-      job.save_status("cancel", traceback=trace)
+      job.save_status("cancel", exception=True)
 
     except JobTimeoutException:
-      trace = traceback.format_exc()
-      self.log.error(trace)
-
       if job.task.cancel_on_timeout:
         self.log.error("Job timeouted after %s seconds, cancelled" % job.timeout)
-        job.save_status("cancel", traceback=trace)
+        job.save_status("cancel", exception=True)
       else:
         self.log.error("Job timeouted after %s seconds" % job.timeout)
-        job.save_status("timeout", traceback=trace)
+        job.save_status("timeout", exception=True)
 
     except JobInterrupt:
-      trace = traceback.format_exc()
-      self.log.error(trace)
-      job.save_status("interrupt", traceback=trace)
+      job.save_status("interrupt", exception=True)
 
     except Exception:
-      trace = traceback.format_exc()
-      self.log.error(trace)
-      job.save_status("failed", traceback=trace)
+      job.save_status("failed", exception=True)
 
     finally:
       gevent_timeout.cancel()
       set_current_job(None)
 
       self.done_jobs += 1
+
+      if self.config["trace_memory"]:
+        job.trace_memory_stop()
 
   def shutdown_graceful(self):
     """ Graceful shutdown: waits for all the jobs to finish. """

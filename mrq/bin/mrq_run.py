@@ -1,17 +1,20 @@
 #!/usr/bin/env python
-# from gevent import monkey
-# monkey.patch_all()
+
+# We must still monkey-patch the methods for job sub-pools.
+from gevent import monkey
+monkey.patch_all()
 
 import sys
 import os
 import argparse
-import json
+import ujson as json
+import datetime
 
 sys.path.insert(0, os.getcwd())
 
 from mrq import config, queue, utils
-from mrq.context import set_current_config
-
+from mrq.context import set_current_config, set_current_job
+from mrq.utils import load_class_by_path
 
 parser = argparse.ArgumentParser(description='Runs a task')
 
@@ -44,10 +47,21 @@ def main():
   cfg["is_cli"] = True
   set_current_config(cfg)
 
-  ret = queue.send_task(args.taskpath, params, sync=not args.async, queue=args.queue)
   if args.async:
+    ret = queue.send_task(args.taskpath, params, sync=False, queue=args.queue)
     print ret
   else:
+    worker_class = load_class_by_path(cfg["worker_class"])
+    job = worker_class.job_class(None)
+    job.data = {
+      "path": args.taskpath,
+      "params": params,
+      "queue": args.queue
+    }
+    job.datestarted = datetime.datetime.utcnow()
+    set_current_job(job)
+    ret = job.perform()
     print json.dumps(ret)
+
 if __name__ == "__main__":
   main()

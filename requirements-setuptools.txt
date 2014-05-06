@@ -1,0 +1,2 @@
+# Doesn't seem to work properly after install. Giving up until pymongo is properly released.
+# pymongo==2.7rc1

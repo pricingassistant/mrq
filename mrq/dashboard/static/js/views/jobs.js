@@ -13,15 +13,15 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
     },
 
     initFilters: function() {
-
       this.filters = {
         "worker": this.options.params.worker||"",
         "queue": this.options.params.queue||"",
         "path": this.options.params.path||"",
         "status": this.options.params.status||"",
+        "exceptiontype": this.options.params.exceptiontype||"",
+        "params": this.options.params.params||"",
         "id": this.options.params.id||"",
       };
-
     },
 
     setOptions:function(options) {
@@ -50,24 +50,36 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
 
     },
 
-    groupaction: function(evt) {
+    refreshStackTrace: function(jobId)  {
+      $.ajax("/api/job/"+jobId+"/traceback", {
+        "type": "GET",
+        "success": function(data) {
+          self.$(".js-jobs-modal .js-jobs-modal-content").html(data["traceback"].replace(/\\n/g, "<br/>"));
+          self.$(".js-jobs-modal h4").html("Stack Trace");
+          self.$(".js-jobs-modal").modal({});
+        },
+        "error": function(xhr, status, error) {
+          alert("Error: "+error);
+        }
+      });
+    },
 
+
+    groupaction: function(evt) {
       evt.preventDefault();
       evt.stopPropagation();
 
       var self = this;
 
       var action = $(evt.target).data("action");
-
       var data = _.clone(this.filters);
-      data["action"] = action;
 
+      data["action"] = action;
       self.jobaction(evt, data);
 
     },
 
     row_jobaction:function(evt) {
-
       evt.preventDefault();
       evt.stopPropagation();
 
@@ -75,6 +87,8 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
 
       var job_id = $(evt.currentTarget).closest(".js-actions").data("jobid");
       var action = $(evt.currentTarget).data("action");
+
+      self.$(".js-jobs-modal").unbind();
 
       if (action == "viewresult") {
 
@@ -104,6 +118,16 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
         });
         self.refresh_logs(job_id);
 
+      } else if (action == "viewstacktrace") {
+
+        self.$(".js-jobs-modal .js-jobs-modal-content").html("Loading...");
+        self.$(".js-jobs-modal h4").html("Stack Trace");
+        self.$(".js-jobs-modal").modal({});
+
+        self.$(".js-jobs-modal").on("poll", function() {
+          self.refreshStackTrace(job_id);
+        });
+        self.refreshStackTrace(job_id);
       } else {
 
         self.jobaction(evt, {
@@ -147,7 +171,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
           {
             "sTitle": "Path &amp; ID",
             "sClass": "col-jobs-path",
-            "sWidth":"30%",
+            "sWidth":"35%",
             "mDataProp": "path",
             "fnRender": function ( o /*, val */) {
               return "<a href='/#jobs?path="+o.aData.path+"'>"+o.aData.path+"</a>"+
@@ -156,7 +180,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
           },
           {
             "sTitle": "Params",
-            "sWidth":"70%",
+            "sWidth":"65%",
             "sClass": "col-jobs-params",
             "mDataProp": "params",
             "fnRender": function ( o /*, val */) {
@@ -182,7 +206,10 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
                 };
                 var css_class = status_classes[source.status] || "label-info";
 
-                html = "<a href='/#jobs?status=" + (source.status || "queued")+ "'>" + "<span class='label " + css_class + "'>" + (source.status || "queued") + "</span></a>";
+                html = "<div class='js-actions' data-jobid="+source._id+"><a href='/#jobs?status=" + (source.status || "queued")+ "'>" + "<span class='label " + css_class + "'>" + (source.status || "queued") + "</span></a>";
+                html += "<br/><br/>";
+                html += "<button class='btn btn-xs btn-default' data-action='viewstacktrace'><span class='glyphicon glyphicon-align-left'></span> Trace</button>";
+                html += "</div>";
                 return (html);
               } else {
                 return source.status || "queued";
@@ -293,8 +320,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
         self.filters[k] = self.$(".js-datatable-filters-"+k).val();
       });
 
-      window.location = "/#jobs?"+$.param(self.filters);
-
+      window.location = "/#jobs?"+$.param(self.filters, true).replace(/\+/g, "%20");
     },
 
   });

@@ -1,0 +1,2 @@
+uwsgi==2.0.2
+http://github.com/mongodb/mongo-python-driver/archive/cb4adb2193a83413bc5545d89b7bbde4d6087761.zip#egg=pymongo-2.7rc1

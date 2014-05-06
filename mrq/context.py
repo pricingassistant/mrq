@@ -9,8 +9,10 @@ from .utils import LazyObject
 try:
   # MongoKit's Connection object is just a wrapped MongoClient.
   from mongokit import Connection as MongoClient
+  from mongokit import ReplicaSetConnection as MongoReplicaSetClient
 except:
   from pymongo import MongoClient
+  from pymongo import MongoReplicaSetClient
 
 
 # greenletid => Job object
@@ -54,6 +56,10 @@ def set_current_config(config):
   _CONFIG = config
   log.quiet = config["quiet"]
 
+  if config["trace_mongodb"] or config["print_mongodb"]:
+    from mrq.monkey import patch_pymongo
+    patch_pymongo(config)
+
 
 def get_current_config():
   global _CONFIG
@@ -96,16 +102,25 @@ def _connections_factory(attr):
 
     if type(config_obj) in [str, unicode]:
 
-      (mongoAuth, mongoUsername, mongoPassword, mongoHosts, mongoDbName) = re.match(
-        "mongodb://((\w+):(\w+)@)?([\w\.:,-]+)/([\w-]+)", config_obj).groups()
+      (mongoAuth, mongoUsername, mongoPassword, mongoHosts, mongoDbName, mongoDbOptions) = re.match(
+        "mongodb://((\w+):(\w+)@)?([\w\.:,-]+)/([\w-]+)(\?.*)?", config_obj).groups()
 
       log.debug("Connecting to MongoDB at %s/%s..." % (mongoHosts, mongoDbName))
 
-      value = MongoClient(mongoHosts)[mongoDbName]
-      if mongoUsername:
-        value.authenticate(mongoUsername, mongoPassword)
+      kwargs = {"use_greenlets": True}
+      options = {}
+      if mongoDbOptions:
+        options = {k: v[0] for k, v in urlparse.parse_qs(mongoDbOptions[1:]).iteritems()}
 
-      return value
+      # We automatically switch to MongoReplicaSetClient when getting a replicaSet option.
+      # This should cover most use-cases.
+      # http://api.mongodb.org/python/current/examples/high_availability.html#mongoreplicasetclient
+      if options.get("replicaSet"):
+        db = MongoReplicaSetClient(config_obj, **kwargs)[mongoDbName]
+      else:
+        db = MongoClient(config_obj, **kwargs)[mongoDbName]
+
+      return db
 
     # Let's just assume we got a MongoDB-like object!
     else:

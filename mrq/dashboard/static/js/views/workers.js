@@ -39,7 +39,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models", "moment
             "sType":"string",
             "sWidth":"150px",
             "mData":function(source, type/*, val*/) {
-              return "<a href='/#jobs?worker="+source._id+"'>"+source.name+"</a>";
+              return "<a href='/#jobs?worker="+source._id+"'>"+source.name+"</a><br/><small>"+source._id+"</small>";
             }
           },
           {

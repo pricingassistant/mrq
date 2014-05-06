@@ -2,9 +2,9 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
 
   return DataTablePage.extend({
 
-    el: '.js-page-queues',
+    el: '.js-page-taskexceptions',
 
-    template:"#tpl-page-queues",
+    template:"#tpl-page-taskexceptions",
 
     events:{
     },
@@ -13,7 +13,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
 
       var self = this;
 
-      var datatableConfig = self.getCommonDatatableConfig("queues");
+      var datatableConfig = self.getCommonDatatableConfig("taskexceptions");
 
       _.extend(datatableConfig, {
         "aoColumns": [
@@ -23,30 +23,29 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
             "sClass": "col-name",
             "sType": "string",
             "mData":function(source, type, val) {
-              return "<a href='/#jobs?queue="+source.name+"&status=queued'>"+source.name+"</a>";
+              // console.log(source)
+              return "<a href='/#jobs?path="+source._id.path+"'>"+source._id.path+"</a>";
             }
           },
           {
-            "sTitle": "MongoDB Jobs",
-            "sClass": "col-mongodb-jobs",
+            "sTitle": "Exception",
+            "sClass": "col-exception",
+            "sType":"numeric",
+            "mData":function(source, type, val) {
+              return "<a href='/#jobs?path="+source._id.path+"&status=failed&exceptiontype="+source._id.exceptiontype+ "'>"+source._id.exceptiontype+"</a>"
+            }
+          },
+          {
+            "sTitle": "Jobs",
+            "sClass": "col-jobs",
             "sType":"numeric",
             "mData":function(source, type, val) {
               var cnt = source.jobs || 0;
 
-              return "<a href='/#jobs?queue="+source.name+"&status=queued'>"+cnt+"</a>"
-            }
-          },
-          {
-            "sTitle": "Redis Jobs",
-            "sClass": "col-jobs",
-            "sType":"numeric",
-            "mData":function(source, type, val) {
-              var cnt = source.size || 0;
-
               if (type == "display") {
-                return "<a href='/#jobs?queue="+source.name+"&status=queued'>"+cnt+"</a>"
+                return "<a href='/#jobs?path="+source._id.path+"&status=failed&exceptiontype="+source._id.exceptiontype+"'>"+cnt+"</a>"
                  + "<br/>"
-                 + '<span class="inlinesparkline" values="'+self.addToCounter("queue."+source.name, cnt, 50).join(",")+'"></span>';
+                 + '<span class="inlinesparkline" values="'+self.addToCounter("taskexceptions."+source._id.path+" "+source._id.exceptiontype, cnt, 50).join(",")+'"></span>';
               } else {
                 return cnt;
               }
@@ -62,7 +61,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
             "sClass": "col-eta",
             "sType":"numeric",
             "mData":function(source, type, val) {
-              return (Math.round(self.getCounterSpeed("queue."+source.name) * 100) / 100) + " jobs/second";
+              return (Math.round(self.getCounterSpeed("taskexceptions."+source._id.path+" "+source._id.exceptiontype) * 100) / 100) + " jobs/second";
             }
           },
           {
@@ -70,7 +69,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
             "sClass": "col-eta",
             "sType":"numeric",
             "mData":function(source, type, val) {
-              return self.getCounterEta("queue."+source.name, source.count || 0);
+              return self.getCounterEta("taskexceptions."+source._id.path+" "+source._id.exceptiontype, source.jobs || 0);
             }
           }
 

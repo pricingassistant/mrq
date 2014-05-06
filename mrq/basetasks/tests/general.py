@@ -1,7 +1,9 @@
 from time import sleep
 from mrq.task import Task
-from mrq.context import log, retry_current_job, connections
+from mrq.context import log, retry_current_job, connections, get_current_config, get_current_job
 import urllib2
+import string
+import random
 
 
 class Add(Task):
@@ -34,6 +36,27 @@ class Fetch(Task):
     f.close()
 
     return len(t)
+
+
+class GetConfig(Task):
+  def run(self, params):
+    return get_current_config()
+
+
+LEAKS = []
+
+
+class Leak(Task):
+  def run(self, params):
+
+    if params.get("size", 0) > 0:
+      #LEAKS.append("".join([random.choice(string.letters) for _ in range(params.get("size", 0))]))
+      LEAKS.append(["1" for _ in range(params.get("size", 0))])
+
+    if params.get("sleep", 0) > 0:
+      sleep(params.get("sleep", 0))
+
+    return params.get("return")
 
 
 class Retry(Task):
@@ -74,7 +97,31 @@ class MongoInsert(Task):
 
   def run(self, params):
 
-    connections.mongodb_logs.tests_inserts.insert(params)
+    connections.mongodb_logs.tests_inserts.insert(params, manipulate=False)
+
+    if params.get("sleep", 0) > 0:
+      sleep(params.get("sleep", 0))
+
+    return params
 
 
 MongoInsert2 = MongoInsert
+
+
+class SubPool(Task):
+
+  def inner(self, x):
+    assert get_current_job() == self.job
+
+    if x == "exception":
+      raise Exception(x)
+
+    sleep(x)
+
+    return x
+
+  def run(self, params):
+
+    self.job = get_current_job()
+
+    return self.job.subpool_map(params["pool_size"], self.inner, params["inner_params"])

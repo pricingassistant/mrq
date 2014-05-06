@@ -4,7 +4,7 @@ from mrq.queue import Queue
 
 def benchmark_task(worker, taskpath, taskparams, tasks=1000, greenlets=50, processes=0, max_seconds=10, profile=False, quiet=True):
 
-  worker.start(flags="--processes %s --gevent %s%s%s" % (processes, greenlets, " --profile" if profile else "", " --quiet" if quiet else ""))
+  worker.start(flags="--profile --processes %s --gevent %s%s%s" % (processes, greenlets, " --profile" if profile else "", " --quiet" if quiet else ""))
 
   start_time = time.time()
 
@@ -25,9 +25,9 @@ def benchmark_task(worker, taskpath, taskparams, tasks=1000, greenlets=50, proce
 def test_performance_simpleadds(worker):
 
   n_tasks = 10000
-  n_greenlets = 50
+  n_greenlets = 30
   n_processes = 0
-  max_seconds = 20
+  max_seconds = 35
 
   result, total_time = benchmark_task(worker,
                                       "mrq.basetasks.tests.general.Add",
@@ -41,7 +41,8 @@ def test_performance_simpleadds(worker):
   assert result == range(n_tasks)
 
 
-def test_performance_httpstatic_internal(worker, httpstatic):
+# TODO add network latency
+def test_performance_httpstatic_fast(worker, httpstatic):
 
   httpstatic.start()
 
@@ -58,22 +59,22 @@ def test_performance_httpstatic_internal(worker, httpstatic):
                                       profile=False)
 
 
-def test_performance_httpstatic_external(worker):
+# def test_performance_httpstatic_external(worker):
 
-  n_tasks = 1000
-  n_greenlets = 50
-  max_seconds = 25
+#   n_tasks = 1000
+#   n_greenlets = 100
+#   max_seconds = 25
 
-  url = "http://www.microsoft.com/favicon.ico"
-  url = "http://ox-mockserver.herokuapp.com/ipheaders"
-  # url = "http://ox-mockserver.herokuapp.com/timeout?timeout=1000"
+#   url = "http://bing.com/favicon.ico"
+#   # url = "http://ox-mockserver.herokuapp.com/ipheaders"
+#   # url = "http://ox-mockserver.herokuapp.com/timeout?timeout=1000"
 
-  result, total_time = benchmark_task(worker,
-                                      "mrq.basetasks.tests.general.Fetch",
-                                      [{"url": url} for _ in range(n_tasks)],
-                                      tasks=n_tasks,
-                                      greenlets=n_greenlets,
-                                      max_seconds=max_seconds, quiet=False)
+#   result, total_time = benchmark_task(worker,
+#                                       "mrq.basetasks.tests.general.Fetch",
+#                                       [{"url": url} for _ in range(n_tasks)],
+#                                       tasks=n_tasks,
+#                                       greenlets=n_greenlets,
+#                                       max_seconds=max_seconds, quiet=False)
 
 
 def test_performance_queue_cancel_requeue(worker):
@@ -93,36 +94,48 @@ def test_performance_queue_cancel_requeue(worker):
 
   queue_time = time.time() - start_time
 
-  print "Queued %s tasks in %s seconds" % (n_tasks, queue_time)
-  assert queue_time < 5
+  print "Queued %s tasks in %s seconds (%s/s)" % (n_tasks, queue_time, float(n_tasks) / queue_time)
+  assert queue_time < 2
 
   assert Queue("noexec").size() == n_tasks
   assert worker.mongodb_jobs.mrq_jobs.count() == n_tasks
+  assert worker.mongodb_jobs.mrq_jobs.find({"status": "queued"}).count() == n_tasks
 
   # Then cancel them all
   start_time = time.time()
 
-  worker.send_task(
+  res = worker.send_task(
     "mrq.basetasks.utils.JobAction",
     {"queue": "noexec", "action": "cancel"},
     block=True
   )
+  assert res["cancelled"] == n_tasks
   queue_time = time.time() - start_time
-  print "Cancelled %s tasks in %s seconds" % (n_tasks, queue_time)
-  assert queue_time < 10
+  print "Cancelled %s tasks in %s seconds (%s/s)" % (n_tasks, queue_time, float(n_tasks) / queue_time)
+  assert queue_time < 5
+  assert worker.mongodb_jobs.mrq_jobs.find({"status": "cancel"}).count() == n_tasks
+
+  # Special case because we cancelled by queue: they should have been removed from redis.
+  assert Queue("noexec").size() == 0
 
   # Then requeue them all
   start_time = time.time()
 
-  worker.send_task(
+  res = worker.send_task(
     "mrq.basetasks.utils.JobAction",
     {"queue": "noexec", "action": "requeue"},
     block=True
   )
-  queue_time = time.time() - start_time
-  print "Requeued %s tasks in %s seconds" % (n_tasks, queue_time)
-  assert queue_time < 10
 
+  queue_time = time.time() - start_time
+  print "Requeued %s tasks in %s seconds (%s/s)" % (n_tasks, queue_time, float(n_tasks) / queue_time)
+  assert queue_time < 2
+  assert worker.mongodb_jobs.mrq_jobs.find({"status": "queued"}).count() == n_tasks
+
+  # They should be back in the queue
+  assert Queue("noexec").size() == n_tasks
+
+  assert res["requeued"] == n_tasks
 
 
 

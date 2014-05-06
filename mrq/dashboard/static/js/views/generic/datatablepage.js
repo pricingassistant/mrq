@@ -6,17 +6,18 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
    * A page with a main DataTable instance bound to this.col
    *
    */
-  return Page.extend({
+  var dataTablePage = Page.extend({
+
 
     alwaysRenderOnShow:true,
 
     init: function() {
-
       var self = this;
 
+      dataTablePage.__super__.init.apply(self);
       this.filters = {};
 
-      this.counters = {};
+      this.loading = false;
 
       this.delegateEvents(_.extend({
         "click .js-datatable-filters-submit": "filterschanged"
@@ -77,12 +78,15 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
         "bDestroy": true,
         "sAjaxSource": "/api/datatables/"+unit_name,
         "fnServerData": function (sSource, aoData, fnCallback) {
+          self.loading = true;
           _.each(self.filters, function(v, k) {
             aoData.push({"name": k, "value": v});
           });
 
           $.getJSON( sSource, aoData, function (json) {
             fnCallback(json);
+          }).always(function() {
+            self.loading = false;
             self.trigger("loaded");
           });
         }
@@ -128,27 +132,38 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
 
     },
 
+    getRefreshInterval:function() {
+
+      var interval = parseInt($(".js-autorefresh").val(), 10) * 1000;
+
+      if (!this.app.rootView.isTabVisible) {
+        interval = 0;
+      }
+
+      return interval;
+
+    },
+
+    queueDataTableRefresh:function() {
+
+      var self = this;
+
+      var interval = self.getRefreshInterval();
+
+      if (!interval) return console.log("cancel queue");
+
+      clearTimeout(self.refreshDataTableTimeout);
+      self.refreshDataTableTimeout = setTimeout(function() {
+        self.refreshDataTable();
+      }, interval);
+
+    },
+
     refreshDataTable:function(justQueue) {
 
       if (!this.dataTable) return this.flush();
 
       var self = this;
-
-      var REFRESH_INTERVAL = parseInt($(".js-autorefresh").val(), 10) * 1000;
-
-      if (!this.app.rootView.isTabVisible) {
-        REFRESH_INTERVAL = 0;
-      }
-
-      clearTimeout(self.refreshDataTableTimeout);
-
-      if (!REFRESH_INTERVAL) return;
-
-      var queue = function() {
-        self.refreshDataTableTimeout = setTimeout(function() {
-          self.refreshDataTable();
-        }, REFRESH_INTERVAL);
-      };
 
       var el = self.$(".js-datatable");
 
@@ -161,10 +176,23 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
         justQueue = true;
       }
 
+      // Don't reload when user is selecting text
+      if (window.getSelection && window.getSelection().extentOffset > 0 && window.getSelection().type == "Range") {
+        justQueue = true;
+      }
+
+      // Don't do multiple ajax requests at the same time
+      if (self.loading) {
+        justQueue = true;
+      }
+
       if (justQueue) {
-        queue();
+        self.queueDataTableRefresh();
       } else {
-        this.once("loaded", queue);
+
+        this.once("loaded", function() {
+          self.queueDataTableRefresh();
+        });
 
         // This will call fnDraw which will reload the data
         this.dataTable.fnAdjustColumnSizing();
@@ -180,50 +208,6 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
       // if (this.filters["manufacturer"]) {
       //   this.$('.js-filter-manufacturer .js-filter-txt').html("Manufacturer: "+this.filters["manufacturer"]["name"]);
       // }
-
-    },
-
-    // Used mainly to generate sparklines across refreshes
-    addToCounter: function(name, newvalue, maxvalues) {
-
-      if (!this.counters[name]) this.counters[name] = [];
-
-      this.counters[name].push({
-        "date": +new Date(),
-        "value": newvalue
-      });
-
-      if (this.counters[name].length > maxvalues) {
-        this.counters[name].shift();
-      }
-
-      return _.pluck(this.counters[name], "value");
-
-    },
-
-    getCounterSpeed: function(name) {
-
-      if ((this.counters[name] || []).length < 2) return 0;
-
-      var last = this.counters[name].length - 1;
-      var interval = (this.counters[name][last]["date"] - this.counters[name][0]["date"]) / 1000;
-      var diff = this.counters[name][last]["value"] - this.counters[name][0]["value"];
-
-      if (diff == 0) return 0;
-
-      return diff / interval;
-
-    },
-
-    getCounterEta: function(name, total) {
-
-      var speed = this.getCounterSpeed(name);
-
-      if (speed >= 0) {
-        return "N/A";
-      } else {
-        return moment.duration(total * 1000 / speed).humanize();
-      }
 
     },
 
@@ -249,7 +233,6 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
     },
 
     render: function() {
-
       this.renderTemplate({"filters": this.filters||{}});
 
       this.renderFilters();
@@ -268,4 +251,5 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
 
   });
 
+  return dataTablePage;
 });

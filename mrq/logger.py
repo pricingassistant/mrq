@@ -32,15 +32,34 @@ class LogHandler(object):
       "jobs": defaultdict(list)
     }
 
+  def encode_if_unicode(self, string):
+    if isinstance(string, unicode):
+      return string.encode("utf-8", "replace")
+    else:
+      return string
+
+  def decode_if_str(self, string):
+    if isinstance(string, str):
+      return string.decode("utf-8", "replace")
+    else:
+      return unicode(string)
+
   def log(self, level, *args, **kwargs):
 
     worker = kwargs.get("worker")
     job = kwargs.get("job")
 
-    formatted = "%s [%s] %s" % (datetime.datetime.utcnow(), level.upper(), " ".join([unicode(x) for x in args]))
+    joined_unicode_args = u" ".join([self.decode_if_str(x) for x in args])
+    formatted = u"%s [%s] %s" % (datetime.datetime.utcnow(), level.upper(), joined_unicode_args)
 
     if not self.quiet:
-      print formatted
+      try:
+        print self.encode_if_unicode(formatted)
+      except UnicodeDecodeError:
+        print formatted
+
+    if self.collection is False:
+      return
 
     if worker is not None:
       self.buffer["workers"][worker].append(formatted)
@@ -55,7 +74,7 @@ class LogHandler(object):
   def flush(self, w=0):
 
     # We may log some stuff before we are even connected to Mongo!
-    if self.collection is None:
+    if not self.collection:
       return
 
     inserts = [{

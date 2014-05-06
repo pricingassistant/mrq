@@ -5,8 +5,15 @@ import time
 from .exceptions import RetryInterrupt, CancelInterrupt
 from .utils import load_class_by_path
 from .queue import Queue
-from .context import get_current_worker, log, connections, get_current_config
+from .context import get_current_worker, log, connections, get_current_config, set_current_job
 import gevent
+import objgraph
+import random
+import gc
+from collections import defaultdict
+import traceback
+import sys
+from itertools import count as itertools_count
 
 
 class Job(object):
@@ -36,12 +43,18 @@ class Job(object):
     self.datestarted = None
 
     self.collection = connections.mongodb_jobs.mrq_jobs
-    self.id = ObjectId(job_id)
+
+    if job_id is None:
+      self.id = None
+    else:
+      self.id = ObjectId(job_id)
 
     self.data = None
     self.task = None
     self.greenlet_switches = 0
     self.greenlet_time = 0
+
+    self._trace_mongodb = defaultdict(int)
 
     if start:
       self.fetch(start=True, full_data=False)
@@ -53,6 +66,9 @@ class Job(object):
 
   def fetch(self, start=False, full_data=True):
     """ Get the current job data and possibly flag it as started. """
+
+    if self.id is None:
+      return self
 
     if full_data is True:
       fields = None
@@ -90,7 +106,32 @@ class Job(object):
 
     return self
 
-  def save_status(self, status, result=None, traceback=None, dateretry=None, queue=None, w=1):
+  def subpool_map(self, pool_size, func, iterable):
+    """ Starts a Gevent pool and run a map. Takes care of setting current_job and cleaning up. """
+
+    counter = itertools_count()
+
+    def inner_func(*args, **kwargs):
+      next(counter)
+      set_current_job(self)
+      ret = func(*args, **kwargs)
+      set_current_job(None)
+      return ret
+
+    start_time = time.time()
+    pool = gevent.pool.Pool(size=pool_size)
+    ret = pool.map(inner_func, iterable)
+    pool.join(raise_error=True)
+    total_time = time.time() - start_time
+
+    log.debug("SubPool ran %s greenlets in %0.6fs" % (counter, total_time))
+
+    return ret
+
+  def save_status(self, status, result=None, exception=False, dateretry=None, queue=None, w=1):
+
+    if self.id is None:
+      return
 
     now = datetime.datetime.utcnow()
     updates = {
@@ -102,8 +143,7 @@ class Job(object):
       updates["totaltime"] = (now - self.datestarted).total_seconds()
     if result is not None:
       updates["result"] = result
-    if traceback is not None:
-      updates["traceback"] = traceback
+
     if dateretry is not None:
       updates["dateretry"] = dateretry
     if queue is not None:
@@ -113,18 +153,24 @@ class Job(object):
       updates["time"] = current_greenlet._trace_time
       updates["switches"] = current_greenlet._trace_switches
 
+    if exception:
+      trace = traceback.format_exc()
+      log.error(trace)
+      updates["traceback"] = trace
+      updates["exceptiontype"] = sys.exc_info()[0].__name__
+
     # Make the job document expire
     if status in ("success", "cancel"):
       updates["dateexpires"] = now + datetime.timedelta(seconds=self.result_ttl)
 
     self.collection.update({
       "_id": self.id
-    }, {"$set": updates}, w=w)
+    }, {"$set": updates}, w=w, manipulate=False)
 
     if self.data:
       self.data.update(updates)
 
-  def save_retry(self, exc, traceback=None):
+  def save_retry(self, exc, exception=False):
 
     countdown = 24 * 3600
 
@@ -140,7 +186,7 @@ class Job(object):
     else:
       self.save_status(
         "retry",
-        traceback=traceback,
+        exception=exception,
         dateretry=datetime.datetime.utcnow() + datetime.timedelta(seconds=countdown),
         queue=queue
       )
@@ -206,6 +252,8 @@ class Job(object):
         self.id, (datetime.datetime.utcnow() - self.datestarted).total_seconds()
       ))
 
+    return result
+
   def wait(self, poll_interval=1, timeout=None, full_data=False):
     """ Wait for this job to finish. """
 
@@ -232,3 +280,43 @@ class Job(object):
       time.sleep(poll_interval)
 
     raise Exception("Waited for job result for %ss seconds, timeout." % timeout)
+
+  def trace_memory_start(self):
+    """ Starts measuring memory consumption """
+
+    objgraph.show_growth(limit=10)
+
+    gc.collect()
+    self._memory_start = self.worker.get_memory()
+
+  def trace_memory_stop(self):
+    """ Stops measuring memory consumption """
+
+    objgraph.show_growth(limit=10)
+
+    trace_type = get_current_config()["trace_memory_type"]
+    if trace_type:
+
+      objgraph.show_chain(
+        objgraph.find_backref_chain(
+          random.choice(objgraph.by_type(trace_type)),
+          objgraph.is_proper_module
+        ),
+        filename='%s/%s-%s.png' % (get_current_config()["trace_memory_output_dir"], trace_type, self.id)
+      )
+
+    gc.collect()
+    self._memory_stop = self.worker.get_memory()
+
+    diff = self._memory_stop - self._memory_start
+
+    log.debug("Memory diff for job %s : %s" % (self.id, diff))
+
+    # We need to update it later than the results, we need them off memory already.
+    self.collection.update({
+      "_id": self.id
+    }, {"$set": {
+      "memory_diff": diff
+    }}, w=1)
+
+

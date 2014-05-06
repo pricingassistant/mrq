@@ -1,4 +1,6 @@
 # Heroku only reads requirements.txt
 # As the main usecase is to deploy the dashboard there, this is the default setting.
+-r requirements-heroku.txt
+
 -r requirements-base.txt
 -r requirements-dashboard.txt

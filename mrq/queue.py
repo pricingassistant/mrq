@@ -20,12 +20,16 @@ class Queue(object):
   def size(self):
     return connections.redis.llen(self.redis_key)
 
+  def empty(self):
+    return connections.redis.delete(self.redis_key)
+
   def list_job_ids(self, skip=0, limit=20):
     return connections.redis.lrange(self.redis_key, skip, skip + limit - 1)
 
   @classmethod
-  def all(cls):
-    # TODO MongoDB distinct?
+  def all_active(cls):
+    """ List active queues, based on their lengths in Redis. """
+
     prefix = get_current_config()["redis_prefix"]
     queues = []
     for key in connections.redis.keys():
@@ -33,6 +37,17 @@ class Queue(object):
         queues.append(Queue(key[len(prefix) + 3:]))
 
     return queues
+
+  @classmethod
+  def all(cls):
+    """ List all queues, based on their MongoDB existence. """
+
+    stats = list(connections.mongodb_jobs.mrq_jobs.aggregate([
+      {"$match": {"status": "queued"}},
+      {"$group": {"_id": "$queue", "jobs": {"$sum": 1}}}
+    ])["result"])
+
+    return {x["_id"]: x["jobs"] for x in stats}
 
 
 def send_task(path, params, **kwargs):
