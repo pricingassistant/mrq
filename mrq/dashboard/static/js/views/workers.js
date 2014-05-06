@@ -39,7 +39,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models", "moment
             "sType":"string",
             "sWidth":"150px",
             "mData":function(source, type/*, val*/) {
-              return "<a href='/#jobs?worker="+source._id+"'>"+source.name+"</a><br/><small>"+source._id+"</small>";
+              return "<a href='/#jobs?worker="+source._id+"'>"+source.name+"</a><br/><small>"+source.config.local_ip + " " + source._id+"</small>";
             }
           },
           {
@@ -105,11 +105,6 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models", "moment
               } else {
                 return source.process.mem.rss
               }
-            },
-            "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
-              setTimeout(function() {
-                $(".inlinesparkline", nTd).sparkline("html", {"width": "110px", "height": "30px", "defaultPixelsPerValue": 1});
-              }, 10);
             }
           },
           {
@@ -126,11 +121,6 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models", "moment
               } else {
                 return cnt;
               }
-            },
-            "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
-              setTimeout(function() {
-                $(".inlinesparkline", nTd).sparkline("html", {"width": "100px", "height": "30px", "defaultPixelsPerValue": 1});
-              }, 10);
             }
           },
           {
@@ -156,15 +146,13 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models", "moment
               } else {
                 return cnt;
               }
-            },
-            "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
-              setTimeout(function() {
-                $(".inlinesparkline", nTd).sparkline("html", {"width": "100px", "height": "30px", "defaultPixelsPerValue": 1});
-              }, 10);
             }
           }
 
         ],
+        "fnDrawCallback": function (oSettings) {
+          $(".inlinesparkline", oSettings.nTable).sparkline("html", {"width": "100px", "height": "30px", "defaultPixelsPerValue": 1});
+        },
         "aaSorting":[ [0,'asc'] ],
       });
 

@@ -14,7 +14,7 @@ import urllib2
 sys.path.append(os.getcwd())
 
 from mrq.job import Job
-from mrq.queue import send_tasks
+from mrq.queue import send_tasks, send_raw_tasks, Queue
 from mrq.config import get_config
 from mrq.utils import wait_for_net_service
 from mrq.context import connections, set_current_config
@@ -174,11 +174,7 @@ class WorkerFixture(ProcessFixture):
      self.fixture_mongodb.stop(sig=2, **kwargs)
      self.fixture_redis.stop(sig=2, **kwargs)
 
-  def send_tasks(self, path, params_list, block=True, queue=None, accept_statuses=["success"]):
-    if not self.started:
-      self.start()
-
-    job_ids = send_tasks(path, params_list, queue=queue)
+  def wait_for_tasks_results(self, job_ids, block=True, accept_statuses=["success"]):
 
     if not block:
       return job_ids
@@ -187,11 +183,32 @@ class WorkerFixture(ProcessFixture):
 
     for job_id in job_ids:
       job = Job(job_id).wait(poll_interval=0.01)
-      assert job.get("status") in accept_statuses
+      assert job.get("status") in accept_statuses, "Job had status %s, not in %s. Dump: %s" % (job.get("status"), accept_statuses, job)
 
       results.append(job.get("result"))
 
     return results
+
+  def send_raw_tasks(self, queue, params_list, start=True, block=True):
+    if not self.started and start:
+      self.start()
+
+    send_raw_tasks(queue, params_list)
+
+    if block:
+      # Wait for the queue to be empty. Might be error-prone when tasks are in-memory between the 2
+      q = Queue(queue)
+      while q.size() > 0 or self.mongodb_jobs.mrq_jobs.find({"status": "started"}).count() > 0:
+        print "S", q.size(), self.mongodb_jobs.mrq_jobs.find({"status": "started"}).count()
+        time.sleep(0.1)
+
+  def send_tasks(self, path, params_list, block=True, queue=None, accept_statuses=["success"], start=True):
+    if not self.started and start:
+      self.start()
+
+    job_ids = send_tasks(path, params_list, queue=queue)
+
+    return self.wait_for_tasks_results(job_ids, block=block, accept_statuses=accept_statuses)
 
   def send_task(self, path, params, **kwargs):
     return self.send_tasks(path, [params], **kwargs)[0]
@@ -222,7 +239,7 @@ class WorkerFixture(ProcessFixture):
 
 class RedisFixture(ProcessFixture):
   def flush(self):
-    connections.redis.flushdb()
+    connections.redis.flushall()
 
 
 class MongoFixture(ProcessFixture):

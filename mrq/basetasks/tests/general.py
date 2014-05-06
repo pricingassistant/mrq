@@ -1,9 +1,7 @@
 from time import sleep
 from mrq.task import Task
-from mrq.context import log, retry_current_job, connections, get_current_config, get_current_job
+from mrq.context import log, retry_current_job, connections, get_current_config, get_current_job, progress
 import urllib2
-import string
-import random
 
 
 class Add(Task):
@@ -93,11 +91,20 @@ class ReturnParams(Task):
     return params
 
 
+class Progress(Task):
+
+  def run(self, params):
+
+    for i in range(1, 100):
+      progress(0.01 * i, save=params["save"])
+      sleep(0.1)
+
+
 class MongoInsert(Task):
 
   def run(self, params):
 
-    connections.mongodb_logs.tests_inserts.insert(params, manipulate=False)
+    connections.mongodb_logs.tests_inserts.insert({"params": params}, manipulate=False)
 
     if params.get("sleep", 0) > 0:
       sleep(params.get("sleep", 0))
@@ -111,7 +118,13 @@ MongoInsert2 = MongoInsert
 class SubPool(Task):
 
   def inner(self, x):
+
     assert get_current_job() == self.job
+
+    if x == "import-large-file":
+      from mrq.basetasks.tests.largefile import a
+      assert a == 1
+      return True
 
     if x == "exception":
       raise Exception(x)

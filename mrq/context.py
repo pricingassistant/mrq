@@ -10,7 +10,7 @@ try:
   # MongoKit's Connection object is just a wrapped MongoClient.
   from mongokit import Connection as MongoClient
   from mongokit import ReplicaSetConnection as MongoReplicaSetClient
-except:
+except ImportError:
   from pymongo import MongoClient
   from pymongo import MongoReplicaSetClient
 
@@ -60,6 +60,10 @@ def set_current_config(config):
     from mrq.monkey import patch_pymongo
     patch_pymongo(config)
 
+  if not config["no_import_patch"]:
+    from mrq.monkey import patch_import
+    patch_import()
+
 
 def get_current_config():
   global _CONFIG
@@ -77,7 +81,7 @@ def _connections_factory(attr):
   # Connection strings may be stored directly in config
   config_obj = config.get(attr)
 
-  if attr == "redis":
+  if attr.startswith("redis"):
 
     if type(config_obj) in [str, unicode]:
 
@@ -89,7 +93,7 @@ def _connections_factory(attr):
       redis_pool = pyredis.ConnectionPool(
         host=redis_url.hostname,
         port=redis_url.port,
-        db=0,
+        db=int((redis_url.path or "").replace("/", "") or "0"),
         password=redis_url.password
       )
       return pyredis.StrictRedis(connection_pool=redis_pool)
@@ -103,7 +107,7 @@ def _connections_factory(attr):
     if type(config_obj) in [str, unicode]:
 
       (mongoAuth, mongoUsername, mongoPassword, mongoHosts, mongoDbName, mongoDbOptions) = re.match(
-        "mongodb://((\w+):(\w+)@)?([\w\.:,-]+)/([\w-]+)(\?.*)?", config_obj).groups()
+        r"mongodb://((\w+):(\w+)@)?([\w\.:,-]+)/([\w-]+)(\?.*)?", config_obj).groups()
 
       log.debug("Connecting to MongoDB at %s/%s..." % (mongoHosts, mongoDbName))
 
@@ -158,3 +162,10 @@ def enable_greenlet_tracing():
   trace.last_switch = time.time()
 
   greenlet.settrace(trace)
+
+
+def progress(ratio, save=False):
+  job = get_current_job()
+  if not job:
+    return
+  job.set_progress(ratio, save=save)

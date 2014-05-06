@@ -118,6 +118,8 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
         });
         self.refresh_logs(job_id);
 
+      } else if (action == "copycommand") {
+        window.prompt("There is you command", $(evt.currentTarget).data("command"))
       } else if (action == "viewstacktrace") {
 
         self.$(".js-jobs-modal .js-jobs-modal-content").html("Loading...");
@@ -173,9 +175,9 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
             "sClass": "col-jobs-path",
             "sWidth":"35%",
             "mDataProp": "path",
-            "fnRender": function ( o /*, val */) {
-              return "<a href='/#jobs?path="+o.aData.path+"'>"+o.aData.path+"</a>"+
-                "<br/><br/><a href='/#jobs?id="+o.aData._id+"'><small>"+o.aData._id+"</small></a>";
+            "mData": function ( source /*, val */) {
+              return "<a href='/#jobs?path="+source.path+"'>"+source.path+"</a>"+
+                "<br/><br/><a href='/#jobs?id="+source._id+"'><small>"+source._id+"</small></a>";
             }
           },
           {
@@ -183,8 +185,8 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
             "sWidth":"65%",
             "sClass": "col-jobs-params",
             "mDataProp": "params",
-            "fnRender": function ( o /*, val */) {
-              return "<pre class='js-oxpre'>"+JSON.stringify(o.aData.params, null, 2)+"</pre>";
+            "mData": function ( source /*, val */) {
+              return "<pre class='js-oxpre'>"+JSON.stringify(source.params, null, 2)+"</pre>";
             }
           },
           {
@@ -208,6 +210,12 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
 
                 html = "<div class='js-actions' data-jobid="+source._id+"><a href='/#jobs?status=" + (source.status || "queued")+ "'>" + "<span class='label " + css_class + "'>" + (source.status || "queued") + "</span></a>";
                 html += "<br/><br/>";
+
+                if (source.progress) {
+                  var progress = (Math.round(source.progress*10000)/100);
+                  html += '<div class="progress"><div class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="'+progress+'" aria-valuemin="0" aria-valuemax="100" style="width: '+progress+'%;">'+progress+'%</div></div>';
+                }
+
                 html += "<button class='btn btn-xs btn-default' data-action='viewstacktrace'><span class='glyphicon glyphicon-align-left'></span> Trace</button>";
                 html += "</div>";
                 return (html);
@@ -283,6 +291,10 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
                 return "<div class='js-actions' data-jobid='"+source._id+"'>"+
                   "<button class='btn btn-xs btn-default' data-action='viewlogs'><span class='glyphicon glyphicon-align-left'></span> Logs</button>"+
                   "<button class='pull-right btn btn-xs btn-default' data-action='viewresult'><span class='glyphicon glyphicon-file'></span> Result</button>"+
+                  "<br/><br/>"+
+                  "<button class='pull-right btn btn-xs btn-default' data-action='copycommand' data-command='"+
+                  "mrq-run " + source.path + " &#39" + JSON.stringify(source.params) + "&#39" +
+                  "'><span class='glyphicon glyphicon-floppy-save'></span> Command</button>"+
                   "<br/><br/>"+
                   "<button class='btn btn-xs btn-danger pull-right' data-action='cancel'><span class='glyphicon glyphicon-remove-circle'></span> Cancel</button>"+
                   "<button class='btn btn-xs btn-warning' data-action='requeue'><span class='glyphicon glyphicon-refresh'></span> Requeue</button>"+

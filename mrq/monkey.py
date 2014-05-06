@@ -32,7 +32,7 @@ def patch_pymongo(config):
     return monkey_patched
 
   from pymongo.collection import Collection
-  for method in ["find", "update", "insert", "remove", "find_and_modify", "aggregate"]:
+  for method in ["find", "update", "insert", "remove", "find_and_modify"]:
     setattr(Collection, method, gen_monkey_patch(Collection, method))
 
   # MongoKit completely replaces the code from PyMongo's find() function, so we
@@ -42,5 +42,41 @@ def patch_pymongo(config):
     for method in ["find"]:
       setattr(MongoKitCollection, method, gen_monkey_patch(MongoKitCollection, method))
 
-  except:
+  except ImportError:
     pass
+
+
+# https://code.google.com/p/gevent/issues/detail?id=108
+def patch_import():
+
+  import types
+  import gevent.coros
+  import __builtin__
+
+  orig_import = __builtin__.__import__
+  import_lock = gevent.coros.RLock()
+
+  def safe_import(*args, **kwargs):
+    """
+    Normally python protects imports against concurrency by doing some locking
+    at the C level (at least, it does that in CPython).  This function just
+    wraps the normal __import__ functionality in a recursive lock, ensuring that
+    we're protected against greenlet import concurrency as well.
+    """
+    if len(args) > 0 and type(args[0]) not in [
+      types.StringType,
+      types.UnicodeType]:
+      # if a builtin has been acquired as a bound instance method,
+      # python knows not to pass 'self' when the method is called.
+      # No such protection exists for monkey-patched builtins,
+      # however, so this is necessary.
+      args = args[1:]
+    import_lock.acquire()
+    try:
+      result = orig_import(*args, **kwargs)
+    finally:
+      import_lock.release()
+    return result
+
+  builtins = __import__('__builtin__')
+  builtins.__import__ = safe_import

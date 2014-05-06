@@ -10,6 +10,7 @@ define(["jquery", "underscore", "views/generic/page", "models", "moment", "circl
     events:{
     },
 
+    initialDoneJobs: 0,
 
     fetchStats: function(cb) {
       var self = this;
@@ -30,7 +31,11 @@ define(["jquery", "underscore", "views/generic/page", "models", "moment", "circl
         else
           var utilization = Math.round((currentJobs / poolSize) * 100)
 
-        cb.apply(self, [poolSize, currentJobs, utilization, doneJobs]);
+        if (self.initialDoneJobs == 0) {
+          self.initialDoneJobs = doneJobs
+        }
+
+        cb.apply(self, [poolSize, currentJobs, utilization, doneJobs - self.initialDoneJobs]);
       });
     },
 
@@ -57,8 +62,8 @@ define(["jquery", "underscore", "views/generic/page", "models", "moment", "circl
     },
 
     renderCircleStats: function (scope, selector, text, percent, info, animation) {
-      $(scope).append(this.buildCircle(selector, text, percent, info, animation));
-      $("#" + selector).circliful();
+      self.$(scope).append(this.buildCircle(selector, text, percent, info, animation));
+      self.$("#" + selector).circliful();
     },
 
 
@@ -72,8 +77,8 @@ define(["jquery", "underscore", "views/generic/page", "models", "moment", "circl
       this.renderCircleStats(scope, "utilizationStat", utilization + "%", utilization, "Utilization (" + currentJobs + " jobs)")
       this.renderCircleStats(scope, "jobspeed", jobSpeed, 100, "jobs/sec");
 
-      $(scope).append('<div class=stat><span class="inlinesparkline" values="' + values + '"></span><span class="sparkline-title">Done Jobs</span></div>');
-      $(".inlinesparkline").sparkline("html", {"width": "250px", "height": "200px", "defaultPixelsPerValue": 1});
+      self.$(scope).append('<div class=stat><span class="inlinesparkline" values="' + values + '"></span><span class="sparkline-title">Done Jobs</span></div>');
+      self.$(".inlinesparkline").sparkline("html", {"width": "250px", "height": "200px", "defaultPixelsPerValue": 1});
     },
 
     refreshCircleStats: function (poolSize, currentJobs, utilization) {
@@ -104,8 +109,8 @@ define(["jquery", "underscore", "views/generic/page", "models", "moment", "circl
       var values = self.addToCounter("overall-done-jobs", doneJobs, 50).join(",");
       var refreshInterval = parseInt($(".js-autorefresh").val(), 10) * 1000;
 
-      $(".inlinesparkline").attr("values", values);
-      $(".inlinesparkline").sparkline("html", {"width": "250px", "height": "200px", "defaultPixelsPerValue": 1});
+      self.$(".inlinesparkline").attr("values", values);
+      self.$(".inlinesparkline").sparkline("html", {"width": "250px", "height": "200px", "defaultPixelsPerValue": 1});
       self.refreshCircleStats(poolSize, currentJobs, utilization);
 
       setTimeout(function () {

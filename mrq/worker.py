@@ -33,15 +33,14 @@ class Worker(object):
   # Allow easy overloading
   job_class = Job
 
-  """ Valid statuses:
-        * init: General worker initialization
-        * wait: Waiting for new jobs from Redis (BLPOP in progress)
-        * spawn: Got some new jobs, greenlets are being spawned
-        * full: All the worker pool is busy executing jobs
-        * join: Waiting for current jobs to finish, no new one will be accepted
-        * kill: Killing all current jobs
-        * stop: Worker is stopped, no jobs should remain
-  """
+  # Valid statuses:
+  #       * init: General worker initialization
+  #       * wait: Waiting for new jobs from Redis (BLPOP in progress)
+  #       * spawn: Got some new jobs, greenlets are being spawned
+  #       * full: All the worker pool is busy executing jobs
+  #       * join: Waiting for current jobs to finish, no new one will be accepted
+  #       * kill: Killing all current jobs
+  #       * stop: Worker is stopped, no jobs should remain
   status = "init"
 
   mongodb_jobs = None
@@ -59,7 +58,6 @@ class Worker(object):
 
     self.datestarted = datetime.datetime.utcnow()
     self.queues = [x for x in self.config["queues"] if x]
-    self.redis_queues = [Queue(x).redis_key for x in self.queues]
     self.done_jobs = 0
     self.max_jobs = self.config["max_jobs"]
 
@@ -87,13 +85,6 @@ class Worker(object):
 
     # Keep references to main greenlets
     self.greenlets = {}
-
-    self.profiler = None
-    if self.config["profile"]:
-      print "Starting profiler..."
-      import cProfile
-      self.profiler = cProfile.Profile()
-      self.profiler.enable()
 
   def connect(self, force=False):
 
@@ -188,6 +179,7 @@ class Worker(object):
 
       job = get_current_job(id(greenlet))
       if job:
+        job.save()
         if job.data:
           g["path"] = job.data["path"]
         g["datestarted"] = job.datestarted
@@ -207,7 +199,8 @@ class Worker(object):
       "processes",
       "queues",
       "scheduler",
-      "name"
+      "name",
+      "local_ip"
     ]
 
     return {
@@ -277,34 +270,6 @@ class Worker(object):
   def flush_logs(self, w=0):
     self.log_handler.flush(w=w)
 
-  def dequeue_jobs(self, max_jobs=1):
-    """ Fetch a maximum of max_jobs from this worker's queues. """
-
-    self.log.debug("Fetching %s jobs from Redis" % max_jobs)
-
-    jobs = []
-    queue, job_id = self.redis.blpop(self.redis_queues, 0)
-    self.status = "spawn"
-
-    # From this point until job.fetch_and_start(), job is only local to this worker.
-    # If we die here, job will be lost in redis without having been marked as "started".
-
-    jobs.append(self.job_class(job_id, worker=self, queue=queue, start=True))
-
-    # Bulk-fetch other jobs from that queue to fill the pool.
-    # We take the chance that if there was one job on that queue, there should be more.
-    if max_jobs > 1:
-
-      with self.redis.pipeline(transaction=False) as pipe:
-        for _ in range(max_jobs - 1):
-          pipe.lpop(queue)
-        job_ids = pipe.execute()
-
-      jobs += [self.job_class(_job_id, worker=self, queue=queue, start=True)
-               for _job_id in job_ids if _job_id]
-
-    return jobs
-
   def work_loop(self):
     """Starts the work loop.
 
@@ -324,6 +289,8 @@ class Worker(object):
 
     self.install_signal_handlers()
 
+    has_raw = any(q.is_raw or q.is_sorted for q in [Queue(x) for x in self.queues])
+
     try:
 
       while True:
@@ -340,7 +307,8 @@ class Worker(object):
 
         self.log.info('Listening on %s' % self.queues)
 
-        jobs = self.dequeue_jobs(max_jobs=free_pool_slots)
+        # worker.status will be set to "spawn" as soon as we're not waiting anymore.
+        jobs = Queue.dequeue_jobs(self.queues, max_jobs=free_pool_slots, job_class=self.job_class, worker=self)
 
         for job in jobs:
 
@@ -350,6 +318,11 @@ class Worker(object):
         if self.max_jobs and self.max_jobs >= self.done_jobs:
           self.log.info("Reached max_jobs=%s" % self.done_jobs)
           break
+
+        # We seem to have exhausted available jobs, we can sleep for a while.
+        if has_raw and len(jobs) < free_pool_slots:
+          self.status = "wait"
+          gevent.sleep(1)
 
     except StopRequested:
       pass
@@ -381,9 +354,6 @@ class Worker(object):
 
       self.report_worker(w=1)
       self.flush_logs(w=1)
-
-      if self.profiler:
-        self.profiler.print_stats(sort="cumulative")
 
       g_time = getattr(self.greenlet, "_trace_time", 0)
       g_switches = getattr(self.greenlet, "_trace_switches", None)

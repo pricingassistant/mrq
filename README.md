@@ -28,6 +28,31 @@ The main features of MRQ are:
  * **Greenlet tracing:** See how much time was spent in each greenlet to debug CPU-intensive jobs.
  * **Integrated memory leak debugger:** Track down jobs leaking memory and find the leaks with objgraph.
 
+
+
+Dashboard
+=========
+
+A strong focus was put on the tools and particularly the dashboard. After all it is what you will work with most of the time!
+
+![Job view](http://i.imgur.com/xaXmrvX.png)
+
+![Worker view](http://i.imgur.com/yYUMCbm.png)
+
+There are too much features on the dashboard to list, but the goal is to have complete visibility and control over what your workers are doing!
+
+
+Design
+======
+
+A talk+slides about MRQ's design is upcoming.
+
+A couple things to know:
+- We use Redis as a main queue for task IDs
+- We store metadata on the tasks in MongoDB so they can be browsable and managed more easily.
+
+
+
 Performance
 ===========
 
@@ -67,13 +92,83 @@ $ make docker (if it wasn't build before)
 $ make ssh
 ```
 
+
+Configuration
+=============
+
+Check all the [available config options](mrq/config.py)
+
+For each of these values, configuration is loaded in this order by default:
+- Command-line arguments (`mrq-worker --redis=redis://127.0.0.1:6379`)
+- Environment variables prefixed by MRQ_ (`MRQ_REDIS=redis://127.0.0.1:6379 mrq-worker`)
+- Python variables in a config file, by default `mrq-config.py` (`REDIS="redis://127.0.0.1:6379"` in this file)
+
+Most of the time, you want to set all your configuration in a `mrq-config.py` file in the directory where you will launch your workers, and override some of it from the command line.
+
+On Heroku, environment variables are very handy because they can be set like `heroku config:set MRQ_REDIS=redis://127.0.0.1:6379`
+
+
+Job maintenance
+===============
+
+MRQ can provide strong guarantees that no job will be lost in the middle of a worker restart, database disconnect, etc...
+
+To do that, you should add these recurring scheduled jobs to your mrq-config.py:
+
+```
+SCHEDULER_TASKS = [
+
+  # This will requeue jobs marked as interrupted, for instance when a worker received SIGTERM
+  {
+    "path": "mrq.basetasks.cleaning.RequeueInterruptedJobs",
+    "params": {},
+    "interval": 5 * 60
+  },
+
+  # This will requeue jobs marked as started for a long time (more than their own timeout)
+  # They can exist if a worker was killed with SIGKILL and not given any time to mark
+  # its current jobs as interrupted.
+  {
+    "path": "mrq.basetasks.cleaning.RequeueStartedJobs",
+    "params": {},
+    "interval": 3600
+  },
+
+  # This will requeue jobs 'lost' between redis.blpop() and mongo.update(status=started).
+  # This can happen only when the worker is killed brutally in the middle of dequeue_jobs()
+  {
+    "path": "mrq.basetasks.cleaning.RequeueLostJobs",
+    "params": {},
+    "interval": 24 * 3600
+  }
+]
+```
+
+Obviously this implies that all your jobs should be *idempotent*, meaning that they could be done multiple times, maybe partially, without breaking your app. This is a very good design to enforce for your whole task queue, though you can still manage locks yourself in your code that make sure a block of code will only run once.
+
+
 Use in your application
 =======================
 
-- install `mrq==0.0.6` in your application virtualenv
+- `pip install mrq` in your application virtualenv
 - then you can run `mrq-worker` and `mrq-dashboard`
 - To run a task you can use `mrq-run`. If you add the `--async` option that will enqueue it to be later ran by a worker
 - you may want to convert your logs db to a capped collection : ie. run db.runCommand({"convertToCapped": "mrq_jobs", "size": 10737418240})
+
+
+Worker concurrency
+==================
+
+The default is to run tasks one at a time. You should obviously change this behaviour to use Gevent's full capabilities with something like:
+
+`mrq-worker --processes 3 --gevent 10`
+
+This will start 30 greenlets over 3 UNIX processes. Each of them will run 10 jobs at the same time.
+
+As soon as you use the `--processes` option (even with `--processes=1`) then supervisord will be used to control the processes. It is quite useful to manage long-running instances.
+
+On Heroku's 512M dynos, we have found that for IO-bound jobs, `--processes 4 --gevent 30` may be a good setting.
+
 
 PyPy
 ====
@@ -86,34 +181,6 @@ Useful third-party utils
 
 * http://superlance.readthedocs.org/en/latest/
 
-
-TODO
-====
-
-**alpha**
-
- * Max Retries
- * MongoDB/Redis disconnect tests in more contexts (long-running queries, ...)
-
-
-**public beta**
-
- * Full linting
- * Code coverage
- * Public docs
- * PyPI
-
-**whishlist**
-
- * task progress
- * uniquestarted/uniquequeued via bulk sets?
- * Base cleaning/retry tasks: move
- * Current greenlet traces in dashboard
- * Move monitoring in a thread to protect against CPU-intensive tasks
- * Bulk queues
- * Tasksets
- * Full PyPy support
- * Search in dashboard
 
 Credits
 =======

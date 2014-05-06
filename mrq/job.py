@@ -24,6 +24,8 @@ class Job(object):
   # Seconds the results are kept in MongoDB
   result_ttl = 7 * 24 * 3600
 
+  progress = 0
+
   # Exceptions that don't mark the task as failed but as retry
   retry_on_exceptions = (
     pymongo.errors.AutoReconnect,
@@ -37,7 +39,10 @@ class Job(object):
     CancelInterrupt
   )
 
-  def __init__(self, job_id, worker=None, queue=None, start=False, fetch=False):
+  _memory_stop = 0
+  _memory_start = 0
+
+  def __init__(self, job_id, queue=None, start=False, fetch=False):
     self.worker = get_current_worker()
     self.queue = queue
     self.datestarted = None
@@ -50,6 +55,8 @@ class Job(object):
       self.id = ObjectId(job_id)
 
     self.data = None
+    self.saved = True
+
     self.task = None
     self.greenlet_switches = 0
     self.greenlet_time = 0
@@ -100,21 +107,65 @@ class Job(object):
     if self.data is None:
       log.info("Job %s not found in MongoDB or status was cancelled!" % self.id)
     else:
-      task_def = get_current_config().get("tasks", {}).get(self.data["path"]) or {}
-      self.timeout = task_def.get("timeout", self.timeout)
-      self.result_ttl = task_def.get("result_ttl", self.result_ttl)
+      self.populate_properties()
 
     return self
+
+  def set_progress(self, ratio, save=False):
+    self.data["progress"] = ratio
+    self.saved = False
+
+    # If not saved, will be updated in the next worker report
+    if save:
+      self.save()
+
+  def save(self):
+    """ Will be called at each worker report. """
+
+    if not self.saved and self.data and "progress" in self.data:
+      # TODO should we save more fields?
+      self.collection.update({"_id": self.id}, {"$set": {
+        "progress": self.data["progress"]
+      }})
+      self.saved = True
+
+  def populate_properties(self):
+
+    task_def = get_current_config().get("tasks", {}).get(self.data["path"]) or {}
+    self.timeout = task_def.get("timeout", self.timeout)
+    self.result_ttl = task_def.get("result_ttl", self.result_ttl)
+
+  @classmethod
+  def insert(self, jobs_data, queue=None):
+
+    for data in jobs_data:
+      if data["status"] == "started":
+        data["datestarted"] = datetime.datetime.utcnow()
+    connections.mongodb_jobs.mrq_jobs.insert(jobs_data, manipulate=True)
+
+    jobs = []
+    for data in jobs_data:
+      job = self(data["_id"], queue=queue)
+      job.data = data
+      job.populate_properties()
+      if data["status"] == "started":
+        job.datestarted = data["datestarted"]
+      jobs.append(job)
+
+    return jobs
 
   def subpool_map(self, pool_size, func, iterable):
     """ Starts a Gevent pool and run a map. Takes care of setting current_job and cleaning up. """
 
+    if not pool_size:
+      return [func(*args) for args in iterable]
+
     counter = itertools_count()
 
-    def inner_func(*args, **kwargs):
+    def inner_func(*args):
       next(counter)
       set_current_job(self)
-      ret = func(*args, **kwargs)
+      ret = func(*args)
       set_current_job(None)
       return ret
 
@@ -162,6 +213,9 @@ class Job(object):
     # Make the job document expire
     if status in ("success", "cancel"):
       updates["dateexpires"] = now + datetime.timedelta(seconds=self.result_ttl)
+
+    if status == "success" and "progress" in self.data:
+      updates["progress"] = 1
 
     self.collection.update({
       "_id": self.id

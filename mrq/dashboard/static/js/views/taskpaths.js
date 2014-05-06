@@ -40,11 +40,6 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
               } else {
                 return cnt;
               }
-            },
-            "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
-              setTimeout(function() {
-                $(".inlinesparkline", nTd).sparkline("html", {"width": "100px", "height": "30px", "defaultPixelsPerValue": 1});
-              }, 10);
             }
           },
           {
@@ -65,6 +60,15 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
           }
 
         ],
+        "fnDrawCallback": function (oSettings) {
+
+          _.each(oSettings.aoData,function(row) {
+            var oData = row._aData;
+
+            $(".col-jobs .inlinesparkline", row.nTr).sparkline("html", {"width": "100px", "height": "30px", "defaultPixelsPerValue": 1});
+
+          });
+        },
         "aaSorting":[ [0,'asc'] ],
       });
 

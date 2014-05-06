@@ -2,9 +2,11 @@ from bson import ObjectId
 import urllib2
 import json
 import time
+import os
+import pytest
 
 
-def test_general_simple_task_one(worker):
+def test_subpool_simple(worker):
 
   worker.start()
 
@@ -28,7 +30,26 @@ def test_general_simple_task_one(worker):
   assert result == [1] * 20
   assert total_time < 2
 
+
+def test_subpool_exception(worker):
+
   # Exception
-  result = worker.send_task("mrq.basetasks.tests.general.SubPool", {
+  worker.send_task("mrq.basetasks.tests.general.SubPool", {
     "pool_size": 20, "inner_params": ["exception"]
   }, accept_statuses=["failed"])
+
+
+@pytest.mark.parametrize(["p_size"], [
+  [0],
+  [1],
+  [2],
+  [100]
+])
+def test_subpool_import(worker, p_size):
+  """ This tests that the patch_import() function does its job of preventing a gevent crash
+  like explained in https://code.google.com/p/gevent/issues/detail?id=108 """
+
+  # Large file import
+  worker.send_task("mrq.basetasks.tests.general.SubPool", {
+    "pool_size": p_size, "inner_params": ["import-large-file"] * p_size
+  }, accept_statuses=["success"])
