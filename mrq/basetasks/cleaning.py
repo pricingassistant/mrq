@@ -71,7 +71,7 @@ class RequeueRedisStartedJobs(Task):
 
     self.collection = connections.mongodb_jobs.mrq_jobs
 
-    redis_key_started = Queue("q").redis_key_started
+    redis_key_started = Queue.redis_key_started()
 
     stats = {
       "fetched": 0,
@@ -79,10 +79,11 @@ class RequeueRedisStartedJobs(Task):
     }
 
     # Fetch all the jobs started more than a minute ago - they should not be in redis:started anymore
-    job_ids = connections.redis.zrangebyscore(redis_key_started, "-inf", time.time() - 60)
+    job_ids = connections.redis.zrangebyscore(redis_key_started, "-inf", time.time() - params.get("timeout", 60))
+
     for job_id in job_ids:
 
-      queue = Job(job_id, start=False, fetch=True).data["queue"]
+      queue = Job(job_id, start=False, fetch=False).fetch(full_data=True).data["queue"]
 
       stats["fetched"] += 1
 

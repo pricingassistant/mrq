@@ -100,7 +100,7 @@ class Queue(object):
   def redis_key(self):
     return "%s:q:%s" % (get_current_config()["redis_prefix"], self.id)
 
-  @property
+  @classmethod
   def redis_key_started(self):
     return "%s:s:started" % get_current_config()["redis_prefix"]
 
@@ -295,11 +295,13 @@ class Queue(object):
 
       else:
 
+        simulate_lost_jobs = get_current_config().get("simulate_lost_jobs")
+
         for queue in queue_objects:
 
           job_ids = _redis_command_lpopsafe()(keys=[
             queue.redis_key,
-            self.redis_key_started
+            Queue.redis_key_started()
           ], args=[
             max_jobs,
             time.time()
@@ -308,6 +310,9 @@ class Queue(object):
           if len(job_ids) == 0:
             continue
 
+          if simulate_lost_jobs:
+            break
+
           if worker:
             worker.status = "spawn"
 
@@ -315,7 +320,7 @@ class Queue(object):
                    for _job_id in job_ids if _job_id]
 
           # Now the jobs have been marked as started in Mongo, we can remove them from the started queue.
-          connections.redis.zrem(self.redis_key_started, *job_ids)
+          connections.redis.zrem(Queue.redis_key_started(), *job_ids)
 
           max_jobs -= len(job_ids)
 

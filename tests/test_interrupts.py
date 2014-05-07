@@ -3,6 +3,8 @@ from mrq.job import Job
 from mrq.queue import Queue
 from bson import ObjectId
 import pytest
+from mrq.context import connections
+
 
 PROCESS_CONFIGS = [
   ["--gevent 1"],
@@ -231,5 +233,35 @@ def test_interrupt_redis_flush(worker):
 
   assert Queue("default").list_job_ids() == [str(job_id1), str(job_id2)]
   assert Queue("otherq").list_job_ids() == [str(job_id3)]
+
+
+def test_interrupt_redis_started_jobs(worker):
+
+  worker.start(queues="xxx", flags=" --config tests/fixtures/config-lostjobs.py")
+
+  worker.send_task("mrq.basetasks.tests.general.Add", {"a": 41, "b": 1, "sleep": 10}, block=False, queue="xxx")
+  worker.send_task("mrq.basetasks.tests.general.Add", {"a": 41, "b": 1, "sleep": 10}, block=False, queue="xxx")
+
+  time.sleep(3)
+
+  worker.stop(deps=False)
+
+  assert Queue("xxx").size() == 0
+  assert connections.redis.zcard(Queue.redis_key_started()) == 2
+
+  worker.start(queues="default", start_deps=False, flush=False)
+
+  assert connections.redis.zcard(Queue.redis_key_started()) == 2
+
+  res = worker.send_task("mrq.basetasks.cleaning.RequeueRedisStartedJobs", {
+    "timeout": 0
+  }, block=True, queue="default")
+
+  assert res["fetched"] == 2
+  assert res["requeued"] == 2
+
+  assert Queue("xxx").size() == 2
+  assert Queue("default").size() == 0
+  assert connections.redis.zcard(Queue.redis_key_started()) == 0
 
 
