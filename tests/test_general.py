@@ -92,12 +92,29 @@ def test_general_simple_no_trace(worker):
 def test_general_simple_task_multiple(worker):
 
   result = worker.send_tasks("mrq.basetasks.tests.general.Add", [
-    {"a": 41, "b": 1},
-    {"a": 41, "b": 1},
-    {"a": 40, "b": 1}
+    {"a": 41, "b": 1, "sleep": 1},
+    {"a": 41, "b": 1, "sleep": 1},
+    {"a": 40, "b": 1, "sleep": 1}
   ])
 
   assert result == [42, 42, 41]
+
+  assert [x["result"] for x in worker.mongodb_jobs.mrq_jobs.find().sort([["dateupdated", 1]])] == [42, 42, 41]
+
+
+def test_general_simple_task_reverse(worker):
+
+  worker.start(queues="default_reverse")
+
+  result = worker.send_tasks("mrq.basetasks.tests.general.Add", [
+    {"a": 41, "b": 1, "sleep": 1},
+    {"a": 41, "b": 1, "sleep": 1},
+    {"a": 40, "b": 1, "sleep": 1}
+  ])
+
+  assert result == [42, 42, 41]
+
+  assert [x["result"] for x in worker.mongodb_jobs.mrq_jobs.find().sort([["dateupdated", 1]])] == [41, 42, 42]
 
 
 def test_general_exception_status(worker):

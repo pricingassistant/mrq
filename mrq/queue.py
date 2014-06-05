@@ -53,11 +53,16 @@ local key = KEYS[1]
 local zset_started = KEYS[2]
 local count = ARGV[1]
 local now = ARGV[2]
+local left = ARGV[3]
 local data = {}
 local current = nil
 
 for i=1, count do
-  current = redis.call('lpop', key)
+  if left == '1' then
+    current = redis.call('lpop', key)
+  else
+    current = redis.call('rpop', key)
+  end
   if current == false then
     return data
   end
@@ -75,11 +80,16 @@ class Queue(object):
   is_timed = False
   is_sorted = False
   is_set = False
+  is_reverse = False
 
   def __init__(self, queue_id):
     if isinstance(queue_id, Queue):
       self.id = queue_id.id  # TODO use __new__?
+      self.is_reverse = queue_id.is_reverse
     else:
+      if queue_id[-8:] == "_reverse":
+        self.is_reverse = True
+        queue_id = queue_id[:-8]
       self.id = queue_id
 
     if "_raw" in self.id:
@@ -304,7 +314,8 @@ class Queue(object):
             Queue.redis_key_started()
           ], args=[
             max_jobs,
-            time.time()
+            time.time(),
+            "0" if queue.is_reverse else "1"
           ])
 
           if len(job_ids) == 0:

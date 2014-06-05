@@ -17,7 +17,8 @@ RUN curl http://download.redis.io/releases/redis-2.6.16.tar.gz > redis.tar.gz
 RUN mkdir /redis && tar -zxf redis.tar.gz -C /redis --strip 1 && rm redis.tar.gz
 RUN cd /redis && make && make test && make install && ln -s /usr/local/bin/redis-server /usr/bin/redis-server
 
-RUN echo 1 > /proc/sys/vm/overcommit_memory
+# FS is read-only!
+# RUN sysctl vm.overcommit_memory=1
 
 RUN mkdir -p /data/db
 VOLUME ["/data"]
