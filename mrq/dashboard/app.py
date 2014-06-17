@@ -143,6 +143,8 @@ def api_datatables(unit):
 
   collection = None
   sort = None
+  skip = int(request.args.get("iDisplayStart", 0))
+  limit = int(request.args.get("iDisplayLength", 20))
 
   if unit == "queues":
 
@@ -184,7 +186,7 @@ def api_datatables(unit):
       "iTotalDisplayRecords": len(queues)
     }
 
-  if unit == "workers":
+  elif unit == "workers":
     fields = None
     query = {"status": {"$nin": ["stop"]}}
     collection = connections.mongodb_jobs.mrq_workers
@@ -217,8 +219,14 @@ def api_datatables(unit):
     if sort:
       cursor.sort(sort)
 
+    if skip is not None:
+      cursor.skip(skip)
+
+    if limit is not None:
+      cursor.limit(limit)
+
     data = {
-      "aaData": list(cursor.skip(int(request.args.get("iDisplayStart", 0))).limit(int(request.args.get("iDisplayLength", 20)))),
+      "aaData": list(cursor),
       "iTotalDisplayRecords": collection.find(query).count()
     }
 

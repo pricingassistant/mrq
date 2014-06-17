@@ -269,7 +269,7 @@ class Queue(object):
     return queues
 
   @classmethod
-  def dequeue_jobs(self, queues, max_jobs=1, job_class=None, worker=None):
+  def dequeue_jobs(self, queues, max_jobs=1, job_class=None, worker=None, quiet=False):
     """ Fetch a maximum of max_jobs from this worker's queues. """
 
     if job_class is None:
@@ -280,7 +280,8 @@ class Queue(object):
 
     has_raw = any(q.is_raw or q.is_sorted for q in queue_objects)
 
-    log.debug("Fetching %s jobs from Redis" % max_jobs)
+    if not quiet:
+      log.debug("Fetching %s jobs from Redis" % max_jobs)
 
     # When none of the queues is a raw queue, we can have an optimized mode where we BLPOP from the queues.
     if not has_raw:

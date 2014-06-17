@@ -88,7 +88,7 @@ def _connections_factory(attr):
       urlparse.uses_netloc.append('redis')
       redis_url = urlparse.urlparse(config_obj)
 
-      log.info("Connecting to Redis at %s..." % redis_url.hostname)
+      log.info("%s: Connecting to Redis at %s..." % (attr, redis_url.hostname))
 
       redis_pool = pyredis.ConnectionPool(
         host=redis_url.hostname,
@@ -109,7 +109,7 @@ def _connections_factory(attr):
       (mongoAuth, mongoUsername, mongoPassword, mongoHosts, mongoDbName, mongoDbOptions) = re.match(
         r"mongodb://((\w+):(\w+)@)?([\w\.:,-]+)/([\w-]+)(\?.*)?", config_obj).groups()
 
-      log.debug("Connecting to MongoDB at %s/%s..." % (mongoHosts, mongoDbName))
+      log.debug("%s: Connecting to MongoDB at %s/%s..." % (attr, mongoHosts, mongoDbName))
 
       kwargs = {"use_greenlets": True}
       options = {}
@@ -123,6 +123,7 @@ def _connections_factory(attr):
         db = MongoReplicaSetClient(config_obj, **kwargs)[mongoDbName]
       else:
         db = MongoClient(config_obj, **kwargs)[mongoDbName]
+      log.debug("%s: ... connected." % (attr))
 
       return db
 
