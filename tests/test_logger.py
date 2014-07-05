@@ -10,7 +10,7 @@ for cls in ["string", "unicode", "latin-1", "bytes1"]:
 @pytest.mark.parametrize(["class_name", "utf8_sys_stdout"], OPTS)
 def test_supports_string_and_unicode(worker, class_name, utf8_sys_stdout):
 
-  result = worker.send_task("mrq.basetasks.tests.logger.Simple", {
+  result = worker.send_task("tests.tasks.logger.Simple", {
     "class_name": class_name,
     "utf8_sys_stdout": utf8_sys_stdout
   })

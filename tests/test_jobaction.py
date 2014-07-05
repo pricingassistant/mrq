@@ -7,7 +7,7 @@ import pytest
 OPTS = []
 for p_query in [
     # Query, number_matching
-    ({"path": "mrq.basetasks.tests.general.MongoInsert"}, 3),
+    ({"path": "tests.tasks.general.MongoInsert"}, 3),
     ({"queue": "q1"}, 2),
     ({"params": "{\"a\": 44}"}, 1)
   ]:
@@ -23,7 +23,7 @@ def test_cancel_by_path(worker, p_query):
   worker.start(flags="--gevent 1", queues="default q1 q2")
 
   job_ids = []
-  job_ids.append(worker.send_task("mrq.basetasks.tests.general.Add", {"a": 41, "b": 1, "sleep": 2}, queue="default", block=False))
+  job_ids.append(worker.send_task("tests.tasks.general.Add", {"a": 41, "b": 1, "sleep": 2}, queue="default", block=False))
 
   params = {
     "action": "cancel",
@@ -33,10 +33,10 @@ def test_cancel_by_path(worker, p_query):
 
   requeue_job = worker.send_task("mrq.basetasks.utils.JobAction", params, block=False)
 
-  job_ids.append(worker.send_task("mrq.basetasks.tests.general.MongoInsert", {"a": 42}, queue="q1", block=False))
-  job_ids.append(worker.send_task("mrq.basetasks.tests.general.MongoInsert", {"a": 42}, queue="q2", block=False))
-  job_ids.append(worker.send_task("mrq.basetasks.tests.general.MongoInsert", {"a": 43}, queue="q2", block=False))
-  job_ids.append(worker.send_task("mrq.basetasks.tests.general.MongoInsert2", {"a": 44}, queue="q1", block=False))
+  job_ids.append(worker.send_task("tests.tasks.general.MongoInsert", {"a": 42}, queue="q1", block=False))
+  job_ids.append(worker.send_task("tests.tasks.general.MongoInsert", {"a": 42}, queue="q2", block=False))
+  job_ids.append(worker.send_task("tests.tasks.general.MongoInsert", {"a": 43}, queue="q2", block=False))
+  job_ids.append(worker.send_task("tests.tasks.general.MongoInsert2", {"a": 44}, queue="q1", block=False))
 
   Job(job_ids[-1]).wait(poll_interval=0.01)
 

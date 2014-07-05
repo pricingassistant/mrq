@@ -209,7 +209,7 @@ def test_raw_mixed(worker, p_queue, p_greenlets):
 
   worker.send_raw_tasks("test_raw", ["aaa", "bbb", "ccc"], start=False, block=False)
 
-  worker.send_task("mrq.basetasks.tests.general.MongoInsert", {
+  worker.send_task("tests.tasks.general.MongoInsert", {
     "not_raw": "ddd"
   }, start=False, block=False)
 

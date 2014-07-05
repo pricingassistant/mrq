@@ -1,11 +1,11 @@
 NAME = "testworker"
 
 TASKS = {
-  "mrq.basetasks.tests.general.TimeoutFromConfig": {
+  "tests.tasks.general.TimeoutFromConfig": {
     "timeout": 2,
     "queue": "tests"
   },
-  "mrq.basetasks.tests.general.TimeoutFromConfigAndCancel": {
+  "tests.tasks.general.TimeoutFromConfigAndCancel": {
     "timeout": 2,
     "queue": "tests"
   }

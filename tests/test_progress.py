@@ -10,7 +10,7 @@ def test_progress(worker, p_save):
 
   worker.start(flags="--report_interval 1")
 
-  assert worker.send_task("mrq.basetasks.tests.general.Progress", {"save": p_save}, block=False)
+  assert worker.send_task("tests.tasks.general.Progress", {"save": p_save}, block=False)
 
   time.sleep(5)
 

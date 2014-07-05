@@ -4,6 +4,7 @@ from mrq.queue import Queue
 from bson import ObjectId
 import pytest
 from mrq.context import connections
+import json
 
 
 PROCESS_CONFIGS = [
@@ -20,7 +21,7 @@ def test_interrupt_worker_gracefully(worker, p_flags):
 
   worker.start(flags=p_flags)
 
-  job_id = worker.send_task("mrq.basetasks.tests.general.Add", {"a": 41, "b": 1, "sleep": 5}, block=False)
+  job_id = worker.send_task("tests.tasks.general.Add", {"a": 41, "b": 1, "sleep": 5}, block=False)
 
   time.sleep(2)
 
@@ -33,7 +34,7 @@ def test_interrupt_worker_gracefully(worker, p_flags):
   time.sleep(1)
 
   # Should not be accepting new jobs!
-  job_id2 = worker.send_task("mrq.basetasks.tests.general.Add", {"a": 42, "b": 1, "sleep": 4}, block=False)
+  job_id2 = worker.send_task("tests.tasks.general.Add", {"a": 42, "b": 1, "sleep": 4}, block=False)
 
   time.sleep(1)
 
@@ -58,7 +59,7 @@ def test_interrupt_worker_double_sigint(worker, p_flags):
 
   worker.start(flags=p_flags)
 
-  job_id = worker.send_task("mrq.basetasks.tests.general.Add", {"a": 41, "b": 1, "sleep": 10}, block=False)
+  job_id = worker.send_task("tests.tasks.general.Add", {"a": 41, "b": 1, "sleep": 10}, block=False)
 
   time.sleep(1)
 
@@ -71,7 +72,7 @@ def test_interrupt_worker_double_sigint(worker, p_flags):
   time.sleep(1)
 
   # Should not be accepting new jobs!
-  job_id2 = worker.send_task("mrq.basetasks.tests.general.Add", {"a": 42, "b": 1, "sleep": 10}, block=False)
+  job_id2 = worker.send_task("tests.tasks.general.Add", {"a": 42, "b": 1, "sleep": 10}, block=False)
 
   time.sleep(1)
 
@@ -118,7 +119,7 @@ def test_interrupt_worker_sigterm(worker, p_flags):
 
   worker.start(flags=p_flags)
 
-  job_id = worker.send_task("mrq.basetasks.tests.general.Add", {"a": 41, "b": 1, "sleep": 10}, block=False)
+  job_id = worker.send_task("tests.tasks.general.Add", {"a": 41, "b": 1, "sleep": 10}, block=False)
 
   time.sleep(1)
 
@@ -141,9 +142,13 @@ def test_interrupt_worker_sigkill(worker, p_flags):
 
   start_time = time.time()
 
-  worker.start(flags=p_flags)
+  worker.start(flags=p_flags + " --config tests/fixtures/config-shorttimeout.py")
 
-  job_id = worker.send_task("mrq.basetasks.tests.general.Add", {"a": 41, "b": 1, "sleep": 10}, block=False)
+  cfg = json.loads(worker.send_task("tests.tasks.general.GetConfig", {}, block=True))
+
+  assert cfg["tasks"]["tests.tasks.general.Add"]["timeout"] == 200
+
+  job_id = worker.send_task("tests.tasks.general.Add", {"a": 41, "b": 1, "sleep": 10}, block=False)
 
   time.sleep(1)
 
@@ -151,7 +156,11 @@ def test_interrupt_worker_sigkill(worker, p_flags):
 
   time.sleep(1)
 
+  # This is a bit tricky, but when getting the job from the current python environment, its timeout should
+  # be the default 300 and not 200 because we didn't configure ourselves with config-shorttimeout.py
   job = Job(job_id).fetch().data
+  assert Job(job_id).fetch().timeout == 300
+
   assert job["status"] == "started"
 
   assert time.time() - start_time < 6
@@ -160,12 +169,12 @@ def test_interrupt_worker_sigkill(worker, p_flags):
 
   # We need to fake the datestarted
   worker.mongodb_jobs.mrq_jobs.update({"_id": ObjectId(job_id)}, {"$set": {
-    "datestarted": datetime.datetime.utcnow() - datetime.timedelta(seconds=400)
+    "datestarted": datetime.datetime.utcnow() - datetime.timedelta(seconds=300)
   }})
 
   assert Queue("default").size() == 0
 
-  worker.start(queues="cleaning", deps=False, flush=False)
+  worker.start(queues="cleaning", deps=False, flush=False, flags=" --config tests/fixtures/config-shorttimeout.py")
 
   res = worker.send_task("mrq.basetasks.cleaning.RequeueStartedJobs", {"timeout": 110}, block=True, queue="cleaning")
 
@@ -200,9 +209,9 @@ def test_interrupt_redis_flush(worker):
 
   worker.start(queues="cleaning", deps=True, flush=True)
 
-  job_id1 = worker.send_task("mrq.basetasks.tests.general.Add", {"a": 41, "b": 1, "sleep": 10}, block=False, queue="default")
-  job_id2 = worker.send_task("mrq.basetasks.tests.general.Add", {"a": 41, "b": 1, "sleep": 10}, block=False, queue="default")
-  job_id3 = worker.send_task("mrq.basetasks.tests.general.Add", {"a": 41, "b": 1, "sleep": 10}, block=False, queue="otherq")
+  job_id1 = worker.send_task("tests.tasks.general.Add", {"a": 41, "b": 1, "sleep": 10}, block=False, queue="default")
+  job_id2 = worker.send_task("tests.tasks.general.Add", {"a": 41, "b": 1, "sleep": 10}, block=False, queue="default")
+  job_id3 = worker.send_task("tests.tasks.general.Add", {"a": 41, "b": 1, "sleep": 10}, block=False, queue="otherq")
 
   assert Queue("default").size() == 2
   assert Queue("otherq").size() == 1
@@ -239,8 +248,8 @@ def test_interrupt_redis_started_jobs(worker):
 
   worker.start(queues="xxx", flags=" --config tests/fixtures/config-lostjobs.py")
 
-  worker.send_task("mrq.basetasks.tests.general.Add", {"a": 41, "b": 1, "sleep": 10}, block=False, queue="xxx")
-  worker.send_task("mrq.basetasks.tests.general.Add", {"a": 41, "b": 1, "sleep": 10}, block=False, queue="xxx")
+  worker.send_task("tests.tasks.general.Add", {"a": 41, "b": 1, "sleep": 10}, block=False, queue="xxx")
+  worker.send_task("tests.tasks.general.Add", {"a": 41, "b": 1, "sleep": 10}, block=False, queue="xxx")
 
   time.sleep(3)
 

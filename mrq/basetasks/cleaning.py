@@ -47,6 +47,7 @@ class RequeueStartedJobs(Task):
     self.collection = connections.mongodb_jobs.mrq_jobs
     for job_data in self.collection.find({"status": "started"}, fields={"_id": 1, "datestarted": 1, "queue": 1, "path": 1}):
       job = Job(job_data["_id"])
+      job.set_data(job_data)
 
       stats["started"] += 1
 

@@ -6,7 +6,7 @@ import time
 
 def test_retry(worker):
 
-  job_id = worker.send_task("mrq.basetasks.tests.general.Retry", {"queue": "noexec", "countdown": 60}, block=False)
+  job_id = worker.send_task("tests.tasks.general.Retry", {"queue": "noexec", "countdown": 60}, block=False)
 
   job_data = Job(job_id).wait(poll_interval=0.01, full_data=True)
 
@@ -21,7 +21,7 @@ def test_retry_otherqueue_countdown_zero(worker):
   worker.start()
 
   # countdown = 0 should requeue right away.
-  job_id = worker.send_task("mrq.basetasks.tests.general.Retry", {"queue": "noexec", "countdown": 0}, block=False)
+  job_id = worker.send_task("tests.tasks.general.Retry", {"queue": "noexec", "countdown": 0}, block=False)
 
   time.sleep(1)
 
@@ -37,7 +37,7 @@ def test_retry_otherqueue_countdown_nonzero(worker):
   worker.start()
 
   # countdown = 0 should requeue right away.
-  worker.send_task("mrq.basetasks.tests.general.Retry", {
+  worker.send_task("tests.tasks.general.Retry", {
     "queue": "noexec",
     "countdown": 2
   }, block=True, accept_statuses=["retry"])
@@ -70,7 +70,7 @@ def test_retry_otherqueue_countdown_nonzero(worker):
 
 def test_retry_cancel_on_retry(worker):
 
-  job_id = worker.send_task("mrq.basetasks.tests.general.Retry", {
+  job_id = worker.send_task("tests.tasks.general.Retry", {
     "queue": "noexec",
     "countdown": 60,
     "cancel_on_retry": True

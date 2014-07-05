@@ -1,28 +1,28 @@
 
 SCHEDULER_TASKS = [
   {
-    "path": "mrq.basetasks.tests.general.MongoInsert",
+    "path": "tests.tasks.general.MongoInsert",
     "params": {
       "a": 1
     },
     "interval": 5
   },
   {
-    "path": "mrq.basetasks.tests.general.MongoInsert",
+    "path": "tests.tasks.general.MongoInsert",
     "params": {
       "a": 20
     },
     "interval": 5
   },
   {
-    "path": "mrq.basetasks.tests.general.MongoInsert",
+    "path": "tests.tasks.general.MongoInsert",
     "params": {
       "a": 3
     },
     "interval": 10
   },
   {
-    "path": "mrq.basetasks.tests.general.MongoInsert2",
+    "path": "tests.tasks.general.MongoInsert2",
     "params": {
       "a": 4
     },

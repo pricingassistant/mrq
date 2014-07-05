@@ -3,7 +3,7 @@ import os
 
 SCHEDULER_TASKS = [
   {
-    "path": "mrq.basetasks.tests.general.MongoInsert",
+    "path": "tests.tasks.general.MongoInsert",
     "params": {
       "a": 1
     },

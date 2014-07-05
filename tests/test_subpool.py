@@ -12,7 +12,7 @@ def test_subpool_simple(worker):
 
   # Check that sequential sleeps work
   start_time = time.time()
-  result = worker.send_task("mrq.basetasks.tests.general.SubPool", {
+  result = worker.send_task("tests.tasks.general.SubPool", {
     "pool_size": 1, "inner_params": [1, 1]
   })
   total_time = time.time() - start_time
@@ -22,7 +22,7 @@ def test_subpool_simple(worker):
 
   # Parallel sleeps
   start_time = time.time()
-  result = worker.send_task("mrq.basetasks.tests.general.SubPool", {
+  result = worker.send_task("tests.tasks.general.SubPool", {
     "pool_size": 20, "inner_params": [1] * 20
   })
   total_time = time.time() - start_time
@@ -34,7 +34,7 @@ def test_subpool_simple(worker):
 def test_subpool_exception(worker):
 
   # Exception
-  worker.send_task("mrq.basetasks.tests.general.SubPool", {
+  worker.send_task("tests.tasks.general.SubPool", {
     "pool_size": 20, "inner_params": ["exception"]
   }, accept_statuses=["failed"])
 
@@ -50,6 +50,6 @@ def test_subpool_import(worker, p_size):
   like explained in https://code.google.com/p/gevent/issues/detail?id=108 """
 
   # Large file import
-  worker.send_task("mrq.basetasks.tests.general.SubPool", {
+  worker.send_task("tests.tasks.general.SubPool", {
     "pool_size": p_size, "inner_params": ["import-large-file"] * p_size
   }, accept_statuses=["success"])

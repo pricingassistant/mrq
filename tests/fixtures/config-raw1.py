@@ -4,7 +4,7 @@ RAW_QUEUES = {
   "pushback_timed_set": {
     "pushback_seconds": 24 * 3600,
     "job_factory": lambda rawparam: {
-      "path": "mrq.basetasks.tests.general.MongoInsert",
+      "path": "tests.tasks.general.MongoInsert",
       "params": {
         "timed_set": rawparam
       }
@@ -19,7 +19,7 @@ RAW_QUEUES = {
       "exact": False
     },
     "job_factory": lambda rawparam: {
-      "path": "mrq.basetasks.tests.general.MongoInsert",
+      "path": "tests.tasks.general.MongoInsert",
       "params": {
         "timed_set": rawparam
       }
@@ -27,7 +27,7 @@ RAW_QUEUES = {
   },
   "test_raw": {
     "job_factory": lambda rawparam: {
-      "path": "mrq.basetasks.tests.general.MongoInsert",
+      "path": "tests.tasks.general.MongoInsert",
       "params": {
         "raw": rawparam
       }
@@ -35,7 +35,7 @@ RAW_QUEUES = {
   },
   "test_set": {
     "job_factory": lambda rawparam: {
-      "path": "mrq.basetasks.tests.general.MongoInsert",
+      "path": "tests.tasks.general.MongoInsert",
       "params": {
         "set": rawparam
       }
@@ -43,7 +43,7 @@ RAW_QUEUES = {
   },
   "test_sorted_set": {
     "job_factory": lambda rawparam: {
-      "path": "mrq.basetasks.tests.general.MongoInsert",
+      "path": "tests.tasks.general.MongoInsert",
       "params": {
         "sorted_set": rawparam
       }
@@ -52,7 +52,7 @@ RAW_QUEUES = {
   "testexception_raw": {
     "retry_queue": "testx",
     "job_factory": lambda rawparam: {
-      "path": "mrq.basetasks.tests.general.RaiseException",
+      "path": "tests.tasks.general.RaiseException",
       "params": {
         "message": rawparam
       }
@@ -61,7 +61,7 @@ RAW_QUEUES = {
   "testretry_raw": {
     "retry_queue": "testx",
     "job_factory": lambda rawparam: {
-      "path": "mrq.basetasks.tests.general.Retry",
+      "path": "tests.tasks.general.Retry",
       "params": {
         "sleep": int(rawparam),
         "countdown": 0
@@ -70,7 +70,7 @@ RAW_QUEUES = {
   },
   "testperformance_raw": {
     "job_factory": lambda rawparam: {
-      "path": "mrq.basetasks.tests.general.Add",
+      "path": "tests.tasks.general.Add",
       "params": {
         "a": int(rawparam),
         "b": 0,
@@ -80,7 +80,7 @@ RAW_QUEUES = {
   },
   "testperformance_set": {
     "job_factory": lambda rawparam: {
-      "path": "mrq.basetasks.tests.general.Add",
+      "path": "tests.tasks.general.Add",
       "params": {
         "a": int(rawparam),
         "b": 0,
@@ -90,7 +90,7 @@ RAW_QUEUES = {
   },
   "testperformance_timed_set": {
     "job_factory": lambda rawparam: {
-      "path": "mrq.basetasks.tests.general.Add",
+      "path": "tests.tasks.general.Add",
       "params": {
         "a": int(rawparam),
         "b": 0,
@@ -100,7 +100,7 @@ RAW_QUEUES = {
   },
   "testperformance_sorted_set": {
     "job_factory": lambda rawparam: {
-      "path": "mrq.basetasks.tests.general.Add",
+      "path": "tests.tasks.general.Add",
       "params": {
         "a": int(rawparam),
         "b": 0,

@@ -2,6 +2,7 @@ from time import sleep
 from mrq.task import Task
 from mrq.context import log, retry_current_job, connections, get_current_config, get_current_job, progress
 import urllib2
+import json
 
 
 class Add(Task):
@@ -38,7 +39,7 @@ class Fetch(Task):
 
 class GetConfig(Task):
   def run(self, params):
-    return get_current_config()
+    return json.dumps(get_current_config())
 
 
 LEAKS = []
@@ -122,7 +123,7 @@ class SubPool(Task):
     assert get_current_job() == self.job
 
     if x == "import-large-file":
-      from mrq.basetasks.tests.largefile import a
+      from tests.tasks.largefile import a
       assert a == 1
       return True
 

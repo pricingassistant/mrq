@@ -199,7 +199,7 @@ class WorkerFixture(ProcessFixture):
       # Wait for the queue to be empty. Might be error-prone when tasks are in-memory between the 2
       q = Queue(queue)
       while q.size() > 0 or self.mongodb_jobs.mrq_jobs.find({"status": "started"}).count() > 0:
-        print "S", q.size(), self.mongodb_jobs.mrq_jobs.find({"status": "started"}).count()
+        # print "S", q.size(), self.mongodb_jobs.mrq_jobs.find({"status": "started"}).count()
         time.sleep(0.1)
 
   def send_tasks(self, path, params_list, block=True, queue=None, accept_statuses=["success"], start=True):

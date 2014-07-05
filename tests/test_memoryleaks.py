@@ -8,7 +8,7 @@ def get_diff_after_jobs(worker, n_tasks, leak, sleep=0):
   mem_start = worker.get_report()["process"]["mem"]["rss"]
 
   worker.send_tasks(
-    "mrq.basetasks.tests.general.Leak",
+    "tests.tasks.general.Leak",
     [{"size": leak, "sleep": sleep} for _ in range(n_tasks)],
     queue="default",
     block=True

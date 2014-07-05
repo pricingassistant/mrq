@@ -15,7 +15,7 @@ def benchmark_task(worker, taskpath, taskparams, tasks=1000, greenlets=50, proce
 
   start_time = time.time()
 
-  # result = worker.send_tasks("mrq.basetasks.tests.general.Add",
+  # result = worker.send_tasks("tests.tasks.general.Add",
   #                            [{"a": i, "b": 0, "sleep": 0} for i in range(n_tasks)])
 
   if raw:
@@ -40,7 +40,7 @@ def test_performance_simpleadds_regular(worker):
   max_seconds = 35
 
   result, total_time = benchmark_task(worker,
-                                      "mrq.basetasks.tests.general.Add",
+                                      "tests.tasks.general.Add",
                                       [{"a": i, "b": 0, "sleep": 0} for i in range(n_tasks)],
                                       tasks=n_tasks,
                                       greenlets=n_greenlets,
@@ -87,7 +87,7 @@ def test_performance_httpstatic_fast(worker, httpstatic):
   max_seconds = 10
 
   result, total_time = benchmark_task(worker,
-                                      "mrq.basetasks.tests.general.Fetch",
+                                      "tests.tasks.general.Fetch",
                                       [{"url": "http://127.0.0.1:8081/"} for _ in range(n_tasks)],
                                       tasks=n_tasks,
                                       greenlets=n_greenlets,
@@ -106,7 +106,7 @@ def test_performance_httpstatic_fast(worker, httpstatic):
 #   # url = "http://ox-mockserver.herokuapp.com/timeout?timeout=1000"
 
 #   result, total_time = benchmark_task(worker,
-#                                       "mrq.basetasks.tests.general.Fetch",
+#                                       "tests.tasks.general.Fetch",
 #                                       [{"url": url} for _ in range(n_tasks)],
 #                                       tasks=n_tasks,
 #                                       greenlets=n_greenlets,
@@ -122,7 +122,7 @@ def test_performance_queue_cancel_requeue(worker):
   start_time = time.time()
 
   worker.send_tasks(
-    "mrq.basetasks.tests.general.Add",
+    "tests.tasks.general.Add",
     [{"a": i, "b": 0, "sleep": 0} for i in range(n_tasks)],
     queue="noexec",
     block=False

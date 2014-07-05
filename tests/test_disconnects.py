@@ -17,7 +17,7 @@ def test_disconnects_service_during_task(worker, p_service):
 
   service_pid = service.process.pid
 
-  job_id1 = worker.send_task("mrq.basetasks.tests.general.Add", {"a": 41, "b": 1, "sleep": 5}, block=False, queue="default")
+  job_id1 = worker.send_task("tests.tasks.general.Add", {"a": 41, "b": 1, "sleep": 5}, block=False, queue="default")
 
   time.sleep(2)
 

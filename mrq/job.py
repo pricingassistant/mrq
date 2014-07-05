@@ -91,25 +91,33 @@ class Job(object):
 
     if start:
       self.datestarted = datetime.datetime.utcnow()
-      self.data = self.collection.find_and_modify({
+      self.set_data(self.collection.find_and_modify({
         "_id": self.id,
         "status": {"$nin": ["cancel"]}
       }, {"$set": {
         "status": "started",
         "datestarted": self.datestarted,
         "worker": self.worker.id
-      }}, fields=fields)
+      }}, fields=fields))
     else:
-      self.data = self.collection.find_one({
+      self.set_data(self.collection.find_one({
         "_id": self.id
-      }, fields=fields)
+      }, fields=fields))
 
     if self.data is None:
       log.info("Job %s not found in MongoDB or status was cancelled!" % self.id)
-    else:
-      self.populate_properties()
 
     return self
+
+  def set_data(self, data):
+    self.data = data
+    if self.data is None:
+      return
+
+    if "path" in self.data:
+      task_def = get_current_config().get("tasks", {}).get(self.data["path"]) or {}
+      self.timeout = task_def.get("timeout", self.timeout)
+      self.result_ttl = task_def.get("result_ttl", self.result_ttl)
 
   def set_progress(self, ratio, save=False):
     self.data["progress"] = ratio
@@ -129,12 +137,6 @@ class Job(object):
       }})
       self.saved = True
 
-  def populate_properties(self):
-
-    task_def = get_current_config().get("tasks", {}).get(self.data["path"]) or {}
-    self.timeout = task_def.get("timeout", self.timeout)
-    self.result_ttl = task_def.get("result_ttl", self.result_ttl)
-
   @classmethod
   def insert(self, jobs_data, queue=None):
 
@@ -146,8 +148,7 @@ class Job(object):
     jobs = []
     for data in jobs_data:
       job = self(data["_id"], queue=queue)
-      job.data = data
-      job.populate_properties()
+      job.set_data(data)
       if data["status"] == "started":
         job.datestarted = data["datestarted"]
       jobs.append(job)
