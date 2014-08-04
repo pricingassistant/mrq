@@ -16,7 +16,7 @@ def patch_pymongo(config):
   def gen_monkey_patch(base_object, method):
     base_method = getattr(base_object, method)
 
-    def monkey_patched(self, *args, **kwargs):
+    def mrq_monkey_patched(self, *args, **kwargs):
       if config["print_mongodb"]:
         if self.full_name in config.get("print_mongodb_hidden_collections", []):
           cprint("[MONGO] %s.%s%s %s" % (self.full_name, method, "-hidden-", kwargs), "magenta")
@@ -29,18 +29,20 @@ def patch_pymongo(config):
           job._trace_mongodb[method] += 1
       return base_method(self, *args, **kwargs)
 
-    return monkey_patched
+    return mrq_monkey_patched
 
   from pymongo.collection import Collection
   for method in ["find", "update", "insert", "remove", "find_and_modify"]:
-    setattr(Collection, method, gen_monkey_patch(Collection, method))
+    if getattr(Collection, method).__name__ != "mrq_monkey_patched":
+      setattr(Collection, method, gen_monkey_patch(Collection, method))
 
   # MongoKit completely replaces the code from PyMongo's find() function, so we
   # need to monkey-patch that as well.
   try:
     from mongokit.collection import Collection as MongoKitCollection
     for method in ["find"]:
-      setattr(MongoKitCollection, method, gen_monkey_patch(MongoKitCollection, method))
+      if getattr(MongoKitCollection, method).__name__ != "mrq_monkey_patched":
+        setattr(MongoKitCollection, method, gen_monkey_patch(MongoKitCollection, method))
 
   except ImportError:
     pass
@@ -56,7 +58,7 @@ def patch_import():
   orig_import = __builtin__.__import__
   import_lock = gevent.coros.RLock()
 
-  def safe_import(*args, **kwargs):
+  def mrq_safe_import(*args, **kwargs):
     """
     Normally python protects imports against concurrency by doing some locking
     at the C level (at least, it does that in CPython).  This function just
@@ -79,4 +81,5 @@ def patch_import():
     return result
 
   builtins = __import__('__builtin__')
-  builtins.__import__ = safe_import
+  if builtins.__import__.__name__ != "mrq_safe_import":
+    builtins.__import__ = mrq_safe_import
