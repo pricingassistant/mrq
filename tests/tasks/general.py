@@ -1,6 +1,7 @@
 from time import sleep
 from mrq.task import Task
 from mrq.context import log, retry_current_job, connections, get_current_config, get_current_job, progress
+from mrq.queue import send_task
 import urllib2
 import json
 
@@ -139,3 +140,15 @@ class SubPool(Task):
     self.job = get_current_job()
 
     return self.job.subpool_map(params["pool_size"], self.inner, params["inner_params"])
+
+
+class GetMetrics(Task):
+
+  def run(self, params):
+    return json.dumps(get_current_config().get("test_global_metrics"))
+
+
+class SendTask(Task):
+
+  def run(self, params):
+    return send_task(params["path"], params["params"])

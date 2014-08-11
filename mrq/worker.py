@@ -120,7 +120,7 @@ class Worker(object):
     self.mongodb_jobs.mrq_jobs.ensure_index([("path", 1), ("status", 1)], background=False)
     self.mongodb_jobs.mrq_jobs.ensure_index([("worker", 1), ("status", 1)], background=False, sparse=True)
     self.mongodb_jobs.mrq_jobs.ensure_index([("queue", 1), ("status", 1)], background=False)
-    self.mongodb_jobs.mrq_jobs.ensure_index([("dateexpires", 1)], sparse=True, background=False, expireAfterSeconds=0)
+    self.mongodb_jobs.mrq_jobs.ensure_index([("dateexpires", 1)], sparse=True, background=False, expireAfterSeconds=7 * 24 * 3600)
 
     self.mongodb_jobs.mrq_scheduled_jobs.ensure_index([("hash", 1)], unique=True, background=False, drop_dups=True)
 

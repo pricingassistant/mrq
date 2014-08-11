@@ -5,7 +5,7 @@ import time
 from .exceptions import RetryInterrupt, CancelInterrupt
 from .utils import load_class_by_path
 from .queue import Queue
-from .context import get_current_worker, log, connections, get_current_config, set_current_job
+from .context import get_current_worker, log, connections, get_current_config, set_current_job, metric
 import gevent
 import objgraph
 import random
@@ -90,6 +90,7 @@ class Job(object):
       }
 
     if start:
+
       self.datestarted = datetime.datetime.utcnow()
       self.set_data(self.collection.find_and_modify({
         "_id": self.id,
@@ -99,6 +100,9 @@ class Job(object):
         "datestarted": self.datestarted,
         "worker": self.worker.id
       }}, fields=fields))
+
+      metric("jobs.status.started")
+
     else:
       self.set_data(self.collection.find_one({
         "_id": self.id
@@ -221,6 +225,8 @@ class Job(object):
     self.collection.update({
       "_id": self.id
     }, {"$set": updates}, w=w, manipulate=False)
+
+    metric("jobs.status.%s" % status)
 
     if self.data:
       self.data.update(updates)

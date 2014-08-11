@@ -1,5 +1,5 @@
 from .utils import load_class_by_path, group_iter, memoize
-from .context import connections, get_current_config, log
+from .context import connections, get_current_config, log, metric
 import time
 
 
@@ -140,6 +140,9 @@ class Queue(object):
     else:
       connections.redis.rpush(queue.redis_key, *job_ids)
 
+    metric("queues.%s.enqueued" % self.id, len(job_ids))
+    metric("queues.all.enqueued", len(job_ids))
+
   def enqueue_raw_jobs(self, params_list):
 
     if not self.is_raw:
@@ -163,6 +166,9 @@ class Queue(object):
     else:
       connections.redis.rpush(self.redis_key, *params_list)
 
+    metric("queues.%s.enqueued" % self.id, len(params_list))
+    metric("queues.all.enqueued", len(params_list))
+
   def remove_raw_jobs(self, params_list):
 
     if not self.is_raw:
@@ -183,6 +189,9 @@ class Queue(object):
       # O(n)! Use with caution.
       for k in params_list:
         connections.redis.lrem(self.redis_key, 1, k)
+
+    metric("queues.%s.removed" % self.id, len(params_list))
+    metric("queues.all.removed", len(params_list))
 
   def size(self):
 
@@ -302,7 +311,7 @@ class Queue(object):
         # From this point until job.fetch_and_start(), job is only local to this worker.
         # If we die here, job will be lost in redis without having been marked as "started".
 
-        jobs = [job_class(_job_id, queue=queue.redis_key, start=True) for _job_id in job_ids]
+        jobs = [job_class(_job_id, queue=queue.id, start=True) for _job_id in job_ids]
 
       else:
 
@@ -328,7 +337,7 @@ class Queue(object):
           if worker:
             worker.status = "spawn"
 
-          jobs += [job_class(_job_id, queue=queue, start=True)
+          jobs += [job_class(_job_id, queue=queue.id, start=True)
                    for _job_id in job_ids if _job_id]
 
           # Now the jobs have been marked as started in Mongo, we can remove them from the started queue.
@@ -338,6 +347,10 @@ class Queue(object):
 
           if max_jobs == 0:
             break
+
+      for job in jobs:
+        metric("queues.%s.dequeued" % job.queue, 1)
+      metric("queues.all.dequeued", len(jobs))
 
       return jobs
 
@@ -411,6 +424,10 @@ class Queue(object):
         if max_jobs == 0:
           break
 
+      for job in jobs:
+        metric("queues.%s.dequeued" % job.queue, 1)
+      metric("queues.all.dequeued", len(jobs))
+
       return jobs
 
 
@@ -449,6 +466,9 @@ def send_tasks(path, params_list, queue=None, sync=False, batch_size=1000):
 
   for params_group in group_iter(params_list, n=batch_size):
 
+    metric("jobs.status.queued", len(params_group))
+
+    # TODO use Job.insert here too?
     job_ids = collection.insert([{
       "path": path,
       "params": params,

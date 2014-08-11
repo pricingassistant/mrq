@@ -170,3 +170,10 @@ def progress(ratio, save=False):
   if not job:
     return
   job.set_progress(ratio, save=save)
+
+
+def metric(name, incr=1, **kwargs):
+  cfg = get_current_config()
+  if cfg.get("metric_hook"):
+    return cfg.get("metric_hook")(name, incr=incr, **kwargs)
+
