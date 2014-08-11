@@ -23,7 +23,7 @@ def get_version():
 setup(
     name="mrq",
     include_package_data=True,
-    packages=find_packages(exclude=['tests']),
+    packages=['mrq', 'mrq.basetasks', 'mrq.bin', 'mrq.dashboard'],  # find_packages(exclude=['tests', 'tests.tasks']),
     version=get_version(),
     description="Mongo Redis Queue",
     author="Pricing Assistant",
