@@ -70,34 +70,7 @@ MRQ has only been tested with Python 2.7+. External service dependencies are Mon
 
 You will need [Docker](http://docker.io) to run our unit tests. Our [Dockerfile](https://github.com/pricingassistant/mrq/blob/master/Dockerfile) is actually a good way to see a complete list of dependencies, including dev tools like graphviz for memleak images.
 
-
-Use in your application
-=======================
-
-- You can use `mrq-worker` to start a worker and `mrq-dashboard` to start the web dashboard on the default port.
-- To run a task you can use `mrq-run`. If you add the `--async` option that will enqueue it to be later ran by a worker
-- you may want to convert your logs db to a capped collection : ie. run db.runCommand({"convertToCapped": "mrq_jobs", "size": 10737418240})
-
-
-Tests
-=====
-
-Testing is done inside a Docker container for maximum repeatability.
-We don't use Travis-CI or friends because we need to be able to kill our process dependencies (MongoDB, Redis, ...) on demand.
-
-Therefore you need to ([install docker](https://www.docker.io/gettingstarted/#h_installation)) to run the tests.
-If you're not on an os that supports natively docker, don't forget to start up your VM and ssh into it.
-
-```
-$ make test
-```
-
-You can also open a shell inside the docker (just like you would enter in a virtualenv) with:
-
-```
-$ make docker (if it wasn't build before)
-$ make ssh
-```
+You may want to convert your logs db to a capped collection : ie. run db.runCommand({"convertToCapped": "mrq_jobs", "size": 10737418240})
 
 
 Configuration
@@ -113,6 +86,21 @@ For each of these values, configuration is loaded in this order by default:
 Most of the time, you want to set all your configuration in a `mrq-config.py` file in the directory where you will launch your workers, and override some of it from the command line.
 
 On Heroku, environment variables are very handy because they can be set like `heroku config:set MRQ_REDIS=redis://127.0.0.1:6379`
+
+
+Command-line use
+================
+
+All the command-line tools support a set of common configuration flags, defined in [config.py](https://github.com/pricingassistant/mrq/blob/master/mrq/config.py). Use --help with any of them to see the full list.
+
+ - `mrq-worker` starts a worker
+ - `mrq-dashboard` starts the web dashboard on the default port
+ - `mrq-run` runs a task. If you add the `--async` option that will enqueue it to be later ran by a worker
+
+Typical usage is:
+```
+$ mrq-run tasks.mylib.myfile.MyTask '{"param1": 1, "param2": True}'
+```
 
 
 Job maintenance
@@ -211,6 +199,27 @@ def METRIC_HOOK(name, incr=1, **kwargs):
 ```
 
 If you have another monitoring system you can plug anything in this hook to connect to it!
+
+
+Tests
+=====
+
+Testing is done inside a Docker container for maximum repeatability.
+We don't use Travis-CI or friends because we need to be able to kill our process dependencies (MongoDB, Redis, ...) on demand.
+
+Therefore you need to ([install docker](https://www.docker.io/gettingstarted/#h_installation)) to run the tests.
+If you're not on an os that supports natively docker, don't forget to start up your VM and ssh into it.
+
+```
+$ make test
+```
+
+You can also open a shell inside the docker (just like you would enter in a virtualenv) with:
+
+```
+$ make docker (if it wasn't build before)
+$ make ssh
+```
 
 
 PyPy
