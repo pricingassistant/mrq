@@ -2,3 +2,4 @@ include *.md
 recursive-include mrq/supervisord_templates *
 include requirements*
 recursive-include mrq/dashboard/static *
+recursive-exclude tests *
