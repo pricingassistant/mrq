@@ -64,6 +64,9 @@ def add_parser_args(parser, config_type):
   parser.add_argument('--no_import_patch', default=False, action='store_true',
                       help='Skips patching __import__ to fix gevent bug #108')
 
+  parser.add_argument('--add_latency', default=0, action='store', type=float,
+                      help='Adds random latency to the network calls, zero to N seconds')
+
   # mrq-run-specific arguments
 
   if config_type == "run":

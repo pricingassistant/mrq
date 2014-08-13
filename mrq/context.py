@@ -60,6 +60,10 @@ def set_current_config(config):
     from mrq.monkey import patch_pymongo
     patch_pymongo(config)
 
+  if config["add_latency"]:
+    from mrq.monkey import patch_network_latency
+    patch_network_latency(config["add_latency"])
+
   if not config["no_import_patch"]:
     from mrq.monkey import patch_import
     patch_import()

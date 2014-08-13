@@ -83,3 +83,32 @@ def patch_import():
   builtins = __import__('__builtin__')
   if builtins.__import__.__name__ != "mrq_safe_import":
     builtins.__import__ = mrq_safe_import
+
+
+def patch_network_latency(seconds=0.01):
+  """ Add random latency to all I/O operations """
+
+  from socket import socket as _socket
+  import time, random
+
+  class mrq_latency_socket(_socket):
+    def send(self, *args, **kwargs):
+      time.sleep(random.random() * seconds)
+      return _socket.send(self, *args, **kwargs)
+
+    def sendall(self, *args, **kwargs):
+      time.sleep(random.random() * seconds)
+      return _socket.sendall(self, *args, **kwargs)
+
+    def recv(self, *args, **kwargs):
+      time.sleep(random.random() * seconds)
+      return _socket.recv(self, *args, **kwargs)
+
+    def connect(self, *args, **kwargs):
+      time.sleep(random.random() * seconds)
+      return _socket.connect(self, *args, **kwargs)
+
+  import socket as socketmodule
+  if socketmodule.socket.__name__ != "mrq_latency_socket":
+    socketmodule.socket = mrq_latency_socket
+

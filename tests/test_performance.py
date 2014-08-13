@@ -3,6 +3,24 @@ from mrq.queue import Queue
 import pytest
 
 
+@pytest.mark.parametrize(["p_latency", "p_min", "p_max"], [
+  [0, 0, 3],
+  [0.1, 4, 20]
+])
+def test_network_latency(worker, p_latency, p_min, p_max):
+
+  worker.start(flags="--add_latency=%s" % (p_latency))
+
+  start_time = time.time()
+
+  for _ in range(5):
+    worker.send_task("tests.tasks.general.MongoInsert", {"x": 1})
+
+  total_time = time.time() - start_time
+
+  assert p_min < total_time < p_max
+
+
 def benchmark_task(worker, taskpath, taskparams, tasks=1000, greenlets=50, processes=0, max_seconds=10, profile=False, quiet=True, raw=False, queues="default", config=None):
 
   worker.start(flags="--profile --processes %s --gevent %s%s%s%s" % (
