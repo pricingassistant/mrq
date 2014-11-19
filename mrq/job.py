@@ -391,9 +391,12 @@ class Job(object):
             objgraph.show_chain(
                 objgraph.find_backref_chain(
                     random.choice(
-                        objgraph.by_type(trace_type)),
-                    objgraph.is_proper_module),
-                filename=filename)
+                        objgraph.by_type(trace_type)
+                    ),
+                    objgraph.is_proper_module
+                ),
+                filename=filename
+            )
 
         gc.collect()
         self._memory_stop = self.worker.get_memory()
