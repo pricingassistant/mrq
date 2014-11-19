@@ -44,7 +44,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
               var cnt = source.size || 0;
 
               if (type == "display") {
-                if (source.jobs_to_dequeue) {
+                if (source.jobs_to_dequeue != undefined) {
                   cnt = source.jobs_to_dequeue + " (" + cnt + "&nbsp;total)";
                 }
                 return "<a href='/#jobs?queue="+source.name+"&status=queued'>"+cnt+"</a>"
@@ -91,7 +91,13 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
           _.each(oSettings.aoData,function(row) {
             var oData = row._aData;
 
-            $(".col-jobs .inlinesparkline", row.nTr).sparkline(self.addToCounter("queue."+oData.name, oData.size || 0, 50), {"width": "100px", "height": "30px", "defaultPixelsPerValue": 1});
+            var num_jobs = oData.size || 0;
+
+            if (oData.jobs_to_dequeue != undefined) {
+              num_jobs = oData.jobs_to_dequeue || 0;
+            }
+
+            $(".col-jobs .inlinesparkline", row.nTr).sparkline(self.addToCounter("queue."+oData.name, num_jobs, 50), {"width": "100px", "height": "30px", "defaultPixelsPerValue": 1});
 
             // ETA graph
             if (!oData.graph) return;
