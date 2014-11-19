@@ -504,6 +504,8 @@ def send_tasks(path, params_list, queue=None, sync=False, batch_size=1000):
         task_def = get_current_config().get("tasks", {}).get(path) or {}
         queue = task_def.get("queue", "default")
 
+    queue_obj = Queue(queue)
+
     all_ids = []
 
     collection = connections.mongodb_jobs.mrq_jobs
@@ -524,7 +526,7 @@ def send_tasks(path, params_list, queue=None, sync=False, batch_size=1000):
         # This is the same as dequeueing a task from Redis and being stopped before updating the "started"
         # flag in MongoDB.
 
-        Queue(queue).enqueue_job_ids([str(x) for x in job_ids])
+        queue_obj.enqueue_job_ids([str(x) for x in job_ids])
 
         all_ids += job_ids
 
