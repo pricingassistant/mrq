@@ -4,9 +4,9 @@ from mrq.context import connections
 
 class MongoTimeout(Task):
 
-  def run(self, params):
+    def run(self, params):
 
-    res = connections.mongodb_jobs.eval("""
+        res = connections.mongodb_jobs.eval("""
       function() {
         var a;
         for (i=0;i<10000000;i++) { 
@@ -18,5 +18,4 @@ class MongoTimeout(Task):
       }
     """)
 
-    return res
-
+        return res

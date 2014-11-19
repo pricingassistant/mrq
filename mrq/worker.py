@@ -28,440 +28,477 @@ from .queue import Queue
 
 
 class Worker(object):
-  """ Main worker class. """
 
-  # Allow easy overloading
-  job_class = Job
+    """ Main worker class. """
 
-  # Valid statuses:
-  #       * init: General worker initialization
-  #       * wait: Waiting for new jobs from Redis (BLPOP in progress)
-  #       * spawn: Got some new jobs, greenlets are being spawned
-  #       * full: All the worker pool is busy executing jobs
-  #       * join: Waiting for current jobs to finish, no new one will be accepted
-  #       * kill: Killing all current jobs
-  #       * stop: Worker is stopped, no jobs should remain
-  status = "init"
+    # Allow easy overloading
+    job_class = Job
 
-  mongodb_jobs = None
-  mongodb_logs = None
-  redis = None
+    # Valid statuses:
+    #       * init: General worker initialization
+    #       * wait: Waiting for new jobs from Redis (BLPOP in progress)
+    #       * spawn: Got some new jobs, greenlets are being spawned
+    #       * full: All the worker pool is busy executing jobs
+    #       * join: Waiting for current jobs to finish, no new one will be accepted
+    #       * kill: Killing all current jobs
+    #       * stop: Worker is stopped, no jobs should remain
+    status = "init"
 
-  def __init__(self, config):
+    mongodb_jobs = None
+    mongodb_logs = None
+    redis = None
 
-    self.config = config
+    def __init__(self, config):
 
-    set_current_worker(self)
+        self.config = config
 
-    if self.config.get("trace_greenlets"):
-      enable_greenlet_tracing()
+        set_current_worker(self)
 
-    self.datestarted = datetime.datetime.utcnow()
-    self.queues = [x for x in self.config["queues"] if x]
-    self.done_jobs = 0
-    self.max_jobs = self.config["max_jobs"]
+        if self.config.get("trace_greenlets"):
+            enable_greenlet_tracing()
 
-    self.connected = False  # MongoDB + Redis
+        self.datestarted = datetime.datetime.utcnow()
+        self.queues = [x for x in self.config["queues"] if x]
+        self.done_jobs = 0
+        self.max_jobs = self.config["max_jobs"]
 
-    self.exitcode = 0
-    self.process = psutil.Process(os.getpid())
-    self.greenlet = gevent.getcurrent()
+        self.connected = False  # MongoDB + Redis
 
-    self.id = ObjectId()
-    if config["name"]:
-      self.name = self.config["name"]
-    else:
-      self.name = self.make_name()
+        self.exitcode = 0
+        self.process = psutil.Process(os.getpid())
+        self.greenlet = gevent.getcurrent()
 
-    self.pool_size = self.config["gevent"]
+        self.id = ObjectId()
+        if config["name"]:
+            self.name = self.config["name"]
+        else:
+            self.name = self.make_name()
 
-    from .logger import LogHandler
-    self.log_handler = LogHandler(quiet=self.config["quiet"])
-    self.log = self.log_handler.get_logger(worker=self.id)
+        self.pool_size = self.config["gevent"]
 
-    self.log.info("Starting Gevent pool with %s worker greenlets (+ 1 monitoring)" % self.pool_size)
+        from .logger import LogHandler
+        self.log_handler = LogHandler(quiet=self.config["quiet"])
+        self.log = self.log_handler.get_logger(worker=self.id)
 
-    self.gevent_pool = gevent.pool.Pool(self.pool_size)
+        self.log.info(
+            "Starting Gevent pool with %s worker greenlets (+ 1 monitoring)" %
+            self.pool_size)
 
-    # Keep references to main greenlets
-    self.greenlets = {}
+        self.gevent_pool = gevent.pool.Pool(self.pool_size)
 
-  def connect(self, force=False):
+        # Keep references to main greenlets
+        self.greenlets = {}
 
-    if self.connected and not force:
-      return
+    def connect(self, force=False):
 
-    # Accessing connections attributes will automatically connect
-    self.redis = connections.redis
-    self.mongodb_jobs = connections.mongodb_jobs
+        if self.connected and not force:
+            return
 
-    if self.config["mongodb_logs"] == "0":
-      self.log_handler.set_collection(False)  # Disable
-    else:
-      self.mongodb_logs = connections.mongodb_logs
-      self.log_handler.set_collection(self.mongodb_logs.mrq_logs)
+        # Accessing connections attributes will automatically connect
+        self.redis = connections.redis
+        self.mongodb_jobs = connections.mongodb_jobs
 
-    self.connected = True
+        if self.config["mongodb_logs"] == "0":
+            self.log_handler.set_collection(False)  # Disable
+        else:
+            self.mongodb_logs = connections.mongodb_logs
+            self.log_handler.set_collection(self.mongodb_logs.mrq_logs)
 
-    # Be mindful that this is done each time a worker starts
-    self.ensure_indexes()
+        self.connected = True
 
-  def ensure_indexes(self):
+        # Be mindful that this is done each time a worker starts
+        self.ensure_indexes()
 
-    if self.mongodb_logs:
+    def ensure_indexes(self):
 
-      self.mongodb_logs.mrq_logs.ensure_index([("job", 1)], background=False)
-      self.mongodb_logs.mrq_logs.ensure_index([("worker", 1)], background=False, sparse=True)
+        if self.mongodb_logs:
 
-    self.mongodb_jobs.mrq_workers.ensure_index([("status", 1)], background=False)
-    self.mongodb_jobs.mrq_workers.ensure_index([("datereported", 1)], background=False, expireAfterSeconds=3600)
+            self.mongodb_logs.mrq_logs.ensure_index(
+                [("job", 1)], background=False)
+            self.mongodb_logs.mrq_logs.ensure_index(
+                [("worker", 1)], background=False, sparse=True)
 
-    self.mongodb_jobs.mrq_jobs.ensure_index([("status", 1)], background=False)
-    self.mongodb_jobs.mrq_jobs.ensure_index([("path", 1), ("status", 1)], background=False)
-    self.mongodb_jobs.mrq_jobs.ensure_index([("worker", 1), ("status", 1)], background=False, sparse=True)
-    self.mongodb_jobs.mrq_jobs.ensure_index([("queue", 1), ("status", 1)], background=False)
-    self.mongodb_jobs.mrq_jobs.ensure_index([("dateexpires", 1)], sparse=True, background=False, expireAfterSeconds=7 * 24 * 3600)
-
-    self.mongodb_jobs.mrq_scheduled_jobs.ensure_index([("hash", 1)], unique=True, background=False, drop_dups=True)
-
-    try:
-      # This will be default in MongoDB 2.6
-      self.mongodb_jobs.command({"collMod": "mrq_jobs", "usePowerOf2Sizes": True})
-      self.mongodb_jobs.command({"collMod": "mrq_workers", "usePowerOf2Sizes": True})
-    except:
-      pass
-
-  def make_name(self):
-    """ Generate a human-readable name for this worker. """
-    return "%s.%s" % (socket.gethostname().split(".")[0], os.getpid())
-
-  def greenlet_scheduler(self):
-
-    from .scheduler import Scheduler
-    scheduler = Scheduler(self.mongodb_jobs.mrq_scheduled_jobs)
-
-    scheduler.sync_tasks(self.config.get("scheduler_tasks") or [])
-
-    while True:
-      scheduler.check()
-      time.sleep(int(self.config["scheduler_interval"]))
-
-  def greenlet_monitoring(self):
-    """ This greenlet always runs in background to update current status in MongoDB every 10 seconds.
-
-    Caution: it might get delayed when doing long blocking operations. Should we do this in a thread instead?
-     """
-
-    while True:
-
-      # print "Monitoring..."
-
-      self.report_worker()
-      self.flush_logs(w=0)
-      time.sleep(int(self.config["report_interval"]))
-
-  def get_memory(self):
-    return self.process.get_memory_info().rss
-
-  def get_worker_report(self):
-
-    greenlets = []
-
-    for greenlet in self.gevent_pool:
-      g = {}
-      short_stack = []
-      stack = traceback.format_stack(greenlet.gr_frame)
-      for s in stack[1:]:
-        if "/gevent/hub.py" in s:
-          break
-        short_stack.append(s)
-      g["stack"] = short_stack
-
-      job = get_current_job(id(greenlet))
-      if job:
-        job.save()
-        if job.data:
-          g["path"] = job.data["path"]
-        g["datestarted"] = job.datestarted
-        g["id"] = job.id
-        g["time"] = getattr(greenlet, "_trace_time", 0)
-        g["switches"] = getattr(greenlet, "_trace_switches", None)
-        if self.config["trace_mongodb"]:
-          g["mongodb"] = dict(job._trace_mongodb)
-      greenlets.append(g)
-
-    cpu = self.process.get_cpu_times()
-
-    # Avoid sharing passwords or sensitive config!
-    whitelisted_config = [
-      "max_jobs",
-      "gevent",
-      "processes",
-      "queues",
-      "scheduler",
-      "name",
-      "local_ip"
-    ]
-
-    return {
-      "status": self.status,
-      "config": {k: v for k, v in self.config.iteritems() if k in whitelisted_config},
-      "done_jobs": self.done_jobs,
-      "datestarted": self.datestarted,
-      "datereported": datetime.datetime.utcnow(),
-      "name": self.name,
-      "process": {
-        "pid": self.process.pid,
-        "cpu": {
-          "user": cpu.user,
-          "system": cpu.system,
-          "percent": self.process.get_cpu_percent(0)
-        },
-        "mem": {
-          "rss": self.get_memory()
-        }
-        # https://code.google.com/p/psutil/wiki/Documentation
-        # get_open_files
-        # get_connections
-        # get_num_ctx_switches
-        # get_num_fds
-        # get_io_counters
-        # get_nice
-      },
-      "jobs": greenlets
-    }
-
-  def report_worker(self, w=0):
-
-    try:
-      self.mongodb_jobs.mrq_workers.update({
-        "_id": ObjectId(self.id)
-      }, {"$set": self.get_worker_report()}, upsert=True, w=w)
-    except pymongo.errors.AutoReconnect:
-      self.log.debug("Worker report failed.")
-
-  def greenlet_admin(self):
-    """ This greenlet is used to get status information about the worker when --admin_port was given
-    """
-
-    if self.config["processes"] > 1:
-      self.log.debug("Admin server disabled because of multiple processes.")
-      return
-
-    from flask import Flask
-    from mrq.dashboard.utils import jsonify
-    app = Flask("admin")
-
-    @app.route('/')
-    def route_index():
-      report = self.get_worker_report()
-      report.update({
-        "_id": self.id
-      })
-      return jsonify(report)
-
-    self.log.debug("Starting admin server on port %s" % self.config["admin_port"])
-    try:
-      server = WSGIServer(("0.0.0.0", self.config["admin_port"]), app, log=open(os.devnull, "w"))
-      server.serve_forever()
-    except Exception, e:
-      self.log.debug("Error in admin server : %s" % e)
-
-  def flush_logs(self, w=0):
-    self.log_handler.flush(w=w)
-
-  def work_loop(self):
-    """Starts the work loop.
-
-    """
-
-    self.connect()
-
-    self.status = "started"
-
-    self.greenlets["monitoring"] = gevent.spawn(self.greenlet_monitoring)
-
-    if self.config["scheduler"]:
-      self.greenlets["scheduler"] = gevent.spawn(self.greenlet_scheduler)
-
-    if self.config["admin_port"]:
-      self.greenlets["admin"] = gevent.spawn(self.greenlet_admin)
-
-    self.install_signal_handlers()
-
-    # has_raw = any(q.is_raw or q.is_sorted for q in [Queue(x) for x in self.queues])
-
-    try:
-
-      wait_count = 0
-
-      while True:
+        self.mongodb_jobs.mrq_workers.ensure_index(
+            [("status", 1)], background=False)
+        self.mongodb_jobs.mrq_workers.ensure_index(
+            [("datereported", 1)], background=False, expireAfterSeconds=3600)
+
+        self.mongodb_jobs.mrq_jobs.ensure_index(
+            [("status", 1)], background=False)
+        self.mongodb_jobs.mrq_jobs.ensure_index(
+            [("path", 1), ("status", 1)], background=False)
+        self.mongodb_jobs.mrq_jobs.ensure_index(
+            [("worker", 1), ("status", 1)], background=False, sparse=True)
+        self.mongodb_jobs.mrq_jobs.ensure_index(
+            [("queue", 1), ("status", 1)], background=False)
+        self.mongodb_jobs.mrq_jobs.ensure_index(
+            [("dateexpires", 1)], sparse=True, background=False, expireAfterSeconds=7 * 24 * 3600)
+
+        self.mongodb_jobs.mrq_scheduled_jobs.ensure_index(
+            [("hash", 1)], unique=True, background=False, drop_dups=True)
+
+        try:
+            # This will be default in MongoDB 2.6
+            self.mongodb_jobs.command(
+                {"collMod": "mrq_jobs", "usePowerOf2Sizes": True})
+            self.mongodb_jobs.command(
+                {"collMod": "mrq_workers", "usePowerOf2Sizes": True})
+        except:
+            pass
+
+    def make_name(self):
+        """ Generate a human-readable name for this worker. """
+        return "%s.%s" % (socket.gethostname().split(".")[0], os.getpid())
+
+    def greenlet_scheduler(self):
+
+        from .scheduler import Scheduler
+        scheduler = Scheduler(self.mongodb_jobs.mrq_scheduled_jobs)
+
+        scheduler.sync_tasks(self.config.get("scheduler_tasks") or [])
+
+        while True:
+            scheduler.check()
+            time.sleep(int(self.config["scheduler_interval"]))
+
+    def greenlet_monitoring(self):
+        """ This greenlet always runs in background to update current status in MongoDB every 10 seconds.
+
+        Caution: it might get delayed when doing long blocking operations. Should we do this in a thread instead?
+         """
 
         while True:
 
-          free_pool_slots = self.gevent_pool.free_count()
+            # print "Monitoring..."
 
-          if free_pool_slots > 0:
-            self.status = "wait"
-            break
-          self.status = "full"
-          gevent.sleep(0.01)
+            self.report_worker()
+            self.flush_logs(w=0)
+            time.sleep(int(self.config["report_interval"]))
 
-        quiet = not (wait_count % 20 == 0 or wait_count > 1000)
+    def get_memory(self):
+        return self.process.get_memory_info().rss
 
-        if not quiet:
-          self.log.info('Listening on %s' % self.queues)
+    def get_worker_report(self):
 
-        # worker.status will be set to "spawn" as soon as we're not waiting anymore.
-        jobs = Queue.dequeue_jobs(self.queues, max_jobs=free_pool_slots, job_class=self.job_class, worker=self, quiet=quiet)
+        greenlets = []
 
-        for job in jobs:
+        for greenlet in self.gevent_pool:
+            g = {}
+            short_stack = []
+            stack = traceback.format_stack(greenlet.gr_frame)
+            for s in stack[1:]:
+                if "/gevent/hub.py" in s:
+                    break
+                short_stack.append(s)
+            g["stack"] = short_stack
 
-          # TODO investigate spawn_raw?
-          self.gevent_pool.spawn(self.perform_job, job)
+            job = get_current_job(id(greenlet))
+            if job:
+                job.save()
+                if job.data:
+                    g["path"] = job.data["path"]
+                g["datestarted"] = job.datestarted
+                g["id"] = job.id
+                g["time"] = getattr(greenlet, "_trace_time", 0)
+                g["switches"] = getattr(greenlet, "_trace_switches", None)
+                if self.config["trace_mongodb"]:
+                    g["mongodb"] = dict(job._trace_mongodb)
+            greenlets.append(g)
 
-        if self.max_jobs and self.max_jobs >= self.done_jobs:
-          self.log.info("Reached max_jobs=%s" % self.done_jobs)
-          break
+        cpu = self.process.get_cpu_times()
 
-        # We seem to have exhausted available jobs, we can sleep for a while.
-        if len(jobs) < free_pool_slots:
-          self.status = "wait"
-          wait_count += 1
-          gevent.sleep(min(1, 0.001 * wait_count))
+        # Avoid sharing passwords or sensitive config!
+        whitelisted_config = [
+            "max_jobs",
+            "gevent",
+            "processes",
+            "queues",
+            "scheduler",
+            "name",
+            "local_ip"
+        ]
 
-    except StopRequested:
-      pass
+        return {
+            "status": self.status,
+            "config": {k: v for k, v in self.config.iteritems() if k in whitelisted_config},
+            "done_jobs": self.done_jobs,
+            "datestarted": self.datestarted,
+            "datereported": datetime.datetime.utcnow(),
+            "name": self.name,
+            "process": {
+                "pid": self.process.pid,
+                "cpu": {
+                    "user": cpu.user,
+                    "system": cpu.system,
+                    "percent": self.process.get_cpu_percent(0)
+                },
+                "mem": {
+                    "rss": self.get_memory()
+                }
+                # https://code.google.com/p/psutil/wiki/Documentation
+                # get_open_files
+                # get_connections
+                # get_num_ctx_switches
+                # get_num_fds
+                # get_io_counters
+                # get_nice
+            },
+            "jobs": greenlets
+        }
 
-    finally:
+    def report_worker(self, w=0):
 
-      try:
+        try:
+            self.mongodb_jobs.mrq_workers.update({
+                "_id": ObjectId(self.id)
+            }, {"$set": self.get_worker_report()}, upsert=True, w=w)
+        except pymongo.errors.AutoReconnect:
+            self.log.debug("Worker report failed.")
 
-        self.log.debug("Joining the greenlet pool...")
-        self.status = "join"
+    def greenlet_admin(self):
+        """ This greenlet is used to get status information about the worker when --admin_port was given
+        """
 
-        self.gevent_pool.join(timeout=None, raise_error=False)
-        self.log.debug("Joined.")
+        if self.config["processes"] > 1:
+            self.log.debug(
+                "Admin server disabled because of multiple processes.")
+            return
 
-      except StopRequested:
-        pass
+        from flask import Flask
+        from mrq.dashboard.utils import jsonify
+        app = Flask("admin")
 
-      self.status = "kill"
+        @app.route('/')
+        def route_index():
+            report = self.get_worker_report()
+            report.update({
+                "_id": self.id
+            })
+            return jsonify(report)
 
-      self.gevent_pool.kill(exception=JobInterrupt, block=True)
+        self.log.debug("Starting admin server on port %s" %
+                       self.config["admin_port"])
+        try:
+            server = WSGIServer(
+                ("0.0.0.0", self.config["admin_port"]), app, log=open(
+                    os.devnull, "w"))
+            server.serve_forever()
+        except Exception as e:
+            self.log.debug("Error in admin server : %s" % e)
 
-      for g in self.greenlets:
-        g_time = getattr(self.greenlets[g], "_trace_time", 0)
-        g_switches = getattr(self.greenlets[g], "_trace_switches", None)
-        self.greenlets[g].kill(block=True)
-        self.log.debug("Greenlet for %s killed (%0.5fs, %s switches)." % (g, g_time, g_switches))
+    def flush_logs(self, w=0):
+        self.log_handler.flush(w=w)
 
-      self.status = "stop"
+    def work_loop(self):
+        """Starts the work loop.
 
-      self.report_worker(w=1)
-      self.flush_logs(w=1)
+        """
 
-      g_time = getattr(self.greenlet, "_trace_time", 0)
-      g_switches = getattr(self.greenlet, "_trace_switches", None)
-      self.log.debug("Exiting main worker greenlet (%0.5fs, %s switches)." % (g_time, g_switches))
+        self.connect()
 
-    return self.exitcode
+        self.status = "started"
 
-  def perform_job(self, job):
-    """ Wraps a job.perform() call with timeout logic and exception handlers.
+        self.greenlets["monitoring"] = gevent.spawn(self.greenlet_monitoring)
 
-        This is the first call happening inside the greenlet.
-    """
+        if self.config["scheduler"]:
+            self.greenlets["scheduler"] = gevent.spawn(self.greenlet_scheduler)
 
-    if self.config["trace_memory"]:
-      job.trace_memory_start()
+        if self.config["admin_port"]:
+            self.greenlets["admin"] = gevent.spawn(self.greenlet_admin)
 
-    set_current_job(job)
+        self.install_signal_handlers()
 
-    gevent_timeout = gevent.Timeout(job.timeout, JobTimeoutException(
-      'Gevent Job exceeded maximum timeout value (%d seconds).' % job.timeout
-    ))
+        # has_raw = any(q.is_raw or q.is_sorted for q in [Queue(x) for x in self.queues])
 
-    gevent_timeout.start()
+        try:
 
-    try:
-      job.perform()
+            wait_count = 0
 
-    except job.retry_on_exceptions:
-      self.log.error("Caught exception => retry")
-      job.save_retry(sys.exc_info()[1], exception=True)
+            while True:
 
-    except job.cancel_on_exceptions:
-      self.log.error("Job cancelled")
-      job.save_status("cancel", exception=True)
+                while True:
 
-    except JobTimeoutException:
-      if job.task.cancel_on_timeout:
-        self.log.error("Job timeouted after %s seconds, cancelled" % job.timeout)
-        job.save_status("cancel", exception=True)
-      else:
-        self.log.error("Job timeouted after %s seconds" % job.timeout)
-        job.save_status("timeout", exception=True)
+                    free_pool_slots = self.gevent_pool.free_count()
 
-    except JobInterrupt:
-      job.save_status("interrupt", exception=True)
+                    if free_pool_slots > 0:
+                        self.status = "wait"
+                        break
+                    self.status = "full"
+                    gevent.sleep(0.01)
 
-    except Exception:
-      job.save_status("failed", exception=True)
+                quiet = not (wait_count % 20 == 0 or wait_count > 1000)
 
-    finally:
-      gevent_timeout.cancel()
-      set_current_job(None)
+                if not quiet:
+                    self.log.info('Listening on %s' % self.queues)
 
-      self.done_jobs += 1
+                # worker.status will be set to "spawn" as soon as we're not
+                # waiting anymore.
+                jobs = Queue.dequeue_jobs(
+                    self.queues,
+                    max_jobs=free_pool_slots,
+                    job_class=self.job_class,
+                    worker=self,
+                    quiet=quiet)
 
-      if self.config["trace_memory"]:
-        job.trace_memory_stop()
+                for job in jobs:
 
-  def shutdown_graceful(self):
-    """ Graceful shutdown: waits for all the jobs to finish. """
+                    # TODO investigate spawn_raw?
+                    self.gevent_pool.spawn(self.perform_job, job)
 
-    # This is in the 'exitcodes' list in supervisord so processes
-    # exiting gracefully won't be restarted.
-    self.exitcode = 2
+                if self.max_jobs and self.max_jobs >= self.done_jobs:
+                    self.log.info("Reached max_jobs=%s" % self.done_jobs)
+                    break
 
-    self.log.info("Graceful shutdown...")
-    raise StopRequested()
+                # We seem to have exhausted available jobs, we can sleep for a
+                # while.
+                if len(jobs) < free_pool_slots:
+                    self.status = "wait"
+                    wait_count += 1
+                    gevent.sleep(min(1, 0.001 * wait_count))
 
-  def shutdown_now(self):
-    """ Forced shutdown: interrupts all the jobs. """
+        except StopRequested:
+            pass
 
-    # This is in the 'exitcodes' list in supervisord so processes
-    # exiting gracefully won't be restarted.
-    self.exitcode = 3
+        finally:
 
-    self.log.info("Forced shutdown...")
-    self.status = "killing"
+            try:
 
-    self.gevent_pool.kill(exception=JobInterrupt, block=False)
+                self.log.debug("Joining the greenlet pool...")
+                self.status = "join"
 
-    raise StopRequested()
+                self.gevent_pool.join(timeout=None, raise_error=False)
+                self.log.debug("Joined.")
 
-  def install_signal_handlers(self):
-    """ Handle events like Ctrl-C from the command line. """
+            except StopRequested:
+                pass
 
-    self.graceful_stop = False
+            self.status = "kill"
 
-    def request_shutdown_now():
-      self.shutdown_now()
+            self.gevent_pool.kill(exception=JobInterrupt, block=True)
 
-    def request_shutdown_graceful():
+            for g in self.greenlets:
+                g_time = getattr(self.greenlets[g], "_trace_time", 0)
+                g_switches = getattr(
+                    self.greenlets[g],
+                    "_trace_switches",
+                    None)
+                self.greenlets[g].kill(block=True)
+                self.log.debug(
+                    "Greenlet for %s killed (%0.5fs, %s switches)." %
+                    (g, g_time, g_switches))
 
-      # Second time CTRL-C, shutdown now
-      if self.graceful_stop:
-        request_shutdown_now()
-      else:
-        self.graceful_stop = True
-        self.shutdown_graceful()
+            self.status = "stop"
 
-    # First time CTRL-C, try to shutdown gracefully
-    gevent.signal(signal.SIGINT, request_shutdown_graceful)
+            self.report_worker(w=1)
+            self.flush_logs(w=1)
 
-    # User (or Heroku) requests a stop now, just mark tasks as interrupted.
-    gevent.signal(signal.SIGTERM, request_shutdown_now)
+            g_time = getattr(self.greenlet, "_trace_time", 0)
+            g_switches = getattr(self.greenlet, "_trace_switches", None)
+            self.log.debug(
+                "Exiting main worker greenlet (%0.5fs, %s switches)." %
+                (g_time, g_switches))
 
+        return self.exitcode
+
+    def perform_job(self, job):
+        """ Wraps a job.perform() call with timeout logic and exception handlers.
+
+            This is the first call happening inside the greenlet.
+        """
+
+        if self.config["trace_memory"]:
+            job.trace_memory_start()
+
+        set_current_job(job)
+
+        gevent_timeout = gevent.Timeout(
+            job.timeout,
+            JobTimeoutException(
+                'Gevent Job exceeded maximum timeout value (%d seconds).' %
+                job.timeout
+            )
+        )
+
+        gevent_timeout.start()
+
+        try:
+            job.perform()
+
+        except job.retry_on_exceptions:
+            self.log.error("Caught exception => retry")
+            job.save_retry(sys.exc_info()[1], exception=True)
+
+        except job.cancel_on_exceptions:
+            self.log.error("Job cancelled")
+            job.save_status("cancel", exception=True)
+
+        except JobTimeoutException:
+            if job.task.cancel_on_timeout:
+                self.log.error(
+                    "Job timeouted after %s seconds, cancelled" % job.timeout)
+                job.save_status("cancel", exception=True)
+            else:
+                self.log.error("Job timeouted after %s seconds" % job.timeout)
+                job.save_status("timeout", exception=True)
+
+        except JobInterrupt:
+            job.save_status("interrupt", exception=True)
+
+        except Exception:
+            job.save_status("failed", exception=True)
+
+        finally:
+            gevent_timeout.cancel()
+            set_current_job(None)
+
+            self.done_jobs += 1
+
+            if self.config["trace_memory"]:
+                job.trace_memory_stop()
+
+    def shutdown_graceful(self):
+        """ Graceful shutdown: waits for all the jobs to finish. """
+
+        # This is in the 'exitcodes' list in supervisord so processes
+        # exiting gracefully won't be restarted.
+        self.exitcode = 2
+
+        self.log.info("Graceful shutdown...")
+        raise StopRequested()
+
+    def shutdown_now(self):
+        """ Forced shutdown: interrupts all the jobs. """
+
+        # This is in the 'exitcodes' list in supervisord so processes
+        # exiting gracefully won't be restarted.
+        self.exitcode = 3
+
+        self.log.info("Forced shutdown...")
+        self.status = "killing"
+
+        self.gevent_pool.kill(exception=JobInterrupt, block=False)
+
+        raise StopRequested()
+
+    def install_signal_handlers(self):
+        """ Handle events like Ctrl-C from the command line. """
+
+        self.graceful_stop = False
+
+        def request_shutdown_now():
+            self.shutdown_now()
+
+        def request_shutdown_graceful():
+
+            # Second time CTRL-C, shutdown now
+            if self.graceful_stop:
+                request_shutdown_now()
+            else:
+                self.graceful_stop = True
+                self.shutdown_graceful()
+
+        # First time CTRL-C, try to shutdown gracefully
+        gevent.signal(signal.SIGINT, request_shutdown_graceful)
+
+        # User (or Heroku) requests a stop now, just mark tasks as interrupted.
+        gevent.signal(signal.SIGTERM, request_shutdown_now)
