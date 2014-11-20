@@ -1,77 +1,8 @@
-from .utils import load_class_by_path, group_iter, memoize
+from .utils import load_class_by_path, group_iter
 from .context import connections, get_current_config, log, metric
+from .redisutils import redis_zaddbyscore, redis_zpopbyscore, redis_lpopsafe
+from .redisutils import redis_group_command
 import time
-
-
-@memoize
-def _redis_command_zaddbyscore():
-    """ Increments multiple keys in a sorted set & returns them """
-
-    return connections.redis.register_script("""
-local zset = KEYS[1]
-local min = ARGV[1]
-local max = ARGV[2]
-local offset = ARGV[3]
-local count = ARGV[4]
-local score = ARGV[5]
-
-local data = redis.call('zrangebyscore', zset, min, max, 'LIMIT', offset, count)
-for i, member in pairs(data) do
-  redis.call('zadd', zset, score, member)
-end
-
-return data
-  """)
-
-
-@memoize
-def _redis_command_zpopbyscore():
-    """ Pops multiple keys by score """
-
-    return connections.redis.register_script("""
-local zset = KEYS[1]
-local min = ARGV[1]
-local max = ARGV[2]
-local offset = ARGV[3]
-local count = ARGV[4]
-
-local data = redis.call('zrangebyscore', zset, min, max, 'LIMIT', offset, count)
-if #data > 0 then
-  redis.call('zremrangebyrank', zset, 0, #data - 1)
-end
-
-return data
-  """)
-
-
-@memoize
-def _redis_command_lpopsafe():
-    """ Increments multiple keys in a sorted set & returns them """
-
-    return connections.redis.register_script("""
-local key = KEYS[1]
-local zset_started = KEYS[2]
-local count = ARGV[1]
-local now = ARGV[2]
-local left = ARGV[3]
-local data = {}
-local current = nil
-
-for i=1, count do
-  if left == '1' then
-    current = redis.call('lpop', key)
-  else
-    current = redis.call('rpop', key)
-  end
-  if current == false then
-    return data
-  end
-  data[i] = current
-  redis.call('zadd', zset_started, now, current)
-end
-
-return data
-""")
 
 
 class Queue(object):
@@ -114,32 +45,33 @@ class Queue(object):
     def redis_key_started(self):
         return "%s:s:started" % get_current_config()["redis_prefix"]
 
+    def get_retry_queue(self):
+        if not self.is_raw:
+            return self.id
+
+        cfg = get_current_config().get("raw_queues", {}).get(self.id, {})
+        return cfg.get("retry_queue") or "default"
+
     def enqueue_job_ids(self, job_ids):
 
         if len(job_ids) == 0:
             return
 
         if self.is_raw:
-
-            retry_queue = get_current_config().get("raw_queues", {}).get(
-                self.id, {}).get("retry_queue", "default")
-
-            queue = Queue(retry_queue)
-        else:
-            queue = self
+            raise Exception("Can't queue regular jobs on a raw queue")
 
         # ZSET
-        if queue.is_sorted:
+        if self.is_sorted:
 
-            if not isinstance(job_ids, dict) and queue.is_timed:
+            if not isinstance(job_ids, dict) and self.is_timed:
                 now = time.time()
                 job_ids = {str(x): now for x in job_ids}
 
-            connections.redis.zadd(queue.redis_key, **job_ids)
+            connections.redis.zadd(self.redis_key, **job_ids)
 
         # LIST
         else:
-            connections.redis.rpush(queue.redis_key, *job_ids)
+            connections.redis.rpush(self.redis_key, *job_ids)
 
         metric("queues.%s.enqueued" % self.id, len(job_ids))
         metric("queues.all.enqueued", len(job_ids))
@@ -342,12 +274,13 @@ class Queue(object):
 
             else:
 
+                # Used in tests to simulate workers exiting abruptly
                 simulate_lost_jobs = get_current_config().get(
                     "simulate_lost_jobs")
 
                 for queue in queue_objects:
 
-                    job_ids = _redis_command_lpopsafe()(keys=[
+                    job_ids = redis_lpopsafe()(keys=[
                         queue.redis_key,
                         Queue.redis_key_started()
                     ], args=[
@@ -416,13 +349,13 @@ class Queue(object):
                     if queue_config.get("pushback_seconds"):
                         pushback_time = current_time + \
                             float(queue_config.get("pushback_seconds"))
-                        params = _redis_command_zaddbyscore()(
+                        params = redis_zaddbyscore()(
                             keys=[queue.redis_key],
                             args=[
                                 "-inf", current_time, 0, max_jobs, pushback_time
                             ])
                     else:
-                        params = _redis_command_zpopbyscore()(
+                        params = redis_zpopbyscore()(
                             keys=[queue.redis_key],
                             args=[
                                 "-inf", current_time, 0, max_jobs
@@ -438,12 +371,12 @@ class Queue(object):
 
                 # SET
                 elif queue.is_set:
-                    params = _redis_group_command(
+                    params = redis_group_command(
                         "spop", max_jobs, queue.redis_key)
 
                 # LIST
                 else:
-                    params = _redis_group_command(
+                    params = redis_group_command(
                         "lpop", max_jobs, queue.redis_key)
 
                 if len(params) == 0:
@@ -451,18 +384,20 @@ class Queue(object):
 
                 max_jobs -= len(params)
 
+                retry_queue = queue.get_retry_queue()
+
                 if queue.is_raw:
                     job_data = [job_factory(p) for p in params]
                     for j in job_data:
                         j["status"] = "started"
-                        j["queue"] = queue.id
+                        j["queue"] = retry_queue
                         if worker:
                             j["worker"] = worker.id
 
                     jobs += job_class.insert(job_data)
 
                 else:
-                    jobs += [job_class(_job_id, queue=queue, start=True)
+                    jobs += [job_class(_job_id, queue=retry_queue, start=True)
                              for _job_id in params if _job_id]
 
                 if max_jobs == 0:
@@ -473,13 +408,6 @@ class Queue(object):
             metric("queues.all.dequeued", len(jobs))
 
             return jobs
-
-
-def _redis_group_command(command, cnt, redis_key):
-    with connections.redis.pipeline(transaction=False) as pipe:
-        for _ in range(cnt):
-            getattr(pipe, command)(redis_key)
-        return [x for x in pipe.execute() if x]
 
 
 def send_raw_tasks(queue, params_list, **kwargs):
@@ -506,21 +434,24 @@ def send_tasks(path, params_list, queue=None, sync=False, batch_size=1000):
 
     queue_obj = Queue(queue)
 
+    if queue_obj.is_raw:
+      raise Exception("Can't queue regular jobs on a raw queue")
+
     all_ids = []
 
-    collection = connections.mongodb_jobs.mrq_jobs
+    # Avoid circular import
+    from .job import Job
 
     for params_group in group_iter(params_list, n=batch_size):
 
         metric("jobs.status.queued", len(params_group))
 
-        # TODO use Job.insert here too?
-        job_ids = collection.insert([{
+        job_ids = Job.insert([{
             "path": path,
             "params": params,
             "queue": queue,
             "status": "queued"
-        } for params in params_group], w=1)
+        } for params in params_group], w=1, return_jobs=False)
 
         # Between these 2 calls, a task can be inserted in MongoDB but not queued in Redis.
         # This is the same as dequeueing a task from Redis and being stopped before updating the "started"

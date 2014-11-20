@@ -1,6 +1,7 @@
 import re
 import importlib
 import time
+import math
 
 """ Utils are functions that should be independent from the rest of MRQ's codebase """
 
@@ -17,16 +18,25 @@ def group_iter(iterator, n=2):
     (except the last that can have len < n)
 
     """
-    accumulator = []
-    for item in iterator:
-        accumulator.append(item)
-        if len(accumulator) == n:
-            yield accumulator
-            accumulator = []
 
-    # Yield what's left
-    if len(accumulator) != 0:
-        yield accumulator
+    # Use slices instead of an iterator when we have a flat list
+    if type(iterator) == list:
+
+        length = len(iterator)
+        for i in range(int(math.ceil(float(length) / n))):
+            yield iterator[i * n: (i + 1) * n]
+
+    else:
+        accumulator = []
+        for item in iterator:
+            accumulator.append(item)
+            if len(accumulator) == n:
+                yield accumulator
+                accumulator = []
+
+        # Yield what's left
+        if len(accumulator) != 0:
+            yield accumulator
 
 
 # http://code.activestate.com/recipes/578231-probably-the-fastest-memoization-decorator-in-the-/

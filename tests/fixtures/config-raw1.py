@@ -107,5 +107,16 @@ RAW_QUEUES = {
                 "sleep": 0
             }
         }
+    },
+    "teststarted_raw": {
+        "retry_queue": "teststartedx",
+        "job_factory": lambda rawparam: {
+            "path": "tests.tasks.general.Add",
+            "params": {
+                "a": int(rawparam),
+                "b": 0,
+                "sleep": int(rawparam)
+            }
+        }
     }
 }

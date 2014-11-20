@@ -103,6 +103,26 @@ def test_raw_set(worker, p_queue, p_set):
         assert test_collection.count() == 4
 
 
+def test_raw_started(worker):
+
+    worker.start(
+        flags="--gevent 2 --config tests/fixtures/config-raw1.py", queues="teststarted_raw teststartedx")
+
+    worker.send_raw_tasks("teststarted_raw", [2, 2, 2], block=False)
+    time.sleep(1)
+    jobs_collection = worker.mongodb_jobs.mrq_jobs
+
+    assert jobs_collection.find({"status": "started", "queue": "teststartedx"}).count() == 2
+    assert jobs_collection.count() == 2
+
+    time.sleep(2)
+
+    worker.stop(block=True)
+
+    assert jobs_collection.find({"status": "success", "queue": "teststartedx"}).count() == 3
+    assert jobs_collection.count() == 3
+
+
 @pytest.mark.parametrize(["p_queue"], [
     ["test_raw"],
     ["test_set"],
@@ -200,6 +220,7 @@ def test_raw_retry(worker):
     assert Queue(p_queue).size() == 0
     assert jobs_collection.count() == 1
     assert failjob["status"] == "queued"
+    assert failjob["queue"] == "testx"
 
 
 @pytest.mark.parametrize(["p_queue", "p_greenlets"], [x1 + x2 for x1 in [

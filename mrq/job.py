@@ -151,22 +151,32 @@ class Job(object):
             self.saved = True
 
     @classmethod
-    def insert(self, jobs_data, queue=None):
+    def insert(self, jobs_data, queue=None, return_jobs=True, w=1):
+        """ Insert a job into MongoDB """
 
+        now = datetime.datetime.utcnow()
         for data in jobs_data:
             if data["status"] == "started":
-                data["datestarted"] = datetime.datetime.utcnow()
-        connections.mongodb_jobs.mrq_jobs.insert(jobs_data, manipulate=True)
+                data["datestarted"] = now
 
-        jobs = []
-        for data in jobs_data:
-            job = self(data["_id"], queue=queue)
-            job.set_data(data)
-            if data["status"] == "started":
-                job.datestarted = data["datestarted"]
-            jobs.append(job)
+        inserted = connections.mongodb_jobs.mrq_jobs.insert(
+            jobs_data,
+            manipulate=True,
+            w=w
+        )
 
-        return jobs
+        if return_jobs:
+            jobs = []
+            for data in jobs_data:
+                job = self(data["_id"], queue=queue)
+                job.set_data(data)
+                if data["status"] == "started":
+                    job.datestarted = data["datestarted"]
+                jobs.append(job)
+
+            return jobs
+        else:
+            return inserted
 
     def subpool_map(self, pool_size, func, iterable):
         """ Starts a Gevent pool and run a map. Takes care of setting current_job and cleaning up. """
@@ -290,11 +300,13 @@ class Job(object):
                 self.fetch(full_data={"_id": 0, "queue": 1, "path": 1})
             queue = self.data["queue"]
 
+        queue_obj = Queue(queue)
+
         self.save_status("queued", queue=queue)
 
         # Between these two lines, jobs can become "lost" too.
 
-        Queue(queue).enqueue_job_ids([str(self.id)])
+        queue_obj.enqueue_job_ids([str(self.id)])
 
     def perform(self):
         """ Loads and starts the main task for this job, the saves the result. """
@@ -342,15 +354,13 @@ class Job(object):
     def wait(self, poll_interval=1, timeout=None, full_data=False):
         """ Wait for this job to finish. """
 
-        collection = connections.mongodb_jobs.mrq_jobs
-
         end_time = None
         if timeout:
             end_time = time.time() + timeout
 
         while (end_time is None or time.time() < end_time):
 
-            job_data = collection.find_one({
+            job_data = self.collection.find_one({
                 "_id": ObjectId(self.id),
                 "status": {"$nin": ["started", "queued"]}
             }, fields=({
