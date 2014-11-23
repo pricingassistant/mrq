@@ -36,7 +36,7 @@ class Worker(object):
 
     # Valid statuses:
     #       * init: General worker initialization
-    #       * wait: Waiting for new jobs from Redis (BLPOP in progress)
+    #       * wait: Waiting for new jobs from Redis
     #       * spawn: Got some new jobs, greenlets are being spawned
     #       * full: All the worker pool is busy executing jobs
     #       * join: Waiting for current jobs to finish, no new one will be accepted
@@ -168,9 +168,6 @@ class Worker(object):
          """
 
         while True:
-
-            # print "Monitoring..."
-
             self.report_worker()
             self.flush_logs(w=0)
             time.sleep(int(self.config["report_interval"]))
@@ -179,6 +176,8 @@ class Worker(object):
         return self.process.get_memory_info().rss
 
     def get_worker_report(self):
+        """ Returns a dict containing all the data we can about the current status of the worker and
+            its jobs. """
 
         greenlets = []
 
@@ -280,8 +279,8 @@ class Worker(object):
                        self.config["admin_port"])
         try:
             server = WSGIServer(
-                ("0.0.0.0", self.config["admin_port"]), app, log=open(
-                    os.devnull, "w"))
+                ("0.0.0.0", self.config["admin_port"]), app, log=open(os.devnull, "w")
+            )
             server.serve_forever()
         except Exception as e:
             self.log.debug("Error in admin server : %s" % e)
@@ -329,16 +328,21 @@ class Worker(object):
                 quiet = not (wait_count % 20 == 0 or wait_count > 1000)
 
                 if not quiet:
-                    self.log.info('Listening on %s' % self.queues)
+                    self.log.info('Fetching %s jobs from %s' % (free_pool_slots, self.queues))
 
-                # worker.status will be set to "spawn" as soon as we're not
-                # waiting anymore.
-                jobs = Queue.dequeue_jobs(
-                    self.queues,
-                    max_jobs=free_pool_slots,
-                    job_class=self.job_class,
-                    worker=self,
-                    quiet=quiet)
+                jobs = []
+
+                for queue_name in self.queues:
+                    queue = Queue(queue_name)
+
+                    jobs += queue.dequeue_jobs(
+                        max_jobs=free_pool_slots - len(jobs),
+                        job_class=self.job_class,
+                        worker=self
+                    )
+
+                    if len(jobs) >= free_pool_slots:
+                        break
 
                 for job in jobs:
 
@@ -378,10 +382,7 @@ class Worker(object):
 
             for g in self.greenlets:
                 g_time = getattr(self.greenlets[g], "_trace_time", 0)
-                g_switches = getattr(
-                    self.greenlets[g],
-                    "_trace_switches",
-                    None)
+                g_switches = getattr(self.greenlets[g], "_trace_switches", None)
                 self.greenlets[g].kill(block=True)
                 self.log.debug(
                     "Greenlet for %s killed (%0.5fs, %s switches)." %

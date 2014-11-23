@@ -49,5 +49,12 @@ stack:
 	redis-server &
 	python mrq/dashboard/app.py &
 
+pep8:
+	autopep8 --max-line-length 99 -aaaaaaaa --diff --recursive mrq
+	echo "Now run 'make autopep8' to apply."
+
+autopep8:
+	autopep8 --max-line-length 99 -aaaaaaaa --in-place --recursive mrq
+
 pypi: linterrors
 	python setup.py sdist upload

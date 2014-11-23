@@ -22,11 +22,17 @@ def add_parser_args(parser, config_type):
         default=False,
         help='Collect stats about memory for each task. Incompatible with gevent > 1')
 
-    parser.add_argument('--trace_mongodb', action='store_true', default=False,
-                        help='Collect stats about MongoDB requests')
+    parser.add_argument(
+        '--trace_mongodb',
+        action='store_true',
+        default=False,
+        help='Collect stats about MongoDB requests')
 
-    parser.add_argument('--print_mongodb', action='store_true', default=False,
-                        help='Print all MongoDB requests')
+    parser.add_argument(
+        '--print_mongodb',
+        action='store_true',
+        default=False,
+        help='Print all MongoDB requests')
 
     parser.add_argument(
         '--trace_memory_type',
@@ -40,8 +46,11 @@ def add_parser_args(parser, config_type):
         default="memory_traces",
         help='Directory where to output .pngs with object graphs')
 
-    parser.add_argument('--profile', action='store_true', default=False,
-                        help='Run profiling on the whole worker')
+    parser.add_argument(
+        '--profile',
+        action='store_true',
+        default=False,
+        help='Run profiling on the whole worker')
 
     parser.add_argument(
         '--mongodb_jobs',
@@ -70,17 +79,30 @@ def add_parser_args(parser, config_type):
         default="redis://127.0.0.1:6379",
         help='Redis URI')
 
-    parser.add_argument('--redis_prefix', action='store', default="mrq",
-                        help='Redis key prefix')
+    parser.add_argument(
+        '--redis_prefix',
+        action='store',
+        default="mrq",
+        help='Redis key prefix')
 
-    parser.add_argument('--name', default=None, action='store',
-                        help='Specify a different name')
+    parser.add_argument(
+        '--name',
+        default=None,
+        action='store',
+        help='Specify a different name')
 
-    parser.add_argument('--quiet', default=False, action='store_true',
-                        help='Don\'t output task logs')
+    parser.add_argument(
+        '--quiet',
+        default=False,
+        action='store_true',
+        help='Don\'t output task logs')
 
-    parser.add_argument('--config', '-c', default=None, action="store",
-                        help='Path of a config file')
+    parser.add_argument(
+        '--config',
+        '-c',
+        default=None,
+        action="store",
+        help='Path of a config file')
 
     parser.add_argument(
         '--worker_class',
@@ -88,8 +110,12 @@ def add_parser_args(parser, config_type):
         action="store",
         help='Path to a custom worker class')
 
-    parser.add_argument('--version', '-v', default=False, action="store_true",
-                        help='Prints current MRQ version')
+    parser.add_argument(
+        '--version',
+        '-v',
+        default=False,
+        action="store_true",
+        help='Prints current MRQ version')
 
     parser.add_argument(
         '--no_import_patch',
@@ -114,11 +140,16 @@ def add_parser_args(parser, config_type):
             default=False,
             help='Queue the task instead of running it right away')
 
-        parser.add_argument('--queue', action='store', default="default",
-                            help='Queue where to put the task when async')
+        parser.add_argument(
+            '--queue',
+            action='store',
+            default="default",
+            help='Queue where to put the task when async')
 
-        parser.add_argument('taskpath', action='store',
-                            help='Task to run')
+        parser.add_argument(
+            'taskpath',
+            action='store',
+            help='Task to run')
 
         parser.add_argument(
             'taskargs',
@@ -137,8 +168,11 @@ def add_parser_args(parser, config_type):
             action="store",
             help='HTTP Auth for the Dashboard. Format is user:pass')
 
-        parser.add_argument('--dashboard_queue', default=None, action="store",
-                            help='Default queue for dashboard actions.')
+        parser.add_argument(
+            '--dashboard_queue',
+            default=None,
+            action="store",
+            help='Default queue for dashboard actions.')
 
     # Worker-specific args
 
@@ -167,18 +201,22 @@ def add_parser_args(parser, config_type):
             action='store',
             help='Number of processes to launch with supervisord')
 
-        default_template = os.path.abspath(
-            os.path.join(
-                os.path.dirname(__file__),
-                "supervisord_templates/default.conf"))
+        default_template = os.path.abspath(os.path.join(
+            os.path.dirname(__file__),
+            "supervisord_templates/default.conf"
+        ))
+
         parser.add_argument(
             '--supervisord_template',
             default=default_template,
             action='store',
             help='Path of supervisord template to use')
 
-        parser.add_argument('--scheduler', default=False, action='store_true',
-                            help='Run the scheduler')
+        parser.add_argument(
+            '--scheduler',
+            default=False,
+            action='store_true',
+            help='Run the scheduler')
 
         parser.add_argument(
             '--scheduler_interval',
@@ -220,9 +258,10 @@ def get_config(
             "file",
             "env",
             "args"),
-    env_prefix="MRQ_",
-    parser=None,
+        env_prefix="MRQ_",
+        parser=None,
         config_type="worker"):
+    """ Returns a config dict merged from several possible sources """
 
     if not parser:
         parser = argparse.ArgumentParser()
@@ -258,8 +297,7 @@ def get_config(
     from_file = {}
     if config_file and "file" in sources:
         sys.path.insert(0, os.path.dirname(config_file))
-        config_module = __import__(
-            os.path.basename(config_file.replace(".py", "")))
+        config_module = __import__(os.path.basename(config_file.replace(".py", "")))
         sys.path.pop(0)
         for k, v in config_module.__dict__.iteritems():
 

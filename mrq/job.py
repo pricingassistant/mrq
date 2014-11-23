@@ -69,8 +69,7 @@ class Job(object):
             self.fetch(start=False, full_data=False)
 
     def exists(self):
-        return bool(
-            self.collection.find_one({"_id": self.id}, fields={"_id": 1}))
+        return bool(self.collection.find_one({"_id": self.id}, fields={"_id": 1}))
 
     def fetch(self, start=False, full_data=True):
         """ Get the current job data and possibly flag it as started. """

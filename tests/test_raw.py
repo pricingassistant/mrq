@@ -225,14 +225,14 @@ def test_raw_retry(worker):
 
 @pytest.mark.parametrize(["p_queue", "p_greenlets"], [x1 + x2 for x1 in [
     ["test_raw default test"],
-    ["default test_raw test"],
-    ["default test_raw test_set"],
-    ["test_set test_raw default"],
-    ["test test2 test_set test_raw default"]
+    # ["default test_raw test"],
+    # ["default test_raw test_set"],
+    # ["test_set test_raw default"],
+    # ["test test2 test_set test_raw default"]
 ] for x2 in [
-    [1],
+    #[1],
     [2],
-    [10]
+    #[10]
 ]])
 def test_raw_mixed(worker, p_queue, p_greenlets):
 

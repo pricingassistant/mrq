@@ -16,8 +16,7 @@ class RetryInterrupt(BaseException):
     queue = None
 
     def __str__(self):
-        return "<RetryInterrupt %s seconds, %s queue>" % (
-            self.countdown, self.queue)
+        return "<RetryInterrupt %s seconds, %s queue>" % (self.countdown, self.queue)
 
 
 class StopRequested(GreenletExit):

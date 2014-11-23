@@ -1,6 +1,7 @@
 from .context import connections
 from .utils import memoize
 
+
 @memoize
 def redis_zaddbyscore():
     """ Increments multiple keys in a sorted set & returns them """
@@ -77,4 +78,3 @@ def redis_group_command(command, cnt, redis_key):
         for _ in range(cnt):
             getattr(pipe, command)(redis_key)
         return [x for x in pipe.execute() if x]
-

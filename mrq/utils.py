@@ -20,7 +20,7 @@ def group_iter(iterator, n=2):
     """
 
     # Use slices instead of an iterator when we have a flat list
-    if type(iterator) == list:
+    if isinstance(iterator, list):
 
         length = len(iterator)
         for i in range(int(math.ceil(float(length) / n))):
