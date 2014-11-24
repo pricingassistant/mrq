@@ -286,12 +286,12 @@ class Worker(object):
             with open(self.config["report_file"], "wb") as f:
                 f.write(json.dumps(report, ensure_ascii=False))
 
-        # try:
-        #     self.mongodb_jobs.mrq_workers.update({
-        #         "_id": ObjectId(self.id)
-        #     }, {"$set": report}, upsert=True, w=w)
-        # except pymongo.errors.AutoReconnect:
-        #     self.log.debug("Worker report failed.")
+        try:
+            self.mongodb_jobs.mrq_workers.update({
+                "_id": ObjectId(self.id)
+            }, {"$set": report}, upsert=True, w=w)
+        except Exception as e:
+            self.log.debug("Worker report failed: %s" % e)
 
     def greenlet_admin(self):
         """ This greenlet is used to get status information about the worker when --admin_port was given
