@@ -1,9 +1,9 @@
 
 pre.js-oxpre {
   font-family:monospace;
-  background-color:#1c1e22;
-  color:white;
-  border:1px solid black;
+  background-color:#F0F0F0;
+  color:black;
+  border:1px solid #C0C0C0;
   width:100%;
   font-size:12px;
   position:relative;
@@ -55,6 +55,11 @@ div.dataTables_info {
   -o-animation: spin 1s infinite linear;
   animation: spin 1s infinite linear;
 }
+
+.js-datatable-filters .form-group input[type=text] {
+    width:140px;
+}
+
 
 @-moz-keyframes spin {
   from {
