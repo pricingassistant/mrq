@@ -65,6 +65,28 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
     },
 
 
+    refreshCallStack: function(jobId)  {
+      var self = this;
+      self.app.getJobsDataFromWorkers(function(err, jobs) {
+
+        if (err) {
+          self.$(".js-jobs-modal-callstack-outdated").show();
+        }
+
+        var job_data = _.find(jobs, function(job) {
+          return job.id == jobId;
+        });
+
+        if (job_data && job_data["stack"]) {
+          var html = _.escape((job_data["stack"] || []).join("").replace(/\\n/g, "<br/>"));
+          self.$(".js-jobs-modal .js-jobs-modal-content").html(html);
+        } else {
+          self.$(".js-jobs-modal-callstack-outdated").show();
+        }
+
+      });
+
+    },
     groupaction: function(evt) {
       evt.preventDefault();
       evt.stopPropagation();
@@ -120,7 +142,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
 
       } else if (action == "copycommand") {
         window.prompt("There is you command", $(evt.currentTarget).data("command"))
-      } else if (action == "viewstacktrace") {
+      } else if (action == "viewtraceback") {
 
         self.$(".js-jobs-modal .js-jobs-modal-content").html("Loading...");
         self.$(".js-jobs-modal h4").html("Stack Trace");
@@ -130,6 +152,18 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
           self.refreshStackTrace(job_id);
         });
         self.refreshStackTrace(job_id);
+
+      } else if (action == "viewcallstack") {
+
+        self.$(".js-jobs-modal .js-jobs-modal-content").html("Loading...");
+        self.$(".js-jobs-modal h4").html("Current call stack");
+        self.$(".js-jobs-modal").modal({});
+
+        self.$(".js-jobs-modal").on("poll", function() {
+          self.refreshCallStack(job_id);
+        });
+        self.refreshCallStack(job_id);
+
       } else {
 
         self.jobaction(evt, {
@@ -216,7 +250,8 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
                   html += '<div class="progress"><div class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="'+progress+'" aria-valuemin="0" aria-valuemax="100" style="width: '+progress+'%;">'+progress+'%</div></div>';
                 }
 
-                html += "<button class='btn btn-xs btn-default' data-action='viewstacktrace'><span class='glyphicon glyphicon-align-left'></span> Trace</button>";
+                html += "<button class='btn btn-xs btn-default' data-action='viewtraceback'><span class='glyphicon glyphicon-align-left'></span> Trace</button>";
+                html += "<br/><br/><button class='btn btn-xs btn-default' data-action='viewcallstack'><span class='glyphicon glyphicon-align-left'></span> Stack</button>";
                 html += "</div>";
                 return (html);
               } else {

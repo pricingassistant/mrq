@@ -113,7 +113,7 @@ define([
 
     getWorkersData: function(cb) {
       $.ajax({
-        "url":"/api/datatables/workers?iDisplayLength=500&iDisplayStart=0&sEcho=0",
+        "url":"/api/datatables/workers?iDisplayLength=1000&iDisplayStart=0&sEcho=0",
         "type":"GET",
         success:function( body ) {
           cb(false, body.aaData);
@@ -126,7 +126,7 @@ define([
 
     getJobsDataFromWorkers: function(cb) {
       $.ajax({
-        "url":"/api/datatables/workers?iDisplayLength=500&iDisplayStart=0&sEcho=0",
+        "url":"/api/datatables/workers?iDisplayLength=1000&iDisplayStart=0&sEcho=0",
         "type":"GET",
         success:function( body ) {
 
