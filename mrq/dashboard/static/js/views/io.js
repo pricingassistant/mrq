@@ -33,7 +33,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
             "sClass": "col-data",
             "sType":"string",
             "mData":function(source, type, val) {
-              return "<pre class='js-oxpre'>"+JSON.stringify(source.io.data, null, 0)+"</pre>";
+              return "<pre class='js-oxpre'>"+_.escape(JSON.stringify(source.io.data, null, 0))+"</pre>";
             }
           },
           {

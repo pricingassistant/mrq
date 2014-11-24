@@ -40,7 +40,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
           if (!self.last_log_id) {
             self.$(".js-jobs-modal .js-jobs-modal-content").html("");
           }
-          self.$(".js-jobs-modal .js-jobs-modal-content")[0].innerHTML += data.logs;
+          self.$(".js-jobs-modal .js-jobs-modal-content")[0].innerHTML += _.escape(data.logs);
           self.last_log_id = data.last_log_id;
         },
         "error": function(xhr, status, error) {
@@ -54,7 +54,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
       $.ajax("/api/job/"+jobId+"/traceback", {
         "type": "GET",
         "success": function(data) {
-          self.$(".js-jobs-modal .js-jobs-modal-content").html(data["traceback"].replace(/\\n/g, "<br/>"));
+          self.$(".js-jobs-modal .js-jobs-modal-content").html(_.escape(data["traceback"].replace(/\\n/g, "<br/>")));
           self.$(".js-jobs-modal h4").html("Stack Trace");
           self.$(".js-jobs-modal").modal({});
         },
@@ -95,7 +95,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
         $.ajax("/api/job/"+job_id+"/result", {
           "type": "GET",
           "success": function(data) {
-            self.$(".js-jobs-modal .js-jobs-modal-content").html(JSON.stringify(data, null, 2));
+            self.$(".js-jobs-modal .js-jobs-modal-content").html(_.escape(JSON.stringify(data, null, 2)));
             self.$(".js-jobs-modal h4").html("Job result");
             self.$(".js-jobs-modal").modal({});
           },
@@ -186,7 +186,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
             "sClass": "col-jobs-params",
             "mDataProp": "params",
             "mData": function ( source /*, val */) {
-              return "<pre class='js-oxpre'>"+JSON.stringify(source.params, null, 2)+"</pre>";
+              return "<pre class='js-oxpre'>"+_.escape(JSON.stringify(source.params, null, 2))+"</pre>";
             }
           },
           {
