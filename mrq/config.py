@@ -29,6 +29,12 @@ def add_parser_args(parser, config_type):
         help='Collect stats about MongoDB requests')
 
     parser.add_argument(
+        '--trace_io',
+        action='store_true',
+        default=False,
+        help='Collect stats about all I/O operations')
+
+    parser.add_argument(
         '--print_mongodb',
         action='store_true',
         default=False,
@@ -72,6 +78,12 @@ def add_parser_args(parser, config_type):
         1024,
         type=int,
         help='If provided, sets the log collection to capped to that amount of bytes.')
+
+    parser.add_argument(
+        '--no_mongodb_ensure_indexes',
+        action='store_true',
+        default=False,
+        help='If provided, skip the creation of MongoDB indexes at worker startup.')
 
     parser.add_argument(
         '--redis',
@@ -124,11 +136,11 @@ def add_parser_args(parser, config_type):
         help='Skips patching __import__ to fix gevent bug #108')
 
     parser.add_argument(
-        '--add_latency',
-        default=0,
+        '--add_network_latency',
+        default="0",
         action='store',
-        type=float,
-        help='Adds random latency to the network calls, zero to N seconds')
+        type=str,
+        help='Adds random latency to the network calls, zero to N seconds. Can be a range (1-2)')
 
     # mrq-run-specific arguments
 
@@ -229,8 +241,15 @@ def add_parser_args(parser, config_type):
             '--report_interval',
             default=10,
             action='store',
-            type=int,
+            type=float,
             help='Seconds between worker reports to MongoDB')
+
+        parser.add_argument(
+            '--report_file',
+            default="",
+            action='store',
+            type=unicode,
+            help='Filepath of a json dump of the worker status. Disabled if none')
 
         parser.add_argument(
             'queues',

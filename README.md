@@ -227,7 +227,7 @@ Simulating network latency
 
 Sometimes it is helpful in local development to simulate an environment with higher network latency.
 
-To do this we added a ```--add_latency=0.1``` config option that will add (in this case) a random delay between 0 and 0.1 seconds to every network call.
+To do this we added a ```--add_network_latency=0.1``` config option that will add (in this case) a random delay between 0 and 0.1 seconds to every network call.
 
 
 Worker concurrency

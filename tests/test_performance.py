@@ -5,11 +5,12 @@ import pytest
 
 @pytest.mark.parametrize(["p_latency", "p_min", "p_max"], [
     [0, 0, 3],
-    [0.1, 4, 20]
+    ["0.1", 4, 20],
+    ["0.1-0.2", 4, 20]
 ])
 def test_network_latency(worker, p_latency, p_min, p_max):
 
-    worker.start(flags="--add_latency=%s" % (p_latency))
+    worker.start(flags=" --no_mongodb_ensure_indexes --add_network_latency=%s" % (p_latency))
 
     start_time = time.time()
 

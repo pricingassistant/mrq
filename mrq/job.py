@@ -42,6 +42,8 @@ class Job(object):
     _memory_stop = 0
     _memory_start = 0
 
+    _current_io = None
+
     def __init__(self, job_id, queue=None, start=False, fetch=False):
         self.worker = get_current_worker()
         self.queue = queue
@@ -375,6 +377,14 @@ class Job(object):
 
         raise Exception(
             "Waited for job result for %ss seconds, timeout." % timeout)
+
+    def set_current_io(self, io_data):
+        if io_data is None:
+            # TODO counters
+            self._current_io = None
+        else:
+            io_data["started"] = time.time()
+            self._current_io = io_data
 
     def trace_memory_start(self):
         """ Starts measuring memory consumption """

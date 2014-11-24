@@ -8,7 +8,7 @@ import socket
 import traceback
 import psutil
 import sys
-import pymongo
+import ujson as json
 from bson import ObjectId
 from gevent.pywsgi import WSGIServer
 
@@ -81,7 +81,7 @@ class Worker(object):
         self.log = self.log_handler.get_logger(worker=self.id)
 
         self.log.info(
-            "Starting Gevent pool with %s worker greenlets (+ 1 monitoring)" %
+            "Starting Gevent pool with %s worker greenlets (+ report, logs, adminhttp)" %
             self.pool_size)
 
         self.gevent_pool = gevent.pool.Pool(self.pool_size)
@@ -107,7 +107,8 @@ class Worker(object):
         self.connected = True
 
         # Be mindful that this is done each time a worker starts
-        self.ensure_indexes()
+        if not self.config["no_mongodb_ensure_indexes"]:
+            self.ensure_indexes()
 
     def ensure_indexes(self):
 
@@ -161,16 +162,33 @@ class Worker(object):
             scheduler.check()
             time.sleep(int(self.config["scheduler_interval"]))
 
-    def greenlet_monitoring(self):
+    def greenlet_report(self):
         """ This greenlet always runs in background to update current status in MongoDB every 10 seconds.
 
         Caution: it might get delayed when doing long blocking operations. Should we do this in a thread instead?
          """
 
         while True:
-            self.report_worker()
-            self.flush_logs(w=0)
-            time.sleep(int(self.config["report_interval"]))
+            try:
+                self.report_worker()
+            except Exception as e:
+                self.log.error("When reporting: %s" % e)
+            finally:
+                time.sleep(self.config["report_interval"])
+
+    def greenlet_logs(self):
+        """ This greenlet always runs in background to update current logs in MongoDB every 10 seconds.
+
+        Caution: it might get delayed when doing long blocking operations. Should we do this in a thread instead?
+         """
+
+        while True:
+            try:
+                self.flush_logs(w=0)
+            except Exception as e:
+                self.log.error("When flushing logs: %s" % e)
+            finally:
+                time.sleep(self.config["report_interval"])
 
     def get_memory(self):
         return self.process.get_memory_info().rss
@@ -197,14 +215,33 @@ class Worker(object):
                 if job.data:
                     g["path"] = job.data["path"]
                 g["datestarted"] = job.datestarted
-                g["id"] = job.id
+                g["id"] = str(job.id)
                 g["time"] = getattr(greenlet, "_trace_time", 0)
                 g["switches"] = getattr(greenlet, "_trace_switches", None)
                 if self.config["trace_mongodb"]:
                     g["mongodb"] = dict(job._trace_mongodb)
+                if job._current_io is not None:
+                    g["io"] = job._current_io
+
             greenlets.append(g)
 
-        cpu = self.process.get_cpu_times()
+        # When faking network latency, all sockets are affected, including OS ones, but
+        # we still want reliable reports so this is disabled.
+        if self.config["add_network_latency"] != "0" and self.config["add_network_latency"]:
+            cpu = {
+                "user": 0,
+                "system": 0,
+                "percent": 0
+            }
+            mem_rss = 0
+        else:
+            cpu_times = self.process.get_cpu_times()
+            cpu = {
+                "user": cpu_times.user,
+                "system": cpu_times.system,
+                "percent": self.process.get_cpu_percent(0)
+            }
+            mem_rss = self.get_memory()
 
         # Avoid sharing passwords or sensitive config!
         whitelisted_config = [
@@ -226,13 +263,9 @@ class Worker(object):
             "name": self.name,
             "process": {
                 "pid": self.process.pid,
-                "cpu": {
-                    "user": cpu.user,
-                    "system": cpu.system,
-                    "percent": self.process.get_cpu_percent(0)
-                },
+                "cpu": cpu,
                 "mem": {
-                    "rss": self.get_memory()
+                    "rss": mem_rss
                 }
                 # https://code.google.com/p/psutil/wiki/Documentation
                 # get_open_files
@@ -247,12 +280,18 @@ class Worker(object):
 
     def report_worker(self, w=0):
 
-        try:
-            self.mongodb_jobs.mrq_workers.update({
-                "_id": ObjectId(self.id)
-            }, {"$set": self.get_worker_report()}, upsert=True, w=w)
-        except pymongo.errors.AutoReconnect:
-            self.log.debug("Worker report failed.")
+        report = self.get_worker_report()
+
+        if self.config["report_file"]:
+            with open(self.config["report_file"], "wb") as f:
+                f.write(json.dumps(report, ensure_ascii=False))
+
+        # try:
+        #     self.mongodb_jobs.mrq_workers.update({
+        #         "_id": ObjectId(self.id)
+        #     }, {"$set": report}, upsert=True, w=w)
+        # except pymongo.errors.AutoReconnect:
+        #     self.log.debug("Worker report failed.")
 
     def greenlet_admin(self):
         """ This greenlet is used to get status information about the worker when --admin_port was given
@@ -297,7 +336,9 @@ class Worker(object):
 
         self.status = "started"
 
-        self.greenlets["monitoring"] = gevent.spawn(self.greenlet_monitoring)
+        self.greenlets["report"] = gevent.spawn(self.greenlet_report)
+
+        self.greenlets["logs"] = gevent.spawn(self.greenlet_logs)
 
         if self.config["scheduler"]:
             self.greenlets["scheduler"] = gevent.spawn(self.greenlet_scheduler)

@@ -62,29 +62,6 @@ def test_general_simple_task_one(worker):
     assert len(db_logs) >= 1
 
 
-def test_current_job_inspect(worker):
-
-    job_id = worker.send_task(
-        "tests.tasks.general.MongoInsert", {"a": 41, "b": 1, "sleep": 3}, block=False)
-
-    time.sleep(1)
-
-    # Test the HTTP admin API
-    admin_worker = json.load(urllib2.urlopen("http://localhost:20020"))
-
-    assert admin_worker["status"] == "full"
-    assert len(admin_worker["jobs"]) == 1
-    assert admin_worker["jobs"][0]["mongodb"]["insert"] == 1
-
-    # And now the $1M feature: check which function call is currently running!
-    assert "sleep(" in "\n".join(admin_worker["jobs"][0]["stack"])
-    assert "tests/tasks/general.py" in "\n".join(
-        admin_worker["jobs"][0]["stack"])
-    # print "STACK", "\n".join(admin_worker["jobs"][0]["stack"])
-
-    assert admin_worker["jobs"][0]["id"] == str(job_id)
-
-
 def test_general_simple_no_trace(worker):
 
     worker.start(trace=False)

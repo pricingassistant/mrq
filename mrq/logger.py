@@ -1,7 +1,6 @@
 
 from collections import defaultdict
 import datetime
-import pymongo
 
 
 class LogHandler(object):
@@ -94,7 +93,7 @@ class LogHandler(object):
 
         try:
             self.collection.insert(inserts, w=w)
-        except pymongo.errors.AutoReconnect:
+        except:
             from mrq.context import get_current_worker
             self.log(
                 "debug", "Log insert failed.", worker=get_current_worker())

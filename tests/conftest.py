@@ -149,6 +149,8 @@ class WorkerFixture(ProcessFixture):
         # +1 because of supervisord itself
         if processes > 0:
             processes += 1
+
+        print cmdline
         ProcessFixture.start(self, cmdline=cmdline, env=kwargs.get("env"), expected_children=processes)
 
     def start_deps(self, flush=True):

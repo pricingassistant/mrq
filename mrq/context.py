@@ -1,18 +1,9 @@
 from .logger import LoggerInterface
 import gevent
 import urlparse
-import redis as pyredis
 import re
 import time
 from .utils import LazyObject
-
-try:
-    # MongoKit's Connection object is just a wrapped MongoClient.
-    from mongokit import Connection as MongoClient
-    from mongokit import ReplicaSetConnection as MongoReplicaSetClient
-except ImportError:
-    from pymongo import MongoClient
-    from pymongo import MongoReplicaSetClient
 
 
 # greenletid => Job object
@@ -56,17 +47,21 @@ def set_current_config(config):
     _CONFIG = config
     log.quiet = config["quiet"]
 
-    if config["trace_mongodb"] or config["print_mongodb"]:
+    if config["add_network_latency"] != "0" and config["add_network_latency"]:
+        from mrq.monkey import patch_network_latency
+        patch_network_latency(config["add_network_latency"])
+
+    if config["trace_mongodb"] or config["print_mongodb"] or config["trace_io"]:
         from mrq.monkey import patch_pymongo
         patch_pymongo(config)
-
-    if config["add_latency"]:
-        from mrq.monkey import patch_network_latency
-        patch_network_latency(config["add_latency"])
 
     if not config["no_import_patch"]:
         from mrq.monkey import patch_import
         patch_import()
+
+    if config["trace_io"]:
+        from mrq.monkey import patch_io_all
+        patch_io_all()
 
 
 def get_current_config():
@@ -86,8 +81,9 @@ def _connections_factory(attr):
     config_obj = config.get(attr)
 
     if attr.startswith("redis"):
-
         if type(config_obj) in [str, unicode]:
+
+            import redis as pyredis
 
             urlparse.uses_netloc.append('redis')
             redis_url = urlparse.urlparse(config_obj)
@@ -110,6 +106,14 @@ def _connections_factory(attr):
     elif attr.startswith("mongodb"):
 
         if type(config_obj) in [str, unicode]:
+
+            try:
+                # MongoKit's Connection object is just a wrapped MongoClient.
+                from mongokit import Connection as MongoClient
+                from mongokit import ReplicaSetConnection as MongoReplicaSetClient
+            except ImportError:
+                from pymongo import MongoClient
+                from pymongo import MongoReplicaSetClient
 
             (
                 mongoAuth,
