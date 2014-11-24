@@ -10,6 +10,7 @@ define(["backbone", "underscore", "jquery"],function(Backbone, _, $) {
       'taskpaths': 'taskpaths',
       'taskexceptions': 'taskexceptions',
       'jobs': 'jobs',
+      'io': 'io',
       'scheduledjobs': 'scheduledjobs',
       'status': 'status'
     },
@@ -117,6 +118,11 @@ define(["backbone", "underscore", "jquery"],function(Backbone, _, $) {
     jobs: function(params) {
       this.setNavbar("jobs");
       this.app.rootView.showChildPage('jobs', {"options": {"params": params || {}}});
+    },
+
+    io: function(params) {
+      this.setNavbar("io");
+      this.app.rootView.showChildPage('io', {"options": {"params": params || {}}});
     },
 
     taskpaths: function(params) {

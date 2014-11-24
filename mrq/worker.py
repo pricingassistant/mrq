@@ -11,6 +11,7 @@ import sys
 import ujson as json
 from bson import ObjectId
 from gevent.pywsgi import WSGIServer
+from collections import defaultdict
 
 from .job import Job
 from .exceptions import JobTimeoutException, StopRequested, JobInterrupt
@@ -88,6 +89,13 @@ class Worker(object):
 
         # Keep references to main greenlets
         self.greenlets = {}
+
+        # TODO by "tag"?
+        self._traced_io = {
+            "types": defaultdict(float),
+            "tasks": defaultdict(float),
+            "total": 0
+        }
 
     def connect(self, force=False):
 
@@ -218,8 +226,6 @@ class Worker(object):
                 g["id"] = str(job.id)
                 g["time"] = getattr(greenlet, "_trace_time", 0)
                 g["switches"] = getattr(greenlet, "_trace_switches", None)
-                if self.config["trace_mongodb"]:
-                    g["mongodb"] = dict(job._trace_mongodb)
                 if job._current_io is not None:
                     g["io"] = job._current_io
 
@@ -254,6 +260,15 @@ class Worker(object):
             "local_ip"
         ]
 
+        io = None
+        if self._traced_io:
+            io = {}
+            for k, v in self._traced_io.items():
+                if k == "total":
+                    io[k] = v
+                else:
+                    io[k] = sorted(v.items(), reverse=True, key=lambda x: x[1])
+
         return {
             "status": self.status,
             "config": {k: v for k, v in self.config.iteritems() if k in whitelisted_config},
@@ -261,6 +276,7 @@ class Worker(object):
             "datestarted": self.datestarted,
             "datereported": datetime.datetime.utcnow(),
             "name": self.name,
+            "io": io,
             "process": {
                 "pid": self.process.pid,
                 "cpu": cpu,

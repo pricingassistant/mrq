@@ -51,7 +51,7 @@ def set_current_config(config):
         from mrq.monkey import patch_network_latency
         patch_network_latency(config["add_network_latency"])
 
-    if config["trace_mongodb"] or config["print_mongodb"] or config["trace_io"]:
+    if config["print_mongodb"] or config["trace_io"]:
         from mrq.monkey import patch_pymongo
         patch_pymongo(config)
 

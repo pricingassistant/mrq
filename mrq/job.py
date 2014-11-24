@@ -380,8 +380,17 @@ class Job(object):
 
     def set_current_io(self, io_data):
         if io_data is None:
-            # TODO counters
+            if not self._current_io:
+                return
+
+            t = time.time() - self._current_io["started"]
+            if self.worker:
+                self.worker._traced_io["types"][self._current_io["type"]] += t
+                self.worker._traced_io["tasks"][self.data["path"]] += t
+                self.worker._traced_io["total"] += t
+
             self._current_io = None
+
         else:
             io_data["started"] = time.time()
             self._current_io = io_data

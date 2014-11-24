@@ -84,6 +84,7 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
           });
 
           $.getJSON( sSource, aoData, function (json) {
+            self.dataTableRawData = json;
             fnCallback(json);
           }).always(function() {
             self.loading = false;
@@ -100,6 +101,8 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
       var self = this;
 
       this.dataTable = this.$(".js-datatable").dataTable(config);
+
+      this.dataTableRawData = [];
 
       // SEARCH - Add the placeholder for Search and Turn this into in-line form control
       var search_input = this.dataTable.closest('.dataTables_wrapper').find('div[id$=_filter] input');

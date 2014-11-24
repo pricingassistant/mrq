@@ -23,12 +23,6 @@ def add_parser_args(parser, config_type):
         help='Collect stats about memory for each task. Incompatible with gevent > 1')
 
     parser.add_argument(
-        '--trace_mongodb',
-        action='store_true',
-        default=False,
-        help='Collect stats about MongoDB requests')
-
-    parser.add_argument(
         '--trace_io',
         action='store_true',
         default=False,

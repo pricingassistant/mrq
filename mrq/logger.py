@@ -93,10 +93,9 @@ class LogHandler(object):
 
         try:
             self.collection.insert(inserts, w=w)
-        except:
+        except Exception as e:
             from mrq.context import get_current_worker
-            self.log(
-                "debug", "Log insert failed.", worker=get_current_worker())
+            self.log("debug", "Log insert failed: %s" % e, worker=get_current_worker())
 
 
 class LoggerInterface(object):

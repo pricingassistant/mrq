@@ -8,6 +8,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models", "moment
 
     events:{
       "change .js-datatable-filters-showstopped": "filterschanged",
+      "click .js-workers-io": "showworkerio",
     },
 
     initFilters: function() {
@@ -22,6 +23,24 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models", "moment
       this.options = options;
       this.initFilters();
       this.flush();
+    },
+
+    showworkerio: function(evt) {
+      var self = this;
+
+      var worker_id = $(evt.currentTarget).data("workerid");
+
+      var worker_data = _.find(this.dataTableRawData.aaData, function(worker) {
+        return worker._id == worker_id;
+      });
+
+      var html_modal = _.template($("#tpl-modal-workers-io").html())({"worker": worker_data});
+
+      self.$(".js-workers-modal .js-workers-modal-content").html(html_modal);
+      self.$(".js-workers-modal h4").html("I/O for this worker, by task &amp; by type");
+      self.$(".js-workers-modal").modal({});
+
+      return false;
     },
 
     renderDatatable:function() {
@@ -86,9 +105,15 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models", "moment
 
               var usage = (source.process.cpu.user + source.process.cpu.system) * 1000 / (moment.utc(source.datereported || null).valueOf() - moment.utc(source.datestarted).valueOf());
 
-              return source.process.cpu.user + "s / " + source.process.cpu.system + "s"
+              var html = Math.round(source.process.cpu.user) + "s / " + Math.round(source.process.cpu.system) + "s"
                 + "<br/>"
-                + (Math.round(usage * 10000) / 100) + "% use";
+                + (Math.round(usage * 100)) + "% use";
+
+              if (((source.io || {}).types || []).length) {
+                html += "<br/>I/O: <a data-workerid='"+source._id+"' href='#' class='js-workers-io'>"+Math.round(source.io.total)+"s </a>";
+              }
+
+              return html;
             }
           },
           {

@@ -1,5 +1,5 @@
 from mrq.task import Task
-from mrq.context import connections
+from mrq.context import connections, log
 import urllib2
 
 
@@ -7,9 +7,13 @@ class TestIo(Task):
 
     def run(self, params):
 
-        # from mrq.monkey import patch_network_latency
+        log.info("I/O starting")
+        ret = self._run(params)
+        log.info("I/O finished")
 
-        # patch_network_latency(2)
+        return ret
+
+    def _run(self, params):
 
         if params["test"] == "mongodb-insert":
 
@@ -35,11 +39,11 @@ class TestIo(Task):
         elif params["test"] == "urllib2-get":
 
             fp = urllib2.urlopen(params["params"]["url"])
-            print fp.read
             return fp.read()
 
         elif params["test"] == "urllib2-post":
 
             return urllib2.urlopen(params["params"]["url"], data="x=x").read()
+
 
 

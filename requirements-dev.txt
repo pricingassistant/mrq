@@ -1,5 +1,11 @@
 pytest==2.5.1
 pylint==1.1.0
 pytest-cov==1.6
+
 subprocess32==3.2.5
 #git+https://github.com/srlindsay/gevent-profiler@master#egg=gevent-profiler==0.2
+
+# Installed separately in the dockerfile :/
+# https://github.com/kevin1024/pytest-httpbin/issues/9
+#
+# pytest-httpbin==0.0.3

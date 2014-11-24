@@ -35,6 +35,8 @@ RUN pip install --use-mirrors -r requirements-dev.txt
 ADD requirements-dashboard.txt requirements-dashboard.txt
 RUN pip install --use-mirrors -r requirements-dashboard.txt
 
+# TODO remove me. https://github.com/kevin1024/pytest-httpbin/issues/9
+RUN pip install pytest-httpbin==0.0.3
 
 EXPOSE 6379
 EXPOSE 27017

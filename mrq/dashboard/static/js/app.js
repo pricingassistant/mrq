@@ -111,6 +111,44 @@ define([
       });
     },
 
+    getWorkersData: function(cb) {
+      $.ajax({
+        "url":"/api/datatables/workers?iDisplayLength=500&iDisplayStart=0&sEcho=0",
+        "type":"GET",
+        success:function( body ) {
+          cb(false, body.aaData);
+        },
+        error: function() {
+          cb(true);
+        }
+      });
+    },
+
+    getJobsDataFromWorkers: function(cb) {
+      $.ajax({
+        "url":"/api/datatables/workers?iDisplayLength=500&iDisplayStart=0&sEcho=0",
+        "type":"GET",
+        success:function( body ) {
+
+          var jobs = [];
+
+          _.each(body.aaData || [], function(worker) {
+            _.each(worker.jobs || [], function(job) {
+              job.worker = worker._id;
+              jobs.push(job);
+            });
+          });
+
+          cb(false, jobs);
+        },
+        error: function() {
+          cb(true);
+        }
+      });
+    },
+
+
+
     // if realtime=true, cb may be called multiple times.
     getTask:function(id,realtime,cb) {
       var cnt=true;

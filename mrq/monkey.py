@@ -7,7 +7,7 @@ def patch_pymongo(config):
     """ Monkey-patch pymongo's collections to add some logging """
 
     # Nothing to change!
-    if not config["print_mongodb"] and not config["trace_mongodb"] and not config["trace_io"]:
+    if not config["print_mongodb"] and not config["trace_io"]:
         return
 
     # Print because we are very early and log() may not be ready yet.
@@ -29,17 +29,11 @@ def patch_pymongo(config):
                     cprint("[MONGO] %s.%s%s %s" %
                            (self.full_name, method, args, kwargs), "magenta")
 
-            if config["trace_mongodb"]:
-                job = get_current_job()
-                if job:
-                    job._trace_mongodb[method] += 1
-
             if config["trace_io"]:
                 job = get_current_job()
                 if job:
                     job.set_current_io({
-                        "type": "mongodb",
-                        "subtype": method,
+                        "type": "mongodb.%s" % method,
                         "data": {
                             "collection": self.full_name
                         }
@@ -195,8 +189,7 @@ def patch_io_redis():
             job = get_current_job()
             if job:
                 job.set_current_io({
-                    "type": "redis",
-                    "subtype": args[0].lower(),
+                    "type": "redis.%s" % args[0].lower(),
                     "data": {
                         "key": args[1] if len(args) > 1 else None
                     }
@@ -228,8 +221,7 @@ def patch_io_urllib2():
 
         def start():
             job.set_current_io({
-                "type": "http",
-                "subtype": "get" if data is None else "post",
+                "type": "http.get" if data is None else "http.post",
                 "data": {
                     "url": url
                 }
@@ -282,8 +274,7 @@ def patch_io_pymongo_cursor():
                         subtype, collection = items[0]
 
                 job.set_current_io({
-                    "type": "mongodb",
-                    "subtype": subtype,
+                    "type": "mongodb.%s" % subtype,
                     "data": {
                         "collection": "%s.%s" % (self._Cursor__collection.database.name, collection)
                     }

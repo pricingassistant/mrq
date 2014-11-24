@@ -100,7 +100,7 @@ class ProcessFixture(object):
             if not block:
                 return
 
-            for _ in range(500):
+            for _ in range(1000):
 
                 try:
                     p = psutil.Process(self.process.pid)
@@ -113,7 +113,7 @@ class ProcessFixture(object):
 
                 time.sleep(0.01)
 
-            assert False, "Process '%s' was still in state %s after 5 seconds..." % (
+            assert False, "Process '%s' was still in state %s after 10 seconds..." % (
                 self.cmdline, p.status)
 
 
@@ -139,7 +139,7 @@ class WorkerFixture(ProcessFixture):
         if m:
             processes = int(m.group(1))
 
-        cmdline = "python mrq/bin/mrq_worker.py --trace_mongodb --mongodb_logs_size 0 %s %s %s %s" % (
+        cmdline = "python mrq/bin/mrq_worker.py --trace_io --mongodb_logs_size 0 %s %s %s %s" % (
             "--admin_port 20020" if (processes <= 1) else "",
             "--trace_greenlets" if trace else "",
             kwargs.get("flags", ""),
