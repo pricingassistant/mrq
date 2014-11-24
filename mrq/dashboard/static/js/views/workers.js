@@ -165,7 +165,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models", "moment
             "mData":function(source, type/*, val*/) {
               var cnt = (source.jobs || []).length;
               if (type == "display") {
-                return "<a href='/#jobs?worker="+source._id+"&status=started'>"+cnt+"</a>"
+                return "<a href='/#jobs?worker="+source._id+"&status=started'>"+cnt+"</a> / "+source.config.gevent
                  + "<br/>"
                  + '<span class="inlinesparkline" values="'+self.addToCounter("worker.currentjobs."+source._id, cnt, 50).join(",")+'"></span>';
               } else {
