@@ -300,7 +300,7 @@ class Worker(object):
 
         if self.config["report_file"]:
             with open(self.config["report_file"], "wb") as f:
-                f.write(json.dumps(report, ensure_ascii=False))
+                f.write(json.dumps(report, ensure_ascii=False))  # pylint: disable-msg=E1101
 
         try:
             self.mongodb_jobs.mrq_workers.update({

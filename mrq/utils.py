@@ -10,7 +10,10 @@ def get_local_ip():
     """ Returns the local IP. Can be overwritten in the config with --local-ip so don't call
     this function directly, instead get the current value from the config """
     import socket
-    return socket.gethostbyname(socket.gethostname())
+    try:
+        return socket.gethostbyname(socket.gethostname())
+    except:
+        return "127.0.0.1"
 
 
 def group_iter(iterator, n=2):

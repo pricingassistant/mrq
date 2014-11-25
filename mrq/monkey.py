@@ -266,20 +266,20 @@ def patch_io_pymongo_cursor():
             if job:
 
                 subtype = "find"
-                collection = self._Cursor__collection.name
+                collection = self._Cursor__collection.name  # pylint: disable-msg=E1101
 
                 if collection == "$cmd":
-                    items = self._Cursor__spec.items()
+                    items = self._Cursor__spec.items()  # pylint: disable-msg=E1101
                     if len(items) > 0:
                         subtype, collection = items[0]
 
                 job.set_current_io({
                     "type": "mongodb.%s" % subtype,
                     "data": {
-                        "collection": "%s.%s" % (self._Cursor__collection.database.name, collection)
+                        "collection": "%s.%s" % (self._Cursor__collection.database.name, collection)  # pylint: disable-msg=E1101
                     }
                 })
-            ret = Cursor._Cursor__send_message(self, *args, **kwargs)
+            ret = Cursor._Cursor__send_message(self, *args, **kwargs)  # pylint: disable-msg=E1101
 
             if job:
                 job.set_current_io(None)

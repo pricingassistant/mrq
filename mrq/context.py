@@ -185,7 +185,7 @@ def enable_greenlet_tracing():
 
     trace.last_switch = time.time()
 
-    greenlet.settrace(trace)
+    greenlet.settrace(trace)  # pylint: disable-msg=E1101
 
 
 def progress(ratio, save=False):

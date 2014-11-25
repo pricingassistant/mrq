@@ -37,7 +37,7 @@ class JobAction(Task):
                 query[k] = self.params.get(k)
 
         if self.params.get("params"):
-            params_dict = json.loads(self.params.get("params"))
+            params_dict = json.loads(self.params.get("params"))  # pylint: disable-msg=E1101
 
             for key in params_dict.keys():
                 query["params.%s" % key] = params_dict[key]

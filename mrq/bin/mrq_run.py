@@ -32,7 +32,7 @@ def main():
     set_current_config(cfg)
 
     if len(cfg["taskargs"]) == 1:
-        params = json.loads(cfg["taskargs"][0])
+        params = json.loads(cfg["taskargs"][0])  # pylint: disable-msg=E1101
     else:
         params = {}
 
@@ -58,7 +58,7 @@ def main():
         job.datestarted = datetime.datetime.utcnow()
         set_current_job(job)
         ret = job.perform()
-        print json.dumps(ret)
+        print json.dumps(ret)  # pylint: disable-msg=E1101
 
 if __name__ == "__main__":
     main()
