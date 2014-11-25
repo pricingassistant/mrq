@@ -117,7 +117,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
             self.trigger("loaded");
 
             data = _.filter(data, function(row) {
-              return !(data.io || {}).type;
+              return (row.io || {}).type;
             });
 
             if (!err) {

@@ -60,6 +60,14 @@ div.dataTables_info {
     width:140px;
 }
 
+.js-workers-modal-content table {
+    word-wrap:break-word;
+    table-layout: fixed;
+    font-size:12px;
+}
+.js-workers-modal-content .time {
+  width:80px;
+}
 
 @-moz-keyframes spin {
   from {

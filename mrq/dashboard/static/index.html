@@ -130,15 +130,15 @@
 
           <div class="row-fluid">
             <div class="col-xs-6">
-              <table class="table-striped table table-bordered">
-                <tr><th>Task</th><th>I/O time</th></tr>
+              <table class="table-striped table table-bordered" style="width:100%">
+                <tr><th>Task</th><th class="time">I/O time</th></tr>
                 <% _.each(worker.io.tasks, function(row) { %>
                   <tr>
                     <td>
                       <%= row[0] %>
                     </td>
-                    <td>
-                      <%= row[1] %>
+                    <td class="time">
+                      <%= Math.round(row[1]*100)/100 %>s
                     </td>
                   </tr>
                 <% }) %>
@@ -147,14 +147,14 @@
 
             <div class="col-xs-6">
               <table class="table-striped table table-bordered">
-                <tr><th>I/O type</th><th>I/O time</th></tr>
+                <tr><th>I/O type</th><th class="time">I/O time</th></tr>
                 <% _.each(worker.io.types, function(row) { %>
                   <tr>
                     <td>
                       <%= row[0] %>
                     </td>
-                    <td>
-                      <%= row[1] %>
+                    <td class="time">
+                      <%= Math.round(row[1]*100)/100 %>s
                     </td>
                   </tr>
                 <% }) %>

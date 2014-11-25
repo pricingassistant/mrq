@@ -49,6 +49,9 @@ def patch_pymongo(config):
 
             return ret
 
+        # Needed to avoid breaking mongokit
+        mrq_monkey_patched.__doc__ = method.__doc__
+
         return mrq_monkey_patched
 
     from pymongo.collection import Collection
@@ -61,11 +64,8 @@ def patch_pymongo(config):
     try:
         from mongokit.collection import Collection as MongoKitCollection
         for method in ["find"]:
-            if getattr(
-                    MongoKitCollection,
-                    method).__name__ != "mrq_monkey_patched":
-                setattr(MongoKitCollection, method, gen_monkey_patch(
-                    MongoKitCollection, method))
+            if getattr(MongoKitCollection, method).__name__ != "mrq_monkey_patched":
+                setattr(MongoKitCollection, method, gen_monkey_patch(MongoKitCollection, method))
 
     except ImportError:
         pass
