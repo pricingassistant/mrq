@@ -357,7 +357,7 @@ def patch_io_httplib():
         class mrq_urllib3_HTTPConnection(urllib3HTTPConnection):
             def _prepare_conn(self, *args, **kwargs):
                 urllib3HTTPConnection._prepare_conn(self, *args, **kwargs)
-                self.sock = mrq_wrapped_socket(self.sock, self._traced_args)
+                self.sock = mrq_wrapped_socket(self.sock, self._traced_args)  # pylint: disable-msg=E1101
 
         import requests.packages.urllib3.connection as requestsmodule
 
