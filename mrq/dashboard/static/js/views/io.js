@@ -25,7 +25,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
             "sWidth":"150px",
             "mData":function(source, type, val) {
               // console.log(source)
-              return source.io.type+"."+source.io.subtype;
+              return source.io.type;
             }
           },
           {

@@ -1,6 +1,7 @@
 from .context import get_current_job
 import time
 import random
+import sys
 
 
 def patch_pymongo(config):
@@ -10,10 +11,10 @@ def patch_pymongo(config):
     if not config["print_mongodb"] and not config["trace_io"]:
         return
 
-    # Print because we are very early and log() may not be ready yet.
-    print "Monkey-patching MongoDB methods..."
-
     from termcolor import cprint
+
+    # Print because we are very early and log() may not be ready yet.
+    cprint("Monkey-patching MongoDB methods...", "white")
 
     def gen_monkey_patch(base_object, method):
         base_method = getattr(base_object, method)
@@ -40,12 +41,13 @@ def patch_pymongo(config):
                         #"data": json.dumps(args)[0:300]  # Perf issue? All MongoDB data will get jsonified!
                     })
 
-            ret = base_method(self, *args, **kwargs)
-
-            if config["trace_io"]:
-                job = get_current_job()
-                if job:
-                    job.set_current_io(None)
+            try:
+                ret = base_method(self, *args, **kwargs)
+            finally:
+                if config["trace_io"]:
+                    job = get_current_job()
+                    if job:
+                        job.set_current_io(None)
 
             return ret
 
@@ -170,9 +172,13 @@ def patch_network_latency(seconds=0.01):
 
 def patch_io_all():
     """ Patch higher-level modules to provide insights on what is performing IO for each job. """
-    patch_io_urllib2()
+
+    patch_io_httplib()
     patch_io_redis()
     patch_io_pymongo_cursor()
+
+    # Not needed anymore: patching httplib is enough.
+    # patch_io_urllib2()
 
     #patch_io_dns()
     #patch_io_subprocess()
@@ -195,10 +201,11 @@ def patch_io_redis():
                     }
                 })
 
-            ret = _StrictRedis.execute_command(self, *args, **options)
-
-            if job:
-                job.set_current_io(None)
+            try:
+                ret = _StrictRedis.execute_command(self, *args, **options)
+            finally:
+                if job:
+                    job.set_current_io(None)
 
             return ret
 
@@ -237,19 +244,135 @@ def patch_io_urllib2():
 
             def _read(self, *args, **kwargs):
                 start()
-                data = self.fp.read(*args, **kwargs)
-                stop()
+                try:
+                    data = self.fp.read(*args, **kwargs)
+                finally:
+                    stop()
                 return data
 
         start()
-        fp = _urlopen(url, data, *args, **kwargs)
-        stop()
+        try:
+            fp = _urlopen(url, data, *args, **kwargs)
+        finally:
+            stop()
 
         return mrq_patched_socket(fp)
 
     import urllib2 as urllib2module
     if urllib2module.urlopen.__name__ != "mrq_urlopen":
         urllib2module.urlopen = mrq_urlopen
+
+
+def patch_io_httplib():
+    """ Patch the base httplib.HTTPConnection class, which is used in most HTTP libraries
+        like urllib2 or urllib3/requests. """
+
+    from termcolor import cprint
+
+    from httplib import HTTPConnection as httplibHTTPConnection
+
+    def start(method, url):
+        job = get_current_job()
+        if job:
+            job.set_current_io({
+                "type": "http.%s" % method.lower(),
+                "data": {
+                    "url": url
+                }
+            })
+
+    def stop():
+        job = get_current_job()
+        if job:
+            job.set_current_io(None)
+
+    class mrq_wrapped_socket(object):
+        """ Socket-like object that keeps track of 'trace_args' and wraps our monitoring code
+            around blocking I/O calls. """
+
+        def __init__(self, obj, traced_args):
+            self.__obj = obj
+            self.__traced_args = traced_args
+
+            def _make_patched_method(method):
+                def _patched_method(*args, **kwargs):
+                    start(*self.__traced_args)
+                    try:
+                        data = getattr(self.__obj, method)(*args, **kwargs)
+                    finally:
+                        stop()
+                    return data
+                return _patched_method
+
+            # Replace socket methods with instrumented ones
+            for method in [
+
+              # socket
+              "send", "sendall", "sendto", "recv", "recvfrom", "recvfrom_into", "recv_into",
+              "connect", "connect_ex", "close",
+
+              # fileobject
+              "read", "readline", "write", "writelines", "seek"
+            ]:
+                setattr(self, method, _make_patched_method(method))
+
+        # Forward all other calls/attributes to the base socket
+        def __getattr__(self, attr):
+            # cprint(attr, "green")
+            return getattr(self.__obj, attr)
+
+        def makefile(self, *args, **kwargs):
+            newsock = self.__obj.makefile(*args, **kwargs)
+            return mrq_wrapped_socket(newsock, self.__traced_args)
+
+    class mrq_HTTPConnection(httplibHTTPConnection):
+
+        def connect(self, *args, **kwargs):
+            start(*self._traced_args)
+            try:
+                ret = httplibHTTPConnection.connect(self, *args, **kwargs)
+            finally:
+                stop()
+            self.sock = mrq_wrapped_socket(self.sock, self._traced_args)
+
+            return ret
+
+        def request(self, method, url, body=None, headers={}):
+
+            # TODO HTTPS?
+            report_url = "http://%s%s%s" % (self.host, (":%s" % self.port) if self.port != 80 else "", url)
+
+            self._traced_args = (method, report_url)
+            res = httplibHTTPConnection.request(self, method, url, body=body, headers=headers)
+            return res
+
+    import httplib as httplibmodule
+    if httplibmodule.HTTPConnection.__name__ != "mrq_HTTPConnection":
+        httplibmodule.HTTPConnection = mrq_HTTPConnection
+
+    try:
+
+        from requests.packages.urllib3.connection import HTTPConnection as urllib3HTTPConnection
+
+        class mrq_urllib3_HTTPConnection(urllib3HTTPConnection):
+            def _prepare_conn(self, *args, **kwargs):
+                urllib3HTTPConnection._prepare_conn(self, *args, **kwargs)
+                self.sock = mrq_wrapped_socket(self.sock, self._traced_args)
+
+        import requests.packages.urllib3.connection as requestsmodule
+
+        # We must unload all the base requests modules to unset previous imports of HTTPConnection
+        for m in [x for x in sys.modules if x.startswith("requests") and x != "requests.packages.urllib3.connection"]:
+            del sys.modules[m]
+
+        if requestsmodule.HTTPConnection.__name__ != "mrq_urllib3_HTTPConnection":
+            requestsmodule.HTTPConnection = mrq_urllib3_HTTPConnection
+
+        # TODO also do this for urllib3 stock. Would be good to have factored monkey-patching code.
+
+    # requests may not be available on the system and that's OK
+    except ImportError:
+         pass
 
 
 def patch_io_pymongo_cursor():

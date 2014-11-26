@@ -55,13 +55,13 @@ def set_current_config(config):
         from mrq.monkey import patch_pymongo
         patch_pymongo(config)
 
-    if not config["no_import_patch"]:
-        from mrq.monkey import patch_import
-        patch_import()
-
     if config["trace_io"]:
         from mrq.monkey import patch_io_all
         patch_io_all()
+
+    if not config["no_import_patch"]:
+        from mrq.monkey import patch_import
+        patch_import()
 
 
 def get_current_config():

@@ -48,11 +48,20 @@ def test_current_job_inspect(worker):
     ["mongodb-insert", {"a": 41, "b": 1}, "mongodb.insert", {'collection': 'mrq.tests_inserts'}],
     ["mongodb-find", {"a": 41, "b": 1}, "mongodb.find", {'collection': 'mrq.tests_inserts'}],
     ["mongodb-count", {"a": 41, "b": 1}, "mongodb.count", {'collection': 'mrq.tests_inserts'}],
-    ["urllib2-get", {'url': 'http://localhost:20020'}, "http.get", {'url': 'http://localhost:20020'}],
+    ["urllib2-get", {'url': 'HTTPBIN/?y=z'}, "http.get", {'url': 'HTTPBIN/?y=z'}],
     ["redis-llen", {"key": "test:key"}, "redis.llen", {"key": "test:key"}],
     ["redis-lpush", {"key": "test:key"}, "redis.lpush", {"key": "test:key"}],
+
+    ["requests-get", {'url': 'HTTPBIN/?y=z'}, "http.get", {'url': 'HTTPBIN/?y=z'}],
+
 ])
-def test_current_job_trace_io(worker, p_testtype, p_testparams, p_type, p_data):
+def test_current_job_trace_io(worker, p_testtype, p_testparams, p_type, p_data, httpbin):
+
+    if "url" in p_testparams:
+        p_testparams["url"] = p_testparams["url"].replace("HTTPBIN", httpbin.url)
+
+    if "url" in p_data:
+        p_data["url"] = p_data["url"].replace("HTTPBIN", httpbin.url)
 
     report_file = "/tmp/mrq_test_worker_report.json"
 
@@ -69,7 +78,7 @@ def test_current_job_trace_io(worker, p_testtype, p_testparams, p_type, p_data):
 
     io = False
 
-    for i in range(0, 200):
+    for i in range(0, 300):
 
         # Get the worker status via the report_file. Because of the network latency we can't use
         # the HTTP admin.
@@ -82,11 +91,13 @@ def test_current_job_trace_io(worker, p_testtype, p_testparams, p_type, p_data):
                     admin_worker = {}
                 if len(admin_worker.get("jobs", [])) > 0:
                     io = admin_worker["jobs"][0].get("io")
+
                     # Don't take MRQ's IOs as regular IO
-                    if io and io["type"] == "mongodb" and io["data"]["collection"] in ["mrq.mrq_jobs", "mrq.mrq_logs"]:
-                        io = False
-                    else:
-                        break
+                    if io:
+                        if io["type"] == "mongodb" and io["data"]["collection"] in ["mrq.mrq_jobs", "mrq.mrq_logs"]:
+                            io = False
+                        else:
+                            break
 
         time.sleep(0.05)
 
@@ -98,7 +109,12 @@ def test_current_job_trace_io(worker, p_testtype, p_testparams, p_type, p_data):
 
 def test_trace_long_fetch(worker, httpbin):
 
-    worker.start(flags="--trace_io --report_interval=0.1")
+    report_file = "/tmp/mrq_test_worker_report.json"
+
+    if os.path.isfile(report_file):
+        os.remove(report_file)
+
+    worker.start(flags="--trace_io --report_interval=0.1 --report_file=%s" % report_file)
 
     worker.send_task(
         "tests.tasks.io.TestIo",
@@ -110,8 +126,12 @@ def test_trace_long_fetch(worker, httpbin):
 
     time.sleep(5)
 
+    with open(report_file, "rb") as f:
+        read = f.read()
+        admin_worker = json.loads(read)
+
     # Test the HTTP admin API
-    admin_worker = json.load(urllib2.urlopen("http://localhost:20020"))
+    # admin_worker = json.load(urllib2.urlopen("http://localhost:20020/"))
 
     assert admin_worker["jobs"][0]["io"]["type"] == "http.get"
 

@@ -45,5 +45,10 @@ class TestIo(Task):
 
             return urllib2.urlopen(params["params"]["url"], data="x=x").read()
 
+        elif params["test"] == "requests-get":
+
+            import requests
+            return requests.get(params["params"]["url"]).text
+
 
 
