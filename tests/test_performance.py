@@ -5,8 +5,8 @@ import pytest
 
 @pytest.mark.parametrize(["p_latency", "p_min", "p_max"], [
     [0, 0, 3],
-    ["0.1", 4, 20],
-    ["0.1-0.2", 4, 20]
+    ["0.05", 4, 20],
+    ["0.05-0.1", 4, 20]
 ])
 def test_network_latency(worker, p_latency, p_min, p_max):
 

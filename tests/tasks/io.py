@@ -48,7 +48,7 @@ class TestIo(Task):
         elif params["test"] == "requests-get":
 
             import requests
-            return requests.get(params["params"]["url"]).text
+            return requests.get(params["params"]["url"], verify=False).text
 
 
 

@@ -1,7 +1,30 @@
 from .context import get_current_job
 import time
 import random
-import sys
+import re
+
+
+def patch_method(base_class, method_name, method):
+
+    # Create a closure to store the old method
+    def _patched_factory(old_method):
+        def _mrq_patched_method(*args, **kwargs):
+            return method(old_method, *args, **kwargs)
+        return _mrq_patched_method
+
+    old_method = getattr(base_class, method_name)
+    setattr(base_class, method_name, _patched_factory(old_method))
+
+
+def patch_io_all():
+    """ Patch higher-level modules to provide insights on what is performing IO for each job. """
+
+    patch_io_httplib()
+    patch_io_redis()
+    patch_io_pymongo_cursor()
+
+    #patch_io_dns()
+    #patch_io_subprocess()
 
 
 def patch_pymongo(config):
@@ -113,8 +136,6 @@ def patch_import():
 def patch_network_latency(seconds=0.01):
     """ Add random latency to all I/O operations """
 
-    from socket import socket as _socket
-
     # Accept float(0.1), "0.1", "0.1-0.2"
     def sleep():
         if isinstance(seconds, float):
@@ -128,148 +149,54 @@ def patch_network_latency(seconds=0.01):
             else:
                 time.sleep(float(seconds))
 
-    class mrq_latency_socket(_socket):
-        def send(self, *args, **kwargs):
-            sleep()
-            return _socket.send(self, *args, **kwargs)
+    def _patched_method(old_method, *args, **kwargs):
+        sleep()
+        return old_method(*args, **kwargs)
 
-        def sendall(self, *args, **kwargs):
-            sleep()
-            return _socket.sendall(self, *args, **kwargs)
+    socket_methods = [
+        "send", "sendall", "sendto", "recv", "recvfrom", "recvfrom_into", "recv_into",
+        "connect", "connect_ex", "close"
+    ]
 
-        def sendto(self, *args, **kwargs):
-            sleep()
-            return _socket.sendto(self, *args, **kwargs)
+    from socket import socket as _socketmodule
+    from gevent.socket import socket as _geventmodule
+    from gevent.ssl import SSLSocket as _sslmodule
 
-        def recv(self, *args, **kwargs):
-            sleep()
-            return _socket.recv(self, *args, **kwargs)
-
-        def recvfrom(self, *args, **kwargs):
-            sleep()
-            return _socket.recvfrom(self, *args, **kwargs)
-
-        def recvfrom_into(self, *args, **kwargs):
-            sleep()
-            return _socket.recvfrom_into(self, *args, **kwargs)
-
-        def recv_into(self, *args, **kwargs):
-            sleep()
-            return _socket.recv_into(self, *args, **kwargs)
-
-        def connect(self, *args, **kwargs):
-            sleep()
-            return _socket.connect(self, *args, **kwargs)
-
-    import socket as socketmodule
-    if socketmodule.socket.__name__ != "mrq_latency_socket":
-        socketmodule.socket = mrq_latency_socket
-
-    import gevent.socket as geventmodule
-    if geventmodule.socket.__name__ != "mrq_latency_socket":
-        geventmodule.socket = mrq_latency_socket
-
-
-def patch_io_all():
-    """ Patch higher-level modules to provide insights on what is performing IO for each job. """
-
-    patch_io_httplib()
-    patch_io_redis()
-    patch_io_pymongo_cursor()
-
-    # Not needed anymore: patching httplib is enough.
-    # patch_io_urllib2()
-
-    #patch_io_dns()
-    #patch_io_subprocess()
+    for method in socket_methods:
+        patch_method(_socketmodule, method, _patched_method)
+        patch_method(_geventmodule, method, _patched_method)
+        patch_method(_sslmodule, method, _patched_method)
 
 
 def patch_io_redis():
 
-    from redis import StrictRedis as _StrictRedis
-
-    class mrq_StrictRedis(_StrictRedis):
-
-        def execute_command(self, *args, **options):
-
-            job = get_current_job()
-            if job:
-                job.set_current_io({
-                    "type": "redis.%s" % args[0].lower(),
-                    "data": {
-                        "key": args[1] if len(args) > 1 else None
-                    }
-                })
-
-            try:
-                ret = _StrictRedis.execute_command(self, *args, **options)
-            finally:
-                if job:
-                    job.set_current_io(None)
-
-            return ret
-
-    import redis as redismodule
-    if redismodule.StrictRedis.__name__ != "mrq_StrictRedis":
-        redismodule.StrictRedis = mrq_StrictRedis
-
-
-def patch_io_urllib2():
-
-    from urllib import addbase
-    from urllib2 import urlopen as _urlopen
-
-    def mrq_urlopen(url, data=None, *args, **kwargs):
+    def execute_command(old_method, self, *args, **options):
 
         job = get_current_job()
-
-        if not job:
-            return _urlopen(url, data, *args, **kwargs)
-
-        def start():
+        if job:
             job.set_current_io({
-                "type": "http.get" if data is None else "http.post",
+                "type": "redis.%s" % args[0].lower(),
                 "data": {
-                    "url": url
+                    "key": args[1] if len(args) > 1 else None
                 }
             })
 
-        def stop():
-            job.set_current_io(None)
-
-        class mrq_patched_socket(addbase):
-            def __init__(self, *args, **kwargs):
-                addbase.__init__(self, *args, **kwargs)
-                self.read = self._read
-
-            def _read(self, *args, **kwargs):
-                start()
-                try:
-                    data = self.fp.read(*args, **kwargs)
-                finally:
-                    stop()
-                return data
-
-        start()
         try:
-            fp = _urlopen(url, data, *args, **kwargs)
+            ret = old_method(self, *args, **options)
         finally:
-            stop()
+            if job:
+                job.set_current_io(None)
 
-        return mrq_patched_socket(fp)
+        return ret
 
-    import urllib2 as urllib2module
-    if urllib2module.urlopen.__name__ != "mrq_urlopen":
-        urllib2module.urlopen = mrq_urlopen
+    from redis import StrictRedis
+
+    patch_method(StrictRedis, "execute_command", execute_command)
 
 
 def patch_io_httplib():
     """ Patch the base httplib.HTTPConnection class, which is used in most HTTP libraries
         like urllib2 or urllib3/requests. """
-
-    from termcolor import cprint
-
-    from httplib import HTTPConnection as httplibHTTPConnection
 
     def start(method, url):
         job = get_current_job()
@@ -290,15 +217,21 @@ def patch_io_httplib():
         """ Socket-like object that keeps track of 'trace_args' and wraps our monitoring code
             around blocking I/O calls. """
 
-        def __init__(self, obj, traced_args):
-            self.__obj = obj
-            self.__traced_args = traced_args
+        def __init__(self, obj, parent_connection):
+            self._obj = obj
+            self._parent_connection = parent_connection
 
             def _make_patched_method(method):
                 def _patched_method(*args, **kwargs):
-                    start(*self.__traced_args)
+
+                    # In the case of HTTPS, we may connect() before having called conn.request()
+                    # For requests/urllib3, we may need to plug ourselves at the connectionpool.urlopen level
+                    if not hasattr(self._parent_connection, "_traced_args"):
+                        return getattr(self._obj, method)(*args, **kwargs)
+
+                    start(*self._parent_connection._traced_args)
                     try:
-                        data = getattr(self.__obj, method)(*args, **kwargs)
+                        data = getattr(self._obj, method)(*args, **kwargs)
                     finally:
                         stop()
                     return data
@@ -319,58 +252,68 @@ def patch_io_httplib():
         # Forward all other calls/attributes to the base socket
         def __getattr__(self, attr):
             # cprint(attr, "green")
-            return getattr(self.__obj, attr)
+            return getattr(self._obj, attr)
 
         def makefile(self, *args, **kwargs):
-            newsock = self.__obj.makefile(*args, **kwargs)
-            return mrq_wrapped_socket(newsock, self.__traced_args)
+            newsock = self._obj.makefile(*args, **kwargs)
+            return mrq_wrapped_socket(newsock, self._parent_connection)
 
-    class mrq_HTTPConnection(httplibHTTPConnection):
+    def request(old_method, self, method, url, body=None, headers={}):
 
-        def connect(self, *args, **kwargs):
+        # This is for proxy support - TODO show that in dashboard?
+        if re.search("^http(s?)\:\/\/", url):
+            report_url = url
+        else:
+            protocol = "http"
+            if hasattr(self, "key_file"):
+                protocol = "https"
+
+            report_url = "%s://%s%s%s" % (protocol, self.host, (":%s" % self.port) if self.port != 80 else "", url)
+
+        self._traced_args = (method, report_url)
+        res = old_method(self, method, url, body=body, headers=headers)
+        return res
+
+    def connect(old_method, self, *args, **kwargs):
+
+        # In the case of HTTPS, we may connect() before having called conn.request()
+        # For requests/urllib3, we may need to plug ourselves at the connectionpool.urlopen level
+        if not hasattr(self, "_traced_args"):
+            ret = old_method(self, *args, **kwargs)
+        else:
             start(*self._traced_args)
             try:
-                ret = httplibHTTPConnection.connect(self, *args, **kwargs)
+                ret = old_method(self, *args, **kwargs)
             finally:
                 stop()
-            self.sock = mrq_wrapped_socket(self.sock, self._traced_args)
+        self.sock = mrq_wrapped_socket(self.sock, self)
 
-            return ret
+        return ret
 
-        def request(self, method, url, body=None, headers={}):
+    from httplib import HTTPConnection, HTTPSConnection
 
-            # TODO HTTPS?
-            report_url = "http://%s%s%s" % (self.host, (":%s" % self.port) if self.port != 80 else "", url)
+    patch_method(HTTPConnection, "request", request)
+    patch_method(HTTPConnection, "connect", connect)
+    patch_method(HTTPSConnection, "connect", connect)
 
-            self._traced_args = (method, report_url)
-            res = httplibHTTPConnection.request(self, method, url, body=body, headers=headers)
-            return res
+    # Try to patch requests & urllib3 as they are very popular python modules.
+    try:
+        from requests.packages.urllib3.connection import HTTPConnection, UnverifiedHTTPSConnection, VerifiedHTTPSConnection
 
-    import httplib as httplibmodule
-    if httplibmodule.HTTPConnection.__name__ != "mrq_HTTPConnection":
-        httplibmodule.HTTPConnection = mrq_HTTPConnection
+        patch_method(HTTPConnection, "connect", connect)
+        patch_method(UnverifiedHTTPSConnection, "connect", connect)
+        patch_method(VerifiedHTTPSConnection, "connect", connect)
+
+    except ImportError:
+         pass
 
     try:
+        from urllib3.connection import HTTPConnection, UnverifiedHTTPSConnection, VerifiedHTTPSConnection
 
-        from requests.packages.urllib3.connection import HTTPConnection as urllib3HTTPConnection
+        patch_method(HTTPConnection, "connect", connect)
+        patch_method(UnverifiedHTTPSConnection, "connect", connect)
+        patch_method(VerifiedHTTPSConnection, "connect", connect)
 
-        class mrq_urllib3_HTTPConnection(urllib3HTTPConnection):
-            def _prepare_conn(self, *args, **kwargs):
-                urllib3HTTPConnection._prepare_conn(self, *args, **kwargs)
-                self.sock = mrq_wrapped_socket(self.sock, self._traced_args)  # pylint: disable-msg=E1101
-
-        import requests.packages.urllib3.connection as requestsmodule
-
-        # We must unload all the base requests modules to unset previous imports of HTTPConnection
-        for m in [x for x in sys.modules if x.startswith("requests") and x != "requests.packages.urllib3.connection"]:
-            del sys.modules[m]
-
-        if requestsmodule.HTTPConnection.__name__ != "mrq_urllib3_HTTPConnection":
-            requestsmodule.HTTPConnection = mrq_urllib3_HTTPConnection
-
-        # TODO also do this for urllib3 stock. Would be good to have factored monkey-patching code.
-
-    # requests may not be available on the system and that's OK
     except ImportError:
          pass
 
