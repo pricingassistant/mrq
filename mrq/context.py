@@ -1,5 +1,6 @@
 from .logger import LoggerInterface
 import gevent
+import gevent.pool
 import urlparse
 import re
 import time

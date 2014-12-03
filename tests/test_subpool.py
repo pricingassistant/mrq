@@ -6,13 +6,24 @@ import os
 import pytest
 
 
-def test_subpool_simple(worker):
+@pytest.mark.parametrize(["use_worker"], [[False], [True]])
+def test_subpool_simple(worker, use_worker):
 
-    worker.start()
+    # Check that a subpool can be used both in an outside of a Job context
+    if use_worker:
+        worker.start()
+    else:
+        from tests.tasks.general import SubPool
+
+    def run(params):
+        if use_worker:
+            return worker.send_task("tests.tasks.general.SubPool", params)
+        else:
+            return SubPool().run(params)
 
     # Check that sequential sleeps work
     start_time = time.time()
-    result = worker.send_task("tests.tasks.general.SubPool", {
+    result = run({
         "pool_size": 1, "inner_params": [1, 1]
     })
     total_time = time.time() - start_time
@@ -20,15 +31,18 @@ def test_subpool_simple(worker):
     assert result == [1, 1]
     assert total_time > 2
 
-    # Parallel sleeps
-    start_time = time.time()
-    result = worker.send_task("tests.tasks.general.SubPool", {
-        "pool_size": 20, "inner_params": [1] * 20
-    })
-    total_time = time.time() - start_time
+    # py.test doesn't use gevent so we don't get the benefits of the hub
+    if use_worker:
 
-    assert result == [1] * 20
-    assert total_time < 2
+        # Parallel sleeps
+        start_time = time.time()
+        result = run({
+            "pool_size": 20, "inner_params": [1] * 20
+        })
+        total_time = time.time() - start_time
+
+        assert result == [1] * 20
+        assert total_time < 2
 
 
 def test_subpool_exception(worker):

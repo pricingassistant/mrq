@@ -127,7 +127,8 @@ class SubPool(Task):
 
     def inner(self, x):
 
-        assert get_current_job() == self.job
+        if self.job:
+            assert get_current_job() == self.job
 
         if x == "import-large-file":
             from tests.tasks.largefile import a
