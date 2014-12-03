@@ -13,7 +13,6 @@ import gc
 from collections import defaultdict
 import traceback
 import sys
-from itertools import count as itertools_count
 
 
 class Job(object):
@@ -178,31 +177,6 @@ class Job(object):
             return jobs
         else:
             return inserted
-
-    def subpool_map(self, pool_size, func, iterable):
-        """ Starts a Gevent pool and run a map. Takes care of setting current_job and cleaning up. """
-
-        if not pool_size:
-            return [func(*args) for args in iterable]
-
-        counter = itertools_count()
-
-        def inner_func(*args):
-            next(counter)
-            set_current_job(self)
-            ret = func(*args)
-            set_current_job(None)
-            return ret
-
-        start_time = time.time()
-        pool = gevent.pool.Pool(size=pool_size)
-        ret = pool.map(inner_func, iterable)
-        pool.join(raise_error=True)
-        total_time = time.time() - start_time
-
-        log.debug("SubPool ran %s greenlets in %0.6fs" % (counter, total_time))
-
-        return ret
 
     def save_status(
             self,
@@ -402,6 +376,11 @@ class Job(object):
 
         gc.collect()
         self._memory_start = self.worker.get_memory()
+
+    def subpool_map(self, *args, **kwargs):
+        """ Deprecated! Use from mrq.context """
+        from mrq.context import subpool_map
+        return subpool_map(*args, **kwargs)
 
     def trace_memory_stop(self):
         """ Stops measuring memory consumption """

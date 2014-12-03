@@ -4,6 +4,7 @@ import urlparse
 import re
 import time
 from .utils import LazyObject
+from itertools import count as itertools_count
 
 
 # greenletid => Job object
@@ -19,10 +20,15 @@ log = LoggerInterface(None, job="current")
 
 def set_current_job(job):
     current = gevent.getcurrent()
-    _GREENLET_JOBS_REGISTRY[id(current)] = job
 
     current.__dict__["_trace_time"] = 0
     current.__dict__["_trace_switches"] = 0
+
+    if job is None:
+        if id(current) in _GREENLET_JOBS_REGISTRY:
+            del _GREENLET_JOBS_REGISTRY[id(current)]
+    else:
+        _GREENLET_JOBS_REGISTRY[id(current)] = job
 
 
 def get_current_job(greenlet_id=None):
@@ -199,3 +205,33 @@ def metric(name, incr=1, **kwargs):
     cfg = get_current_config()
     if cfg.get("metric_hook"):
         return cfg.get("metric_hook")(name, incr=incr, **kwargs)
+
+
+def subpool_map(pool_size, func, iterable):
+    """ Starts a Gevent pool and run a map. Takes care of setting current_job and cleaning up. """
+
+    if not pool_size:
+        return [func(*args) for args in iterable]
+
+    counter = itertools_count()
+
+    current_job = get_current_job()
+
+    def inner_func(*args):
+        next(counter)
+        if current_job:
+            set_current_job(current_job)
+        ret = func(*args)
+        if current_job:
+            set_current_job(None)
+        return ret
+
+    start_time = time.time()
+    pool = gevent.pool.Pool(size=pool_size)
+    ret = pool.map(inner_func, iterable)
+    pool.join(raise_error=True)
+    total_time = time.time() - start_time
+
+    log.debug("SubPool ran %s greenlets in %0.6fs" % (counter, total_time))
+
+    return ret
