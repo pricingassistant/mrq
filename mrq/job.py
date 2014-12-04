@@ -207,8 +207,11 @@ class Job(object):
             updates["queue"] = queue
         if get_current_config().get("trace_greenlets"):
             current_greenlet = gevent.getcurrent()
-            updates["time"] = current_greenlet._trace_time
-            updates["switches"] = current_greenlet._trace_switches
+
+            # TODO are we sure the current job is doing the save_status() on itself?
+            if hasattr(current_greenlet, "_trace_time"):
+                updates["time"] = current_greenlet._trace_time
+                updates["switches"] = current_greenlet._trace_switches
 
         if exception:
             trace = traceback.format_exc()
