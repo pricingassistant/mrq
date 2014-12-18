@@ -2,7 +2,14 @@
 
 ## Python
 
-MRQ has only been tested with Python 2.7+. Required external services dependencies are MongoDB >= 2.4 and Redis >= 2.6 (we use LUA scripting to boost performance and provide extra safety).
+MRQ has only been tested with Python 2.7+.
+
+Required external services dependencies are
+
+ - [MongoDB >= 2.4](http://docs.mongodb.org/manual/installation/)
+ - [Redis >= 2.6](http://redis.io/topics/quickstart)
+
+We use LUA scripting in Redis to boost performance and provide extra safety.
 
 You will need [Docker](http://docker.io) to run our unit tests. Our [Dockerfile](https://github.com/pricingassistant/mrq/blob/master/Dockerfile) is actually a good way to see a complete list of dependencies, including dev tools like graphviz for memleak images.
 

@@ -1,8 +1,7 @@
 # Configuration
 
-Check all the [available config options](mrq/config.py)
-
 For each of these values, configuration is loaded in this order by default:
+
 - Command-line arguments (`mrq-worker --redis=redis://127.0.0.1:6379`)
 - Environment variables prefixed by MRQ_ (`MRQ_REDIS=redis://127.0.0.1:6379 mrq-worker`)
 - Python variables in a config file, by default `mrq-config.py` (`REDIS="redis://127.0.0.1:6379"` in this file)
