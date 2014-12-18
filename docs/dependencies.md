@@ -13,7 +13,11 @@ We use LUA scripting in Redis to boost performance and provide extra safety.
 
 You will need [Docker](http://docker.io) to run our unit tests. Our [Dockerfile](https://github.com/pricingassistant/mrq/blob/master/Dockerfile) is actually a good way to see a complete list of dependencies, including dev tools like graphviz for memleak images.
 
-You may want to convert your logs db to a capped collection : ie. run db.runCommand({"convertToCapped": "mrq_jobs", "size": 10737418240})
+You may want to convert your logs db to a capped collection : ie. run db.
+
+```
+runCommand({"convertToCapped": "mrq_jobs", "size": 10737418240})
+```
 
 ## Javascript
 

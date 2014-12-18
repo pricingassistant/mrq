@@ -1,5 +1,4 @@
-Dashboard
-=========
+# Dashboard
 
 A strong focus was put on the tools and particularly the dashboard. After all it is what you will work with most of the time!
 
