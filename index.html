@@ -1,0 +1,205 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="MRQ">
+    <meta name="author" content="pricing assistant">
+    <link rel="icon" href="images/favicon.ico" type="image/x-icon" />
+
+    <title>MRQ - Mongo Redis Queue</title>
+
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css">
+
+    <!-- Custom styles for this template -->
+    <link href="css/jumbotron-narrow.css" rel="stylesheet">
+
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+  </head>
+
+  <body>
+
+    <div class="container">
+      <div class="header">
+        <nav>
+          <ul class="nav nav-pills pull-right">
+            <li role="presentation"><a href="#">docs</a></li>
+            <li role="presentation">
+              <a href="https://github.com/pricingassistant/mrq">github</a>
+            </li>
+            <li role="presentation">
+              <a href="https://pypi.python.org/pypi/mrq">pypi</a>
+            </li>
+          </ul>
+          <div class="clearfix"></div>
+        </nav>
+      </div>
+
+      <div class="jumbotron">
+        <h1>MR<img src="images/mrq-icon.png" /></h1>
+        <p class="lead">A simple yet powerful <br />distributed worker task queue in Python <br /><br />built with <b>Mongo</b>, <b>Redis</b> and <b>gevent</b>.</p>
+        <p>
+          <a class="btn btn-lg btn-success" href="#get-started" role="button">
+            Get Started
+          </a>
+        </p>
+        <h5 class="subtitle">
+          Current version is 0.1.5
+        </h5>
+      </div>
+
+      <div class="row marketing">
+        <div class="col-lg-10">
+          <h4>Why ?</h4>
+          <p>
+            MRQ is an opinionated task queue. It aims to be simple and beautiful like <a href="http://python-rq.org">RQ</a> while having performance close to <a href="http://celeryproject.org">Celery</a>
+          </p>
+
+          <h4>Dashboard</h4>
+          <p>
+            <h5>Queues</h5>
+            <a href="images/dashboard-queues.png">
+              <img src="images/dashboard-queues.png" />
+            </a>
+            <h5>Jobs</h5>
+            <a href="images/dashboard-jobs.png">
+              <img src="images/dashboard-jobs.png" />
+            </a>
+          </p>
+
+          <h4>Features</h4>
+          <p>
+            <dl class="dl-horizontal">
+              <dt>Simple code</dt>
+              <dd>
+                We originally switched from Celery to RQ because Celery's code was <a href="http://www.slideshare.net/sylvinus/why-and-how-pricing-assistant-migrated-from-celery-to-rq-parispy-2">incredibly complex and obscure</a>. MRQ should be as easy to understand as RQ and even easier to extend.
+              </dd>
+              <dt>Great dashboard</dt>
+              <dd>
+                Have visibility and control on everything: queued jobs, current jobs, worker status, ...
+              </dd>
+              <dt>Per-job logs</dt>
+              <dd>
+                Get the log output of each task separately in the dashboard
+              </dd>
+              <dt>Gevent worker</dt>
+              <dd>
+                IO-bound tasks can be done in parallel in the same UNIX process for maximum throughput
+              </dd>
+              <dt>Supervisord integration</dt>
+              <dd>
+                CPU-bound tasks can be split across several UNIX processes with a single command-line flag
+              </dd>
+              <dt>Job management</dt>
+              <dd>
+                You can retry, requeue, cancel jobs from the code or the dashboard.
+              </dd>
+              <dt>Performance</dt>
+              <dd>
+                Bulk job queueing, easy job profiling
+              </dd>
+              <dt>Easy configuration</dt>
+              <dd>
+                Every aspect of MRQ is configurable through command-line flags or a configuration file
+              </dd>
+              <dt>Job routing</dt>
+              <dd>
+                Like Celery, jobs can have default queues, timeout and ttl values.
+              </dd>
+              <dt>Thorough testing</dt>
+              <dd>
+                Edge-cases like worker interrupts, Redis failures, ... are tested inside a Docker container.
+              </dd>
+              <dt>Scheduler</dt>
+              <dd>
+                Schedule tasks by interval or by time of the day
+              </dd>
+              <dt>Greenlet tracing</dt>
+              <dd>
+                See how much time was spent in each greenlet to debug CPU-intensive jobs.
+              </dd>
+              <dt>Memory leak debugger</dt>
+              <dd>
+                Track down jobs leaking memory and find the leaks with objgraph.
+              </dd>
+            </dl>
+          </p>
+
+          <h4 id="get-started">Get Started</h4>
+          <p>
+            Install: <code>pip install mrq</code><br/>
+            Write a simple fetch task in <code>tasks.py</code>
+            <pre>from mrq.task import Task
+import urllib2
+
+class Fetch(Task):
+    def run(self, params):
+
+        f = urllib2.urlopen(params.get("url"))
+        t = f.read()
+        f.close()
+
+        return len(t)</pre>
+
+            You can now run it with <code>mrq-run tasks.Fetch url http://www.google.com</code> <br />
+
+            You can also enqueue a few tasks with<br />
+            <code>mrq-run --async --queue fetches tasks.Fetch url http://www.google.com</code><br />
+            <code>mrq-run --async --queue fetches tasks.Fetch url http://www.yahoo.com</code><br />
+            <code>mrq-run --async --queue fetches tasks.Fetch url http://www.wordpress.com</code><br />
+            <br />
+            Now start the dasbhoard with <code>mrq-dashboard &</code> and go check your newly created queue and job on <a href="http://localhost:5555">localhost:5555</a><br />
+
+            Instanciate a worker with <code>mrq-worker --gevent 10 fetches</code> and you can follow it as it executes all the enqueued jobs thanks to the dashboard<br />
+          </p>
+
+        </div>
+      </div>
+
+      <footer class="footer">
+        <ul class="list-inline">
+          <li class="pull-right">
+            <iframe
+              src="http://ghbtns.com/github-btn.html?user=pricingassistant&repo=mrq&type=fork&count=true"
+              allowtransparency="true"
+              frameborder="0"
+              scrolling="0"
+              width="80"
+              height="25">
+            </iframe>
+          </li>
+          <li class="pull-right">
+            <iframe
+              src="http://ghbtns.com/github-btn.html?user=pricingassistant&repo=mrq&type=watch&count=true"
+              allowtransparency="true"
+              frameborder="0"
+              scrolling="0"
+              width="100"
+              height="25">
+            </iframe>
+          </li>
+          <li class="pull-right">
+            <a href="https://pypi.python.org/pypi/mrq">pypi package</a>
+          </li>
+          <li>
+            <p>
+              built by
+              <a href="http://www.pricingassistant.com">
+                Pricing Assistant
+              </a>
+            </p>
+          </li>
+        </ul>
+      </footer>
+
+    </div> <!-- /container -->
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/js/bootstrap.min.js"></script>
+  </body>
+</html>

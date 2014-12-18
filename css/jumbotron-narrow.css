@@ -1,0 +1,55 @@
+
+/* Customize container */
+@media (min-width: 768px) {
+  .container {
+    max-width: 730px;
+  }
+}
+
+
+.jumbotron{
+  text-align: center;
+  background-color: transparent;
+  border: 1px solid #000;
+}
+.jumbotron h1{
+  color: black;
+  font-weight: 900;
+  font-size:100px;
+}
+.jumbotron img{
+  width: 84px;
+  height: 94px;
+  margin-top: -12px;
+}
+.jumbotron a.btn{
+  background-color: #00c;
+  border: 1px solid transparent;
+}
+.jumbotron a.btn:hover{
+  background-color: transparent;
+  border-color: #00c;
+  color: #00c;
+}
+
+
+.marketing img{
+  display: block;
+  border: 1px solid #ccc;
+  width: 100%;
+}
+.marketing p{
+  margin-bottom: 20px;
+}
+
+nav{
+  padding: 5px;
+}
+nav .nav-pills li a{
+  padding: 8px 10px;
+  border: 1px solid transparent;
+}
+nav .nav-pills li a:hover{
+  border: 1px solid black;
+  background-color: transparent;
+}
