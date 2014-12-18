@@ -12,3 +12,5 @@ requests==2.4.3
 # https://github.com/kevin1024/pytest-httpbin/issues/9
 #
 # pytest-httpbin==0.0.3
+
+mkdocs==0.11.1
