@@ -45,7 +45,7 @@
         <h1>MR<img src="images/mrq-icon.png" /></h1>
         <p class="lead">A simple yet powerful <br />distributed worker task queue in Python <br /><br />built with <b>Mongo</b>, <b>Redis</b> and <b>gevent</b>.</p>
         <p>
-          <a class="btn btn-lg btn-success" href="#get-started" role="button">
+          <a class="btn btn-lg btn-success" href="http://mrq.readthedocs.org/en/latest/get-started" role="button">
             Get Started
           </a>
         </p>
@@ -54,112 +54,115 @@
         </h5>
       </div>
 
-      <div class="row marketing">
-        <div class="col-lg-10">
-          <h4>Why ?</h4>
-          <p>
-            MRQ is an opinionated task queue. It aims to be simple and beautiful like <a href="http://python-rq.org">RQ</a> while having performance close to <a href="http://celeryproject.org">Celery</a>
-          </p>
-
-          <h4>Dashboard</h4>
-          <p>
-            <h5>Queues</h5>
-            <a href="images/dashboard-queues.png">
-              <img src="images/dashboard-queues.png" />
-            </a>
-            <h5>Jobs</h5>
-            <a href="images/dashboard-jobs.png">
-              <img src="images/dashboard-jobs.png" />
-            </a>
-          </p>
-
-          <h4>Features</h4>
-          <p>
-            <dl class="dl-horizontal">
-              <dt>Simple code</dt>
-              <dd>
-                We originally switched from Celery to RQ because Celery's code was <a href="http://www.slideshare.net/sylvinus/why-and-how-pricing-assistant-migrated-from-celery-to-rq-parispy-2">incredibly complex and obscure</a>. MRQ should be as easy to understand as RQ and even easier to extend.
-              </dd>
-              <dt>Great dashboard</dt>
-              <dd>
-                Have visibility and control on everything: queued jobs, current jobs, worker status, ...
-              </dd>
-              <dt>Per-job logs</dt>
-              <dd>
-                Get the log output of each task separately in the dashboard
-              </dd>
-              <dt>Gevent worker</dt>
-              <dd>
-                IO-bound tasks can be done in parallel in the same UNIX process for maximum throughput
-              </dd>
-              <dt>Supervisord integration</dt>
-              <dd>
-                CPU-bound tasks can be split across several UNIX processes with a single command-line flag
-              </dd>
-              <dt>Job management</dt>
-              <dd>
-                You can retry, requeue, cancel jobs from the code or the dashboard.
-              </dd>
-              <dt>Performance</dt>
-              <dd>
-                Bulk job queueing, easy job profiling
-              </dd>
-              <dt>Easy configuration</dt>
-              <dd>
-                Every aspect of MRQ is configurable through command-line flags or a configuration file
-              </dd>
-              <dt>Job routing</dt>
-              <dd>
-                Like Celery, jobs can have default queues, timeout and ttl values.
-              </dd>
-              <dt>Thorough testing</dt>
-              <dd>
-                Edge-cases like worker interrupts, Redis failures, ... are tested inside a Docker container.
-              </dd>
-              <dt>Scheduler</dt>
-              <dd>
-                Schedule tasks by interval or by time of the day
-              </dd>
-              <dt>Greenlet tracing</dt>
-              <dd>
-                See how much time was spent in each greenlet to debug CPU-intensive jobs.
-              </dd>
-              <dt>Memory leak debugger</dt>
-              <dd>
-                Track down jobs leaking memory and find the leaks with objgraph.
-              </dd>
-            </dl>
-          </p>
-
-          <h4 id="get-started">Get Started</h4>
-          <p>
-            Install: <code>pip install mrq</code><br/>
-            Write a simple fetch task in <code>tasks.py</code>
-            <pre>from mrq.task import Task
+      <div class="row marketing"><h1>Intro</h1>
+<p><a href="http://pricingassistant.github.io/mrq">MRQ</a> is a distributed task queue for python built on top of mongo, redis and gevent.</p>
+<p>Full documentation is available on <a href="http://mrq.readthedocs.org/en/latest/">readthedocs</a></p>
+<p>/!\ MRQ is not yet ready for public use. Soon!</p>
+<h1>Why?</h1>
+<p>MRQ is an opinionated task queue. It aims to be simple and beautiful like <a href="http://python-rq.org">RQ</a> while having performances close to <a href="http://celeryproject.org">Celery</a></p>
+<p>MRQ was first developed at <a href="http://pricingassistant.com">Pricing Assistant</a> and its initial feature set matches the needs of worker queues with heterogenous jobs (IO-bound &amp; CPU-bound, lots of small tasks &amp; a few large ones).</p>
+<h1>Main Features</h1>
+<ul>
+<li><strong>Simple code:</strong> We originally switched from Celery to RQ because Celery's code was incredibly complex and obscure (<a href="http://www.slideshare.net/sylvinus/why-and-how-pricing-assistant-migrated-from-celery-to-rq-parispy-2">Slides</a>). MRQ should be as easy to understand as RQ and even easier to extend.</li>
+<li><strong>Great <a href="http://mrq.readthedocs.org/en/latest/dashboard/">dashboard</a>:</strong> Have visibility and control on everything: queued jobs, current jobs, worker status, ...</li>
+<li><strong>Per-job logs:</strong> Get the log output of each task separately in the dashboard</li>
+<li><strong>Gevent worker:</strong> IO-bound tasks can be done in parallel in the same UNIX process for maximum throughput</li>
+<li><strong>Supervisord integration:</strong> CPU-bound tasks can be split across several UNIX processes with a single command-line flag</li>
+<li><strong>Job management:</strong> You can retry, requeue, cancel jobs from the code or the dashboard.</li>
+<li><strong>Performance:</strong> Bulk job queueing, easy job profiling</li>
+<li><strong>Easy <a href="http://mrq.readthedocs.org/en/latest/configuration">configuration</a>:</strong> Every aspect of MRQ is configurable through command-line flags or a configuration file</li>
+<li><strong>Job routing:</strong> Like Celery, jobs can have default queues, timeout and ttl values.</li>
+<li><strong>Thorough <a href="http://mrq.readthedocs.org/en/latest/tests">testing</a>:</strong> Edge-cases like worker interrupts, Redis failures, ... are tested inside a Docker container.</li>
+<li><strong>Builtin scheduler:</strong> Schedule tasks by interval or by time of the day</li>
+<li><strong>Greenlet tracing:</strong> See how much time was spent in each greenlet to debug CPU-intensive jobs.</li>
+<li><strong>Integrated memory leak debugger:</strong> Track down jobs leaking memory and find the leaks with objgraph.</li>
+</ul>
+<h1>Dashboard</h1>
+<p>A strong focus was put on the tools and particularly the dashboard. After all it is what you will work with most of the time!</p>
+<p><img src="http://i.imgur.com/H2nsgq2.png" alt="Queues view"></p>
+<p><img src="http://i.imgur.com/SNsYhuQ.png" alt="Jobs view"></p>
+<p>There are too many features on the dashboard to list, but the goal is to have complete visibility and control over what your workers are doing!</p>
+<h1>Get started</h1>
+<ul>
+<li>Make sure you have installed the <a href="https://mrq.readthedocs.org/en/latest/dependencies/">dependencies</a> : Redis and Mongo</li>
+<li>Install MRQ with <code>pip install mrq</code></li>
+<li>Start a mongo server with <code>mongod &amp;</code></li>
+<li>Start a redis server with <code>redis-server &amp;</code></li>
+</ul>
+<p>Create a sample project and write a simple task :</p>
+<pre><code>  $ mkdir test-mrq &amp;&amp; cd test-mrq
+  $ touch __init__.py
+  $ vim tasks.py
+</code></pre>
+<pre><code>from mrq.task import Task
 import urllib2
 
 class Fetch(Task):
     def run(self, params):
-
         f = urllib2.urlopen(params.get("url"))
         t = f.read()
         f.close()
+        return len(t)
+</code></pre>
+<p>You can now run it using <code>mrq-run</code> :</p>
+<pre><code>$ mrq-run tasks.Fetch url http://www.google.com
 
-        return len(t)</pre>
+2014-12-18 15:44:37.869029 [DEBUG] mongodb_jobs: Connecting to MongoDB at 127.0.0.1:27017/mrq...
+2014-12-18 15:44:37.880115 [DEBUG] mongodb_jobs: ... connected.
+2014-12-18 15:44:37.880305 [DEBUG] Starting tasks.Fetch({'url': 'http://www.google.com'})
+2014-12-18 15:44:38.158572 [DEBUG] Job None success: 0.278229s total
+17655
+</code></pre>
+<p>You can also enqueue a few tasks with</p>
+<pre><code>$ mrq-run --async --queue fetches tasks.Fetch url http://www.google.com &amp;&amp;
+  mrq-run --async --queue fetches tasks.Fetch url http://www.yahoo.com &amp;&amp;
+  mrq-run --async --queue fetches tasks.Fetch url http://www.wordpress.com
 
-            You can now run it with <code>mrq-run tasks.Fetch url http://www.google.com</code> <br />
+2014-12-18 15:49:05.688627 [DEBUG] mongodb_jobs: Connecting to MongoDB at 127.0.0.1:27017/mrq...
+2014-12-18 15:49:05.705400 [DEBUG] mongodb_jobs: ... connected.
+2014-12-18 15:49:05.729364 [INFO] redis: Connecting to Redis at 127.0.0.1...
+5492f771520d1887bfdf4b0f
+2014-12-18 15:49:05.957912 [DEBUG] mongodb_jobs: Connecting to MongoDB at 127.0.0.1:27017/mrq...
+2014-12-18 15:49:05.967419 [DEBUG] mongodb_jobs: ... connected.
+2014-12-18 15:49:05.983925 [INFO] redis: Connecting to Redis at 127.0.0.1...
+5492f771520d1887c2d7d2db
+2014-12-18 15:49:06.182351 [DEBUG] mongodb_jobs: Connecting to MongoDB at 127.0.0.1:27017/mrq...
+2014-12-18 15:49:06.193314 [DEBUG] mongodb_jobs: ... connected.
+2014-12-18 15:49:06.209336 [INFO] redis: Connecting to Redis at 127.0.0.1...
+5492f772520d1887c5b32881
+</code></pre>
+<p>Now start the dasbhoard with <code>mrq-dashboard &amp;</code> and go check your newly created queue and job on <a href="http://localhost:5555/#jobs">localhost:5555</a></p>
+<p>Instanciate a worker with <code>mrq-worker</code> and you can follow it on the dashboard as it executes in parallel all the enqueued jobs</p>
+<pre><code>$ mrq-worker --gevent 10 fetches
 
-            You can also enqueue a few tasks with<br />
-            <code>mrq-run --async --queue fetches tasks.Fetch url http://www.google.com</code><br />
-            <code>mrq-run --async --queue fetches tasks.Fetch url http://www.yahoo.com</code><br />
-            <code>mrq-run --async --queue fetches tasks.Fetch url http://www.wordpress.com</code><br />
-            <br />
-            Now start the dasbhoard with <code>mrq-dashboard &</code> and go check your newly created queue and job on <a href="http://localhost:5555">localhost:5555</a><br />
-
-            Instanciate a worker with <code>mrq-worker --gevent 10 fetches</code> and you can follow it as it executes all the enqueued jobs thanks to the dashboard<br />
-          </p>
-
-        </div>
+2014-12-18 15:52:57.362209 [INFO] Starting Gevent pool with 10 worker greenlets (+ report, logs, adminhttp)
+2014-12-18 15:52:57.388033 [INFO] redis: Connecting to Redis at 127.0.0.1...
+2014-12-18 15:52:57.389488 [DEBUG] mongodb_jobs: Connecting to MongoDB at 127.0.0.1:27017/mrq...
+2014-12-18 15:52:57.390996 [DEBUG] mongodb_jobs: ... connected.
+2014-12-18 15:52:57.391336 [DEBUG] mongodb_logs: Connecting to MongoDB at 127.0.0.1:27017/mrq...
+2014-12-18 15:52:57.392430 [DEBUG] mongodb_logs: ... connected.
+2014-12-18 15:52:57.523329 [INFO] Fetching 10 jobs from ['fetches']
+2014-12-18 15:52:57.537570 [DEBUG] Starting tasks.Fetch({u'url': u'http://www.google.com'})
+2014-12-18 15:52:57.567311 [DEBUG] Starting tasks.Fetch({u'url': u'http://www.google.com'})
+2014-12-18 15:52:57.567747 [DEBUG] Starting tasks.Fetch({u'url': u'http://www.yahoo.com'})
+2014-12-18 15:52:57.568080 [DEBUG] Starting tasks.Fetch({u'url': u'http://www.wordpress.com'})
+2014-12-18 15:52:57.798167 [INFO] Fetching 6 jobs from ['fetches']
+2014-12-18 15:52:58.432574 [INFO] Fetching 6 jobs from ['fetches']
+2014-12-18 15:52:58.670492 [DEBUG] Job 5492f771520d1887bfdf4b0f success: 1.135268s total
+2014-12-18 15:52:59.344227 [DEBUG] Job 5492f74b520d1887a38dd7c8 success: 1.816439s total
+2014-12-18 15:52:59.912086 [INFO] Fetching 8 jobs from ['fetches']
+2014-12-18 15:53:00.685727 [DEBUG] Job 5492f772520d1887c5b32881 success: 3.149119s total
+2014-12-18 15:53:01.578981 [INFO] Fetching 9 jobs from ['fetches']
+2014-12-18 15:53:01.897873 [DEBUG] Job 5492f771520d1887c2d7d2db success: 4.361895s total
+2014-12-18 15:53:03.415555 [INFO] Fetching 10 jobs from ['fetches']
+</code></pre>
+</div><!-- row marketing -->
+      <div class="row marketing">
+        <h1>More</h1>
+        <p>
+          Full documentation is available on
+          <a href="http://mrq.readthedocs.org/en/latest/">readthedocs</a>
+        </p>
       </div>
 
       <footer class="footer">
