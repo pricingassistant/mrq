@@ -1,14 +1,12 @@
-from setuptools import setup, find_packages
+from setuptools import setup  # , find_packages
 import os
-from pip.req import parse_requirements
 
 
 def get_requirements():
     reqs = []
     for filename in ["requirements-base.txt", "requirements-dashboard.txt", "requirements-setuptools.txt"]:
-        # parse_requirements() returns generator of pip.req.InstallRequirement objects
-        install_reqs = parse_requirements(filename)
-        reqs += [str(ir.req) for ir in install_reqs]
+        with open(filename, "r") as f:
+            reqs += [x.strip() for x in f.readlines() if x.strip() and not x.strip().startswith("#")]
     return reqs
 
 
@@ -25,13 +23,13 @@ setup(
     include_package_data=True,
     packages=['mrq', 'mrq.basetasks', 'mrq.bin', 'mrq.dashboard'],  # find_packages(exclude=['tests', 'tests.tasks']),
     version=get_version(),
-    description="Mongo Redis Queue",
+    description="A simple yet powerful distributed worker task queue in Python",
     author="Pricing Assistant",
     license='MIT',
     author_email="contact@pricingassistant.com",
     url="http://github.com/pricingassistant/mrq",
     # download_url="http://chardet.feedparser.org/download/python3-chardet-1.0.1.tgz",
-    keywords=["worker", "task", "distributed", "queue", "asynchronous"],
+    keywords=["worker", "task", "distributed", "queue", "asynchronous", "redis", "mongodb", "job", "processing"],
     platforms='any',
     entry_points={
         'console_scripts': [
