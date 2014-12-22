@@ -1,8 +1,5 @@
-from bson import ObjectId
-import urllib2
 import time
 import pytest
-import datetime
 
 
 # We want to test that launching the scheduler several times queues tasks
@@ -73,13 +70,13 @@ def test_scheduler_dailytime(worker, p_flags):
     assert collection.find().count() == 0
 
     # It should be done a first time immediately
-    time.sleep(2)
-    assert collection.find().count() == 1
+    time.sleep(3)
+    assert collection.find().count() == 2
 
     # Then a second time once the dailytime passes
     time.sleep(7)
-    assert collection.find().count() == 2
+    assert collection.find().count() == 4
 
     # Nothing more should happen today
     time.sleep(4)
-    assert collection.find().count() == 2
+    assert collection.find().count() == 4
