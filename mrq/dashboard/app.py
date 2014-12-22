@@ -132,7 +132,7 @@ def build_api_datatables_query(req):
 
                 for key in params_dict.keys():
                     query["params.%s" % key] = params_dict[key]
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-except
                 print "Error will converting form JSON: %s" % e
 
     return query
@@ -166,7 +166,8 @@ def api_datatables(unit):
             }
 
             if queue.is_sorted:
-                q["graph_config"] = cfg.get("raw_queues", {}).get(name, {}).get("dashboard_graph", lambda: {
+                raw_config = cfg.get("raw_queues", {}).get(name, {})
+                q["graph_config"] = raw_config.get("dashboard_graph", lambda: {
                     "start": time.time() - (7 * 24 * 3600),
                     "stop": time.time() + (7 * 24 * 3600),
                     "slices": 30

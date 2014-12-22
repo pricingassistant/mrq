@@ -61,7 +61,8 @@ def patch_pymongo(config):
                         "data": {
                             "collection": self.full_name
                         }
-                        #"data": json.dumps(args)[0:300]  # Perf issue? All MongoDB data will get jsonified!
+                        # Perf issue? All MongoDB data will get jsonified!
+                        #"data": json.dumps(args)[0:300]
                     })
 
             try:
@@ -87,7 +88,7 @@ def patch_pymongo(config):
     # MongoKit completely replaces the code from PyMongo's find() function, so we
     # need to monkey-patch that as well.
     try:
-        from mongokit.collection import Collection as MongoKitCollection
+        from mongokit.collection import Collection as MongoKitCollection  # pylint: disable=import-error
         for method in ["find"]:
             if getattr(MongoKitCollection, method).__name__ != "mrq_monkey_patched":
                 setattr(MongoKitCollection, method, gen_monkey_patch(MongoKitCollection, method))
@@ -141,6 +142,7 @@ def patch_network_latency(seconds=0.01):
         if isinstance(seconds, float):
             time.sleep(seconds)
         elif isinstance(seconds, basestring):
+            # pylint: disable=maybe-no-member
             if "-" in seconds:
                 time.sleep(random.uniform(
                     float(seconds.split("-")[0]),
@@ -198,6 +200,8 @@ def patch_io_httplib():
     """ Patch the base httplib.HTTPConnection class, which is used in most HTTP libraries
         like urllib2 or urllib3/requests. """
 
+    # pylint: disable=import-error
+
     def start(method, url):
         job = get_current_job()
         if job:
@@ -225,11 +229,12 @@ def patch_io_httplib():
                 def _patched_method(*args, **kwargs):
 
                     # In the case of HTTPS, we may connect() before having called conn.request()
-                    # For requests/urllib3, we may need to plug ourselves at the connectionpool.urlopen level
+                    # For requests/urllib3, we may need to plug ourselves at the
+                    # connectionpool.urlopen level
                     if not hasattr(self._parent_connection, "_traced_args"):
                         return getattr(self._obj, method)(*args, **kwargs)
 
-                    start(*self._parent_connection._traced_args)
+                    start(*self._parent_connection._traced_args)  # pylint: disable=protected-access
                     try:
                         data = getattr(self._obj, method)(*args, **kwargs)
                     finally:
@@ -258,19 +263,27 @@ def patch_io_httplib():
             newsock = self._obj.makefile(*args, **kwargs)
             return mrq_wrapped_socket(newsock, self._parent_connection)
 
-    def request(old_method, self, method, url, body=None, headers={}):
+    def request(old_method, self, method, url, body=None, headers=None):
+
+        if headers is None:
+            headers = {}
 
         # This is for proxy support - TODO show that in dashboard?
-        if re.search("^http(s?)\:\/\/", url):
+        if re.search(r"^http(s?)\:\/\/", url):
             report_url = url
         else:
             protocol = "http"
             if hasattr(self, "key_file"):
                 protocol = "https"
 
-            report_url = "%s://%s%s%s" % (protocol, self.host, (":%s" % self.port) if self.port != 80 else "", url)
+            report_url = "%s://%s%s%s" % (
+                protocol,
+                self.host,
+                (":%s" % self.port) if self.port != 80 else "",
+                url
+            )
 
-        self._traced_args = (method, report_url)
+        self._traced_args = (method, report_url)  # pylint: disable=protected-access
         res = old_method(self, method, url, body=body, headers=headers)
         return res
 
@@ -281,7 +294,7 @@ def patch_io_httplib():
         if not hasattr(self, "_traced_args"):
             ret = old_method(self, *args, **kwargs)
         else:
-            start(*self._traced_args)
+            start(*self._traced_args)  # pylint: disable=protected-access
             try:
                 ret = old_method(self, *args, **kwargs)
             finally:
@@ -298,24 +311,32 @@ def patch_io_httplib():
 
     # Try to patch requests & urllib3 as they are very popular python modules.
     try:
-        from requests.packages.urllib3.connection import HTTPConnection, UnverifiedHTTPSConnection, VerifiedHTTPSConnection
+        from requests.packages.urllib3.connection import (
+            HTTPConnection,
+            UnverifiedHTTPSConnection,
+            VerifiedHTTPSConnection
+        )
 
         patch_method(HTTPConnection, "connect", connect)
         patch_method(UnverifiedHTTPSConnection, "connect", connect)
         patch_method(VerifiedHTTPSConnection, "connect", connect)
 
     except ImportError:
-         pass
+        pass
 
     try:
-        from urllib3.connection import HTTPConnection, UnverifiedHTTPSConnection, VerifiedHTTPSConnection
+        from urllib3.connection import (
+            HTTPConnection,
+            UnverifiedHTTPSConnection,
+            VerifiedHTTPSConnection
+        )
 
         patch_method(HTTPConnection, "connect", connect)
         patch_method(UnverifiedHTTPSConnection, "connect", connect)
         patch_method(VerifiedHTTPSConnection, "connect", connect)
 
     except ImportError:
-         pass
+        pass
 
 
 def patch_io_pymongo_cursor():
@@ -332,20 +353,20 @@ def patch_io_pymongo_cursor():
             if job:
 
                 subtype = "find"
-                collection = self._Cursor__collection.name  # pylint: disable-msg=E1101
+                collection = self._Cursor__collection.name  # pylint: disable=no-member
 
                 if collection == "$cmd":
-                    items = self._Cursor__spec.items()  # pylint: disable-msg=E1101
+                    items = self._Cursor__spec.items()  # pylint: disable=no-member
                     if len(items) > 0:
                         subtype, collection = items[0]
 
                 job.set_current_io({
                     "type": "mongodb.%s" % subtype,
                     "data": {
-                        "collection": "%s.%s" % (self._Cursor__collection.database.name, collection)  # pylint: disable-msg=E1101
+                        "collection": "%s.%s" % (self._Cursor__collection.database.name, collection)  # pylint: disable=no-member
                     }
                 })
-            ret = Cursor._Cursor__send_message(self, *args, **kwargs)  # pylint: disable-msg=E1101
+            ret = Cursor._Cursor__send_message(self, *args, **kwargs)  # pylint: disable=no-member
 
             if job:
                 job.set_current_io(None)

@@ -9,7 +9,7 @@ from mrq.context import get_current_config
 
 class MongoJsonEncoder(json.JSONEncoder):
 
-    def default(self, obj):  # pylint: disable-msg=E0202
+    def default(self, obj):  # pylint: disable=E0202
         if isinstance(obj, (datetime.datetime, datetime.date)):
             return obj.isoformat()
         elif isinstance(obj, ObjectId):

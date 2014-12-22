@@ -5,7 +5,7 @@ import time
 from .exceptions import RetryInterrupt, CancelInterrupt
 from .utils import load_class_by_path
 from .queue import Queue
-from .context import get_current_worker, log, connections, get_current_config, set_current_job, metric
+from .context import get_current_worker, log, connections, get_current_config, metric
 import gevent
 import objgraph
 import random
@@ -151,7 +151,7 @@ class Job(object):
             self.saved = True
 
     @classmethod
-    def insert(self, jobs_data, queue=None, return_jobs=True, w=1):
+    def insert(cls, jobs_data, queue=None, return_jobs=True, w=1):
         """ Insert a job into MongoDB """
 
         now = datetime.datetime.utcnow()
@@ -168,7 +168,7 @@ class Job(object):
         if return_jobs:
             jobs = []
             for data in jobs_data:
-                job = self(data["_id"], queue=queue)
+                job = cls(data["_id"], queue=queue)
                 job.set_data(data)
                 if data["status"] == "started":
                     job.datestarted = data["datestarted"]
@@ -210,6 +210,7 @@ class Job(object):
 
             # TODO are we sure the current job is doing the save_status() on itself?
             if hasattr(current_greenlet, "_trace_time"):
+                # pylint: disable=protected-access
                 updates["time"] = current_greenlet._trace_time
                 updates["switches"] = current_greenlet._trace_switches
 
@@ -310,9 +311,12 @@ class Job(object):
             # This does cause a performance overhead. Instead, we should print the
             # last timing directly from the trace() function in context?
 
+            # pylint: disable=protected-access
+
             gevent.sleep(0)
             current_greenlet = gevent.getcurrent()
             t = (datetime.datetime.utcnow() - self.datestarted).total_seconds()
+
             log.debug(
                 "Job %s success: %0.6fs total, %0.6fs in greenlet, %s switches" %
                 (self.id,
@@ -336,7 +340,7 @@ class Job(object):
         if timeout:
             end_time = time.time() + timeout
 
-        while (end_time is None or time.time() < end_time):
+        while end_time is None or time.time() < end_time:
 
             job_data = self.collection.find_one({
                 "_id": ObjectId(self.id),
@@ -356,6 +360,9 @@ class Job(object):
             "Waited for job result for %ss seconds, timeout." % timeout)
 
     def set_current_io(self, io_data):
+
+        # pylint: disable=protected-access
+
         if io_data is None:
             if not self._current_io:
                 return
@@ -379,11 +386,6 @@ class Job(object):
 
         gc.collect()
         self._memory_start = self.worker.get_memory()
-
-    def subpool_map(self, *args, **kwargs):
-        """ Deprecated! Use from mrq.context """
-        from mrq.context import subpool_map
-        return subpool_map(*args, **kwargs)
 
     def trace_memory_stop(self):
         """ Stops measuring memory consumption """

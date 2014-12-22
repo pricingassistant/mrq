@@ -1,5 +1,5 @@
 from .utils import load_class_by_path, group_iter
-from .context import connections, get_current_config, log, metric
+from .context import connections, get_current_config, metric
 from .redishelpers import redis_zaddbyscore, redis_zpopbyscore, redis_lpopsafe
 from .redishelpers import redis_group_command
 import time
@@ -46,7 +46,7 @@ class Queue(object):
         return "%s:q:%s" % (get_current_config()["redis_prefix"], self.id)
 
     @classmethod
-    def redis_key_started(self):
+    def redis_key_started(cls):
         """ Returns the global redis key used to store started job ids """
         return "%s:s:started" % get_current_config()["redis_prefix"]
 
@@ -281,11 +281,10 @@ class Queue(object):
 
                 current_time = time.time()
 
-                # When we have a pushback_seconds argument, we never pop items from the queue, instead
-                # we push them back by an amount of time so that they don't get dequeued again until
+                # When we have a pushback_seconds argument, we never pop items from
+                # the queue, instead we push them back by an amount of time so
+                # that they don't get dequeued again until
                 # the task finishes.
-
-                # TODO add reverse queue support
 
                 pushback_time = current_time + float(queue_config.get("pushback_seconds") or 0)
                 if pushback_time > current_time:
@@ -428,8 +427,8 @@ def send_tasks(path, params_list, queue=None, sync=False, batch_size=1000):
         } for params in params_group], w=1, return_jobs=False)
 
         # Between these 2 calls, a task can be inserted in MongoDB but not queued in Redis.
-        # This is the same as dequeueing a task from Redis and being stopped before updating the "started"
-        # flag in MongoDB.
+        # This is the same as dequeueing a task from Redis and being stopped before updating
+        # the "started" flag in MongoDB.
 
         queue_obj.enqueue_job_ids([str(x) for x in job_ids])
 

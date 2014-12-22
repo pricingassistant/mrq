@@ -1,33 +1,37 @@
 from .context import log
 from .queue import send_task
 import datetime
-import json
+import ujson as json
+
+
+def _hash_task(task):
+    """ Returns a unique hash for identify a task and its params """
+
+    params = task.get("params")
+    if params:
+        params = json.dumps(sorted(task["params"].items(), key=lambda x: x[0]))  # pylint: disable=no-member
+
+    full = [str(task.get(x)) for x in ["path", "interval", "dailytime", "queue"]]
+
+    print full.extend([str(params)])
+    return " ".join(full)
 
 
 class Scheduler(object):
 
     def __init__(self, collection):
         self.collection = collection
+        self.all_tasks = []
 
         self.refresh()
 
     def refresh(self):
         self.all_tasks = list(self.collection.find())
 
-    def hash_task(self, task):
-        params = task.get("params")
-        if params:
-          params = json.dumps(sorted(task["params"].items(), key=lambda x: x[0]))
-
-        full = [str(task.get(x)) for x in ["path", "interval", "dailytime", "queue"]]
-
-        print full.extend([str(params)])
-        return " ".join(full)
-
     def sync_tasks(self, tasks):
         """ Performs the first sync of a list of tasks, often defined in the config file. """
 
-        tasks_by_hash = {self.hash_task(t): t for t in tasks}
+        tasks_by_hash = {_hash_task(t): t for t in tasks}
 
         for task in self.all_tasks:
             if tasks_by_hash.get(task["hash"]):
@@ -40,7 +44,8 @@ class Scheduler(object):
             task["hash"] = h
             task["datelastqueued"] = datetime.datetime.fromtimestamp(0)
             if task.get("dailytime"):
-                # Because MongoDB can store datetimes but not times, we add today's date to the dailytime.
+                # Because MongoDB can store datetimes but not times,
+                # we add today's date to the dailytime.
                 # The date part will be discarded in check()
                 task["dailytime"] = datetime.datetime.combine(
                     datetime.datetime.utcnow(), task["dailytime"])
@@ -88,8 +93,8 @@ class Scheduler(object):
                         adjusted_datelastqueued = datetime.datetime.combine(
                             task.get("datelastqueued").date(), dailytime)
 
-                    # We do find_and_modify and not update() because several check() may be happening
-                    # at the same time.
+                    # We do find_and_modify and not update() because several check()
+                    # may be happening at the same time.
                     self.collection.find_and_modify(
                         {
                             "_id": task["_id"],

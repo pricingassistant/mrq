@@ -1,3 +1,8 @@
 
 [FORMAT]
 indent-string='    '
+max-line-length=100
+
+[MESSAGES CONTROL]
+disable=star-args, invalid-name, missing-docstring, no-init, too-few-public-methods, too-many-locals, too-many-branches, locally-disabled, too-many-instance-attributes, too-many-arguments, too-many-public-methods, too-many-statements, cyclic-import
+

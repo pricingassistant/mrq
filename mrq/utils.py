@@ -3,7 +3,9 @@ import importlib
 import time
 import math
 
-""" Utils are functions that should be independent from the rest of MRQ's codebase """
+#
+# Utils are functions that should be independent from the rest of MRQ's codebase
+#
 
 
 def get_local_ip():
@@ -12,7 +14,7 @@ def get_local_ip():
     import socket
     try:
         return socket.gethostbyname(socket.gethostname())
-    except:
+    except:  # pylint: disable=bare-except
         return "127.0.0.1"
 
 

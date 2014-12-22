@@ -33,8 +33,8 @@ class RequeueStartedJobs(Task):
 
     """ Requeue jobs that were marked as status=started and never finished.
 
-        That may be because the worker got a SIGKILL or was terminated abruptly. The timeout parameter
-        of this task is in addition to the task's own timeout.
+        That may be because the worker got a SIGKILL or was terminated abruptly.
+        The timeout parameter of this task is in addition to the task's own timeout.
     """
 
     def run(self, params):
@@ -48,8 +48,8 @@ class RequeueStartedJobs(Task):
 
         # There shouldn't be that much "started" jobs so we can quite safely
         # iterate over them.
-        self.collection = connections.mongodb_jobs.mrq_jobs
-        for job_data in self.collection.find(
+        collection = connections.mongodb_jobs.mrq_jobs
+        for job_data in collection.find(
                 {"status": "started"}, fields={"_id": 1, "datestarted": 1, "queue": 1, "path": 1}):
             job = Job(job_data["_id"])
             job.set_data(job_data)
@@ -76,8 +76,6 @@ class RequeueRedisStartedJobs(Task):
     """
 
     def run(self, params):
-
-        self.collection = connections.mongodb_jobs.mrq_jobs
 
         redis_key_started = Queue.redis_key_started()
 
@@ -120,7 +118,7 @@ class RequeueLostJobs(Task):
 
     def run(self, params):
 
-        self.collection = connections.mongodb_jobs.mrq_jobs
+        collection = connections.mongodb_jobs.mrq_jobs
 
         # If there are more than this much items on the queue, we don't try to check if our mongodb
         # jobs are still queued.
@@ -131,7 +129,7 @@ class RequeueLostJobs(Task):
             "requeued": 0
         }
 
-        for job_data in self.collection.find({
+        for job_data in collection.find({
             "status": "queued"
         }, fields={"_id": 1, "queue": 1}).sort([("_id", 1)]):
 
@@ -156,7 +154,8 @@ class RequeueLostJobs(Task):
                          job_data["_id"])
                 break
 
-            # At this point, this job is not on the queue and we're sure the queue is less than max_queue_items
+            # At this point, this job is not on the queue and we're sure
+            # the queue is less than max_queue_items
             # We can safely requeue the job.
             log.info("Requeueing %s on %s" % (job_data["_id"], queue.id))
 

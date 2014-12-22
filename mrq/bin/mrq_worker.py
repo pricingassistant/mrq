@@ -57,7 +57,7 @@ def main():
             process = subprocess.Popen(
                 ["supervisord", "-c", path], start_new_session=True)
 
-            def sigint_handler(signum, frame):
+            def sigint_handler(signum, frame):  # pylint: disable=unused-argument
 
                 # At this point we need to send SIGINT to all workers. Unfortunately supervisord
                 # doesn't support this, so we have to find all the children pids and send them the
@@ -84,7 +84,7 @@ def main():
                 # Then stop supervisord itself.
                 process.send_signal(signal.SIGTERM)
 
-            def sigterm_handler(signum, frame):
+            def sigterm_handler(signum, frame):  # pylint: disable=unused-argument
                 process.send_signal(signal.SIGTERM)
 
             signal.signal(signal.SIGINT, sigint_handler)

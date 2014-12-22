@@ -15,7 +15,8 @@ from collections import defaultdict
 
 from .job import Job
 from .exceptions import JobTimeoutException, StopRequested, JobInterrupt
-from .context import set_current_worker, set_current_job, get_current_job, connections, enable_greenlet_tracing
+from .context import (set_current_worker, set_current_job, get_current_job,
+                      connections, enable_greenlet_tracing)
 from .queue import Queue
 
 # https://groups.google.com/forum/#!topic/gevent/EmZw9CVBC2g
@@ -68,12 +69,14 @@ class Worker(object):
         self.exitcode = 0
         self.process = psutil.Process(os.getpid())
         self.greenlet = gevent.getcurrent()
+        self.graceful_stop = None
 
         self.id = ObjectId()
         if config["name"]:
             self.name = self.config["name"]
         else:
-            self.name = self.make_name()
+            # Generate a somewhat human-readable name for this worker
+            self.name = "%s.%s" % (socket.gethostname().split(".")[0], os.getpid())
 
         self.pool_size = self.config["gevent"]
 
@@ -152,12 +155,8 @@ class Worker(object):
                 {"collMod": "mrq_jobs", "usePowerOf2Sizes": True})
             self.mongodb_jobs.command(
                 {"collMod": "mrq_workers", "usePowerOf2Sizes": True})
-        except:
+        except:  # pylint: disable=bare-except
             pass
-
-    def make_name(self):
-        """ Generate a human-readable name for this worker. """
-        return "%s.%s" % (socket.gethostname().split(".")[0], os.getpid())
 
     def greenlet_scheduler(self):
 
@@ -171,29 +170,33 @@ class Worker(object):
             time.sleep(int(self.config["scheduler_interval"]))
 
     def greenlet_report(self):
-        """ This greenlet always runs in background to update current status in MongoDB every 10 seconds.
+        """ This greenlet always runs in background to update current status
+            in MongoDB every 10 seconds.
 
-        Caution: it might get delayed when doing long blocking operations. Should we do this in a thread instead?
+            Caution: it might get delayed when doing long blocking operations.
+            Should we do this in a thread instead?
          """
 
         while True:
             try:
                 self.report_worker()
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-except
                 self.log.error("When reporting: %s" % e)
             finally:
                 time.sleep(self.config["report_interval"])
 
     def greenlet_logs(self):
-        """ This greenlet always runs in background to update current logs in MongoDB every 10 seconds.
+        """ This greenlet always runs in background to update current
+            logs in MongoDB every 10 seconds.
 
-        Caution: it might get delayed when doing long blocking operations. Should we do this in a thread instead?
+            Caution: it might get delayed when doing long blocking operations.
+            Should we do this in a thread instead?
          """
 
         while True:
             try:
                 self.flush_logs(w=0)
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-except
                 self.log.error("When flushing logs: %s" % e)
             finally:
                 time.sleep(self.config["report_interval"])
@@ -226,6 +229,8 @@ class Worker(object):
                 g["id"] = str(job.id)
                 g["time"] = getattr(greenlet, "_trace_time", 0)
                 g["switches"] = getattr(greenlet, "_trace_switches", None)
+
+                # pylint: disable=protected-access
                 if job._current_io is not None:
                     g["io"] = job._current_io
 
@@ -300,17 +305,18 @@ class Worker(object):
 
         if self.config["report_file"]:
             with open(self.config["report_file"], "wb") as f:
-                f.write(json.dumps(report, ensure_ascii=False))  # pylint: disable-msg=E1101
+                f.write(json.dumps(report, ensure_ascii=False))  # pylint: disable=no-member
 
         try:
             self.mongodb_jobs.mrq_workers.update({
                 "_id": ObjectId(self.id)
             }, {"$set": report}, upsert=True, w=w)
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             self.log.debug("Worker report failed: %s" % e)
 
     def greenlet_admin(self):
-        """ This greenlet is used to get status information about the worker when --admin_port was given
+        """ This greenlet is used to get status information about the worker
+            when --admin_port was given
         """
 
         if self.config["processes"] > 1:
@@ -323,7 +329,7 @@ class Worker(object):
         app = Flask("admin")
 
         @app.route('/')
-        def route_index():
+        def _():
             report = self.get_worker_report()
             report.update({
                 "_id": self.id
@@ -337,7 +343,7 @@ class Worker(object):
                 ("0.0.0.0", self.config["admin_port"]), app, log=open(os.devnull, "w")
             )
             server.serve_forever()
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             self.log.debug("Error in admin server : %s" % e)
 
     def flush_logs(self, w=0):
@@ -522,7 +528,7 @@ class Worker(object):
         self.exitcode = 2
 
         self.log.info("Graceful shutdown...")
-        raise StopRequested()
+        raise StopRequested()  # pylint: disable=nonstandard-exception
 
     def shutdown_now(self):
         """ Forced shutdown: interrupts all the jobs. """
@@ -536,7 +542,7 @@ class Worker(object):
 
         self.gevent_pool.kill(exception=JobInterrupt, block=False)
 
-        raise StopRequested()
+        raise StopRequested()  # pylint: disable=nonstandard-exception
 
     def install_signal_handlers(self):
         """ Handle events like Ctrl-C from the command line. """

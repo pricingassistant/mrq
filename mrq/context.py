@@ -1,4 +1,4 @@
-from .logger import LoggerInterface
+from .logger import Logger
 import gevent
 import gevent.pool
 import urlparse
@@ -7,16 +7,20 @@ import time
 from .utils import LazyObject
 from itertools import count as itertools_count
 
+_GLOBAL_CONTEXT = {
 
-# greenletid => Job object
-_GREENLET_JOBS_REGISTRY = {}
+    # Contains all the running greenlets for this worker. greenletid => Job object
+    "greenlets": {},
 
-_WORKER = None
+    # pointer to the current worker
+    "worker": None,
 
-_CONFIG = None
+    # pointer to the current config
+    "config": None
+}
 
 # Global log object, usable from all tasks
-log = LoggerInterface(None, job="current")
+log = Logger(None, job="current")
 
 
 def set_current_job(job):
@@ -26,32 +30,29 @@ def set_current_job(job):
     current.__dict__["_trace_switches"] = 0
 
     if job is None:
-        if id(current) in _GREENLET_JOBS_REGISTRY:
-            del _GREENLET_JOBS_REGISTRY[id(current)]
+        if id(current) in _GLOBAL_CONTEXT["greenlets"]:
+            del _GLOBAL_CONTEXT["greenlets"][id(current)]
     else:
-        _GREENLET_JOBS_REGISTRY[id(current)] = job
+        _GLOBAL_CONTEXT["greenlets"][id(current)] = job
 
 
 def get_current_job(greenlet_id=None):
     if greenlet_id is None:
         greenlet_id = id(gevent.getcurrent())
-    return _GREENLET_JOBS_REGISTRY.get(greenlet_id)
+    return _GLOBAL_CONTEXT["greenlets"].get(greenlet_id)
 
 
 def set_current_worker(worker):
-    global _WORKER
-    _WORKER = worker
+    _GLOBAL_CONTEXT["worker"] = worker
     set_current_config(worker.config)
 
 
 def get_current_worker():
-    global _WORKER
-    return _WORKER
+    return _GLOBAL_CONTEXT["worker"]
 
 
 def set_current_config(config):
-    global _CONFIG
-    _CONFIG = config
+    _GLOBAL_CONTEXT["config"] = config
     log.quiet = config["quiet"]
 
     if config["add_network_latency"] != "0" and config["add_network_latency"]:
@@ -72,8 +73,7 @@ def set_current_config(config):
 
 
 def get_current_config():
-    global _CONFIG
-    return _CONFIG
+    return _GLOBAL_CONTEXT["config"]
 
 
 def retry_current_job(**kwargs):
@@ -116,42 +116,38 @@ def _connections_factory(attr):
 
             try:
                 # MongoKit's Connection object is just a wrapped MongoClient.
-                from mongokit import Connection as MongoClient
-                from mongokit import ReplicaSetConnection as MongoReplicaSetClient
+                from mongokit import Connection as MongoClient   # pylint: disable=import-error
+                from mongokit import ReplicaSetConnection as MongoReplicaSetClient  # pylint: disable=import-error
             except ImportError:
                 from pymongo import MongoClient
                 from pymongo import MongoReplicaSetClient
 
-            (
-                mongoAuth,
-                mongoUsername,
-                mongoPassword,
-                mongoHosts,
-                mongoDbName,
-                mongoDbOptions
-            ) = re.match(
+            mongo_parsed = re.match(
                 r"mongodb://((\w+):(\w+)@)?([\w\.:,-]+)/([\w-]+)(\?.*)?",
                 config_obj
             ).groups()
 
-            log.debug("%s: Connecting to MongoDB at %s/%s..." %
-                      (attr, mongoHosts, mongoDbName))
+            mongo_hosts = mongo_parsed[3]
+            mongo_name = mongo_parsed[4]
+            mongo_options = mongo_parsed[5]
+
+            log.debug("%s: Connecting to MongoDB at %s/%s..." % (attr, mongo_hosts, mongo_name))
 
             kwargs = {"use_greenlets": True}
             options = {}
-            if mongoDbOptions:
+            if mongo_options:
                 options = {
                     k: v[0]
-                    for k, v in urlparse.parse_qs(mongoDbOptions[1:]).iteritems()
+                    for k, v in urlparse.parse_qs(mongo_options[1:]).iteritems()
                 }
 
             # We automatically switch to MongoReplicaSetClient when getting a replicaSet option.
             # This should cover most use-cases.
             # http://api.mongodb.org/python/current/examples/high_availability.html#mongoreplicasetclient
             if options.get("replicaSet"):
-                db = MongoReplicaSetClient(config_obj, **kwargs)[mongoDbName]
+                db = MongoReplicaSetClient(config_obj, **kwargs)[mongo_name]
             else:
-                db = MongoClient(config_obj, **kwargs)[mongoDbName]
+                db = MongoClient(config_obj, **kwargs)[mongo_name]
             log.debug("%s: ... connected." % (attr))
 
             return db
@@ -192,7 +188,7 @@ def enable_greenlet_tracing():
 
     trace.last_switch = time.time()
 
-    greenlet.settrace(trace)  # pylint: disable-msg=E1101
+    greenlet.settrace(trace)  # pylint: disable=no-member
 
 
 def progress(ratio, save=False):

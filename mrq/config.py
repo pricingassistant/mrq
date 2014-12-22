@@ -38,7 +38,8 @@ def add_parser_args(parser, config_type):
         '--trace_memory_type',
         action='store',
         default="",
-        help='Create a .png object graph in trace_memory_output_dir with a random object of this type.')
+        help='Create a .png object graph in trace_memory_output_dir ' +
+             'with a random object of this type.')
 
     parser.add_argument(
         '--trace_memory_output_dir',
@@ -189,7 +190,8 @@ def add_parser_args(parser, config_type):
             default=0,
             type=int,
             action='store',
-            help='Gevent: max number of jobs to do before quitting. Temp workaround for memory leaks')
+            help='Gevent: max number of jobs to do before quitting.' +
+                 ' Temp workaround for memory leaks')
 
         parser.add_argument(
             '--gevent',
