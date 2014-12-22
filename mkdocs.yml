@@ -1,0 +1,21 @@
+site_name: MRQ
+theme: readthedocs
+pages:
+- ["index.md", "Introduction"]
+- ["get-started.md", "Get Started"]
+- ["dashboard.md", "Dashboard"]
+- ["queues.md", "Queues"]
+- ["configuration.md", "Configuration"]
+- ["design.md", "Design and architecture"]
+- ["tests.md", "Tests"]
+- ["performance.md", "Performance"]
+- ["deploy.md", "Deploy"]
+
+- ["cli/mrq-run.md", "CLI", "mrq-run"]
+- ["cli/mrq-worker.md", "CLI", "mrq-worker"]
+- ["cli/mrq-dashboard.md", "CLI", "mrq-dashboard"]
+- ["memory-leaks.md", "More", "Hunt memory leaks"]
+- ["jobs-maintenance.md", "More", "Jobs maintenance"]
+- ["metrics.md", "More", "Metrics"]
+- ["dependencies.md", "...", "Dependencies & credits"]
+- ["license.md", "...", "License"]

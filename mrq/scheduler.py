@@ -1,6 +1,7 @@
 from .context import log
 from .queue import send_task
 import datetime
+import json
 
 
 class Scheduler(object):
@@ -14,8 +15,14 @@ class Scheduler(object):
         self.all_tasks = list(self.collection.find())
 
     def hash_task(self, task):
-        return " ".join(
-            [str(task.get(x)) for x in ["path", "params", "interval", "dailytime", "queue"]])
+        params = task.get("params")
+        if params:
+          params = json.dumps(sorted(task["params"].items(), key=lambda x: x[0]))
+
+        full = [str(task.get(x)) for x in ["path", "interval", "dailytime", "queue"]]
+
+        print full.extend([str(params)])
+        return " ".join(full)
 
     def sync_tasks(self, tasks):
         """ Performs the first sync of a list of tasks, often defined in the config file. """
