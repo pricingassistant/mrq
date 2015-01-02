@@ -18,8 +18,8 @@ import datetime
 
 sys.path.insert(0, os.getcwd())
 
-from mrq import config, queue, utils
-from mrq.context import set_current_config, set_current_job
+from mrq import config, utils
+from mrq.context import set_current_config, set_current_job, queue_job
 from mrq.utils import load_class_by_path
 
 
@@ -43,9 +43,8 @@ def main():
                 sys.exit(1)
             params[group[0]] = group[1]
 
-    if cfg["async"]:
-        ret = queue.send_task(
-            cfg["taskpath"], params, sync=False, queue=cfg["queue"])
+    if cfg["queue"]:
+        ret = queue_job(cfg["taskpath"], params, queue=cfg["queue"])
         print ret
     else:
         worker_class = load_class_by_path(cfg["worker_class"])

@@ -1,5 +1,4 @@
 from mrq.task import Task
-from mrq.job import Job
 from mrq.queue import Queue
 from bson import ObjectId
 from mrq.context import connections, get_current_config
@@ -7,6 +6,10 @@ from collections import defaultdict
 from mrq.utils import group_iter
 import datetime
 import ujson as json
+
+
+def get_task_cfg(taskpath):
+    return get_current_config().get("tasks", {}).get(taskpath) or {}
 
 
 class JobAction(Task):
@@ -21,7 +24,7 @@ class JobAction(Task):
 
         query = self.build_query()
 
-        return self.perform_action(self.params.get("action"), query)
+        return self.perform_action(self.params.get("action"), query, self.params.get("destination_queue"))
 
     def build_query(self):
         query = {}
@@ -47,7 +50,7 @@ class JobAction(Task):
 
         return query
 
-    def perform_action(self, action, query):
+    def perform_action(self, action, query, destination_queue):
 
         stats = {
             "requeued": 0,
@@ -56,25 +59,21 @@ class JobAction(Task):
 
         if action == "cancel":
 
+            default_job_timeout = get_current_config()["default_job_timeout"]
+
             # Finding the ttl here to expire is a bit hard because we may have mixed paths
             # and hence mixed ttls.
             # If we are cancelling by path, get this ttl
             if query.get("path"):
-
-                task_def = get_current_config().get(
-                    "tasks", {}).get(query["path"]) or {}
-                result_ttl = task_def.get("result_ttl", Job.result_ttl)
+                result_ttl = get_task_cfg(query["path"]).get("result_ttl", default_job_timeout)
 
             # If not, get the maxmimum ttl of all tasks.
             else:
-                result_ttl = max(
-                    [
-                        Job.result_ttl] + [
-                        task_def.get(
-                            "result_ttl",
-                            Job.result_ttl) for task_def in get_current_config().get(
-                            "tasks",
-                            {}).values()])
+
+                tasks_defs = get_current_config().get("tasks", {})
+                tasks_ttls = [cfg.get("result_ttl", 0) for cfg in tasks_defs.values()]
+
+                result_ttl = max([default_job_timeout] + tasks_ttls)
 
             now = datetime.datetime.utcnow()
             ret = self.collection.update(query, {"$set": {
@@ -91,7 +90,7 @@ class JobAction(Task):
             if query.keys() == ["queue"]:
                 Queue(query["queue"]).empty()
 
-        elif action == "requeue":
+        elif action in ("requeue", "requeue_retry"):
 
             # Requeue task by groups of maximum 1k items (if all in the same
             # queue)
@@ -110,16 +109,27 @@ class JobAction(Task):
                     stats["requeued"] += 1
 
                 for queue in jobs_by_queue:
-                    self.collection.update({
-                        "_id": {"$in": jobs_by_queue[queue]}
-                    }, {"$set": {
+
+                    updates = {
                         "status": "queued",
                         "dateupdated": datetime.datetime.utcnow()
-                    }}, multi=True)
+                    }
+
+                    if destination_queue is not None:
+                        updates["queue"] = destination_queue
+
+                    if action == "requeue":
+                        updates["retry_count"] = 0
+
+                    self.collection.update({
+                        "_id": {"$in": jobs_by_queue[queue]}
+                    }, {"$set": updates}, multi=True)
 
                     # Between these two lines, jobs can become "lost" too.
 
-                    Queue(queue).enqueue_job_ids(
+                    Queue(destination_queue or queue).enqueue_job_ids(
                         [str(x) for x in jobs_by_queue[queue]])
+
+        print stats
 
         return stats

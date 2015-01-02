@@ -9,10 +9,10 @@ import json
 
 
 PROCESS_CONFIGS = [
-    ["--gevent 1"],
-    ["--gevent 2"],
-    ["--gevent 1 --processes 1"],
-    ["--gevent 2 --processes 1"]
+    ["--greenlets 1"],
+    ["--greenlets 2"],
+    ["--greenlets 1 --processes 1"],
+    ["--greenlets 2 --processes 1"]
 ]
 
 
@@ -167,10 +167,10 @@ def test_interrupt_worker_sigkill(worker, p_flags):
     time.sleep(1)
 
     # This is a bit tricky, but when getting the job from the current python environment, its timeout should
-    # be the default 300 and not 200 because we didn't configure ourselves
+    # be the default 3600 and not 200 because we didn't configure ourselves
     # with config-shorttimeout.py
     job = Job(job_id).fetch().data
-    assert Job(job_id).fetch().timeout == 300
+    assert Job(job_id).fetch().timeout == 3600
 
     assert job["status"] == "started"
 

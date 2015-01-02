@@ -20,7 +20,7 @@ def add_parser_args(parser, config_type):
         '--trace_memory',
         action='store_true',
         default=False,
-        help='Collect stats about memory for each task. Incompatible with gevent > 1')
+        help='Collect stats about memory for each task. Incompatible with --greenlets > 1')
 
     parser.add_argument(
         '--trace_io',
@@ -137,21 +137,43 @@ def add_parser_args(parser, config_type):
         type=str,
         help='Adds random latency to the network calls, zero to N seconds. Can be a range (1-2)')
 
+    parser.add_argument(
+        '--default_job_result_ttl',
+        default=7 * 24 * 3600,
+        action='store',
+        type=int,
+        help='Seconds the results are kept in MongoDB when status in ("success", "cancel")')
+
+    parser.add_argument(
+        '--default_job_timeout',
+        default=3600,
+        action='store',
+        type=int,
+        help='In seconds, delay before interrupting the job')
+
+    parser.add_argument(
+        '--default_job_max_retries',
+        default=3,
+        action='store',
+        type=int,
+        help='Set the status to "maxretries" after retrying that many times')
+
+    parser.add_argument(
+        '--default_job_retry_delay',
+        default=3,
+        action='store',
+        type=int,
+        help='Seconds before a job in retry status is requeued again')
+
     # mrq-run-specific arguments
 
     if config_type == "run":
 
         parser.add_argument(
-            '--async',
-            action='store_true',
-            default=False,
-            help='Queue the task instead of running it right away')
-
-        parser.add_argument(
             '--queue',
             action='store',
-            default="default",
-            help='Queue where to put the task when async')
+            default="",
+            help='Queue the task on this queue instead of running it right away')
 
         parser.add_argument(
             'taskpath',
@@ -194,12 +216,13 @@ def add_parser_args(parser, config_type):
                  ' Temp workaround for memory leaks')
 
         parser.add_argument(
-            '--gevent',
+            '--greenlets',
+            '--gevent',  # deprecated
             '-g',
             default=1,
             type=int,
             action='store',
-            help='Gevent: max number of greenlets')
+            help='Max number of greenlets to use')
 
         parser.add_argument(
             '--processes',

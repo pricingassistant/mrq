@@ -1,0 +1,1 @@
+We welcome all contributions on [our GitHub](https://github.com/pricingassistant/mrq)!

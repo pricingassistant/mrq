@@ -14,19 +14,11 @@ from gevent.pywsgi import WSGIServer
 from collections import defaultdict
 
 from .job import Job
-from .exceptions import JobTimeoutException, StopRequested, JobInterrupt
+from .exceptions import (TimeoutInterrupt, StopRequested, JobInterrupt,
+                         RetryInterrupt, MaxRetriesInterrupt)
 from .context import (set_current_worker, set_current_job, get_current_job,
                       connections, enable_greenlet_tracing)
 from .queue import Queue
-
-# https://groups.google.com/forum/#!topic/gevent/EmZw9CVBC2g
-# if "__pypy__" in sys.builtin_module_names:
-#   def _reuse(self):
-#       self._sock._reuse()
-#   def _drop(self):
-#       self._sock._drop()
-#   gevent.socket.socket._reuse = _reuse
-#   gevent.socket.socket._drop = _drop
 
 
 class Worker(object):
@@ -36,14 +28,7 @@ class Worker(object):
     # Allow easy overloading
     job_class = Job
 
-    # Valid statuses:
-    #       * init: General worker initialization
-    #       * wait: Waiting for new jobs from Redis
-    #       * spawn: Got some new jobs, greenlets are being spawned
-    #       * full: All the worker pool is busy executing jobs
-    #       * join: Waiting for current jobs to finish, no new one will be accepted
-    #       * kill: Killing all current jobs
-    #       * stop: Worker is stopped, no jobs should remain
+    # See the doc for valid statuses
     status = "init"
 
     mongodb_jobs = None
@@ -78,7 +63,7 @@ class Worker(object):
             # Generate a somewhat human-readable name for this worker
             self.name = "%s.%s" % (socket.gethostname().split(".")[0], os.getpid())
 
-        self.pool_size = self.config["gevent"]
+        self.pool_size = self.config["greenlets"]
 
         from .logger import LogHandler
         self.log_handler = LogHandler(quiet=self.config["quiet"])
@@ -144,7 +129,9 @@ class Worker(object):
         self.mongodb_jobs.mrq_jobs.ensure_index(
             [("queue", 1), ("status", 1)], background=False)
         self.mongodb_jobs.mrq_jobs.ensure_index(
-            [("dateexpires", 1)], sparse=True, background=False, expireAfterSeconds=7 * 24 * 3600)
+            [("dateexpires", 1)], sparse=True, background=False, expireAfterSeconds=0)
+        self.mongodb_jobs.mrq_jobs.ensure_index(
+            [("dateretry", 1)], sparse=True, background=False)
 
         self.mongodb_jobs.mrq_scheduled_jobs.ensure_index(
             [("hash", 1)], unique=True, background=False, drop_dups=True)
@@ -257,7 +244,7 @@ class Worker(object):
         # Avoid sharing passwords or sensitive config!
         whitelisted_config = [
             "max_jobs",
-            "gevent",
+            "greenlets",
             "processes",
             "queues",
             "scheduler",
@@ -475,44 +462,47 @@ class Worker(object):
 
         set_current_job(job)
 
-        gevent_timeout = gevent.Timeout(
-            job.timeout,
-            JobTimeoutException(
-                'Gevent Job exceeded maximum timeout value (%d seconds).' %
-                job.timeout
-            )
-        )
+        gevent_timeout = None
+        if job.timeout:
 
-        gevent_timeout.start()
+            gevent_timeout = gevent.Timeout(
+                job.timeout,
+                TimeoutInterrupt(
+                    'Job exceeded maximum timeout value in greenlet (%d seconds).' %
+                    job.timeout
+                )
+            )
+
+            gevent_timeout.start()
 
         try:
             job.perform()
 
-        except job.retry_on_exceptions:
-            self.log.error("Caught exception => retry")
-            job.save_retry(sys.exc_info()[1], exception=True)
+        except RetryInterrupt:
+            self.log.error("Caught retry")
+            job.save_retry(sys.exc_info()[1])
 
-        except job.cancel_on_exceptions:
-            self.log.error("Job cancelled")
-            job.save_status("cancel", exception=True)
+        except MaxRetriesInterrupt:
+            self.log.error("Max retries reached")
+            job._save_status("maxretries", exception=True)
 
-        except JobTimeoutException:
-            if job.task.cancel_on_timeout:
-                self.log.error(
-                    "Job timeouted after %s seconds, cancelled" % job.timeout)
-                job.save_status("cancel", exception=True)
-            else:
-                self.log.error("Job timeouted after %s seconds" % job.timeout)
-                job.save_status("timeout", exception=True)
+        except TimeoutInterrupt:
+            self.log.error("Job timeouted after %s seconds" % job.timeout)
+            job._save_status("timeout", exception=True)
 
         except JobInterrupt:
-            job.save_status("interrupt", exception=True)
+            self.log.error("Job interrupted")
+            job._save_status("interrupt", exception=True)
 
         except Exception:
-            job.save_status("failed", exception=True)
+            self.log.error("Job failed")
+            job._save_status("failed", exception=True)
 
         finally:
-            gevent_timeout.cancel()
+
+            if gevent_timeout:
+                gevent_timeout.cancel()
+
             set_current_job(None)
 
             self.done_jobs += 1

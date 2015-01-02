@@ -7,7 +7,7 @@ import time
 def test_retry(worker):
 
     job_id = worker.send_task(
-        "tests.tasks.general.Retry", {"queue": "noexec", "countdown": 60}, block=False)
+        "tests.tasks.general.Retry", {"queue": "noexec", "delay": 60}, block=False)
 
     job_data = Job(job_id).wait(poll_interval=0.01, full_data=True)
 
@@ -17,13 +17,11 @@ def test_retry(worker):
     assert job_data.get("result") is None
 
 
-def test_retry_otherqueue_countdown_zero(worker):
+def test_retry_otherqueue_delay_zero(worker):
 
-    worker.start()
-
-    # countdown = 0 should requeue right away.
+    # delay = 0 should requeue right away.
     job_id = worker.send_task(
-        "tests.tasks.general.Retry", {"queue": "noexec", "countdown": 0}, block=False)
+        "tests.tasks.general.Retry", {"queue": "noexec", "delay": 0}, block=False)
 
     time.sleep(1)
 
@@ -34,14 +32,12 @@ def test_retry_otherqueue_countdown_zero(worker):
     assert Queue("noexec").list_job_ids() == [str(job_id)]
 
 
-def test_retry_otherqueue_countdown_nonzero(worker):
+def test_retry_otherqueue_delay_nonzero(worker):
 
-    worker.start()
-
-    # countdown = 0 should requeue right away.
+    # delay = 0 should requeue right away.
     worker.send_task("tests.tasks.general.Retry", {
         "queue": "noexec",
-        "countdown": 2
+        "delay": 2
     }, block=True, accept_statuses=["retry"])
 
     assert Queue("default").size() == 0
@@ -70,16 +66,63 @@ def test_retry_otherqueue_countdown_nonzero(worker):
     assert job.data["status"] == "queued"
 
 
-def test_retry_cancel_on_retry(worker):
+def test_retry_max_retries(worker):
 
-    job_id = worker.send_task("tests.tasks.general.Retry", {
-        "queue": "noexec",
-        "countdown": 60,
-        "cancel_on_retry": True
-    }, block=False)
+    # Task has maxretries=1
+    worker.start(flags="--config tests/fixtures/config-retry1.py")
 
-    job_data = Job(job_id).wait(poll_interval=0.01, full_data=True)
+    worker.send_task("tests.tasks.general.Retry", {
 
-    assert job_data["status"] == "cancel"
-    assert job_data["queue"] == "default"
-    assert job_data.get("result") is None
+    }, block=True, accept_statuses=["retry"])
+
+    assert Queue("default").size() == 0
+
+    job_id = worker.mongodb_jobs.mrq_jobs.find()[0]["_id"]
+
+    job = Job(job_id).fetch()
+    assert job.data["status"] == "retry"
+    assert job.data["retry_count"] == 1
+
+    time.sleep(2)
+
+    # Should requeue
+    worker.send_task("mrq.basetasks.cleaning.RequeueRetryJobs", {}, block=True)
+
+    time.sleep(2)
+
+    assert Queue("default").size() == 0
+
+    job = Job(job_id).fetch()
+    assert job.data["status"] == "maxretries"
+    assert job.data["retry_count"] == 1
+
+    # Then, manual requeue from the dashboard should reset the retry_count field.
+    params = {
+        "action": "requeue",
+        "status": "maxretries",
+        "destination_queue": "noexec"
+    }
+
+    worker.send_task("mrq.basetasks.utils.JobAction", params, block=True)
+
+    job = Job(job_id).fetch()
+    assert job.data["status"] == "queued"
+    assert job.data["queue"] == "noexec"
+    assert job.data["retry_count"] == 0
+
+
+def test_retry_max_retries_zero(worker):
+
+    # Task has maxretries=1
+    worker.start(flags="--config tests/fixtures/config-retry1.py")
+
+    worker.send_task("tests.tasks.general.Retry", {
+        "max_retries": 0
+    }, block=True, accept_statuses=["maxretries"])
+
+    assert Queue("default").size() == 0
+
+    job_id = worker.mongodb_jobs.mrq_jobs.find()[0]["_id"]
+
+    job = Job(job_id).fetch()
+    assert job.data["status"] == "maxretries"

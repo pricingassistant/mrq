@@ -14,10 +14,10 @@ import urllib2
 sys.path.append(os.getcwd())
 
 from mrq.job import Job
-from mrq.queue import send_tasks, send_raw_tasks, Queue
+from mrq.queue import Queue
 from mrq.config import get_config
 from mrq.utils import wait_for_net_service
-from mrq.context import connections, set_current_config
+from mrq.context import connections, set_current_config, queue_raw_jobs, queue_jobs
 
 set_current_config(get_config(sources=("env")))
 
@@ -201,7 +201,7 @@ class WorkerFixture(ProcessFixture):
         if not self.started and start:
             self.start()
 
-        send_raw_tasks(queue, params_list)
+        queue_raw_jobs(queue, params_list)
 
         if block:
             # Wait for the queue to be empty. Might be error-prone when tasks
@@ -217,26 +217,24 @@ class WorkerFixture(ProcessFixture):
         if not self.started and start:
             self.start()
 
-        job_ids = send_tasks(path, params_list, queue=queue)
+        job_ids = queue_jobs(path, params_list, queue=queue)
 
         return self.wait_for_tasks_results(job_ids, block=block, accept_statuses=accept_statuses)
 
     def send_task(self, path, params, **kwargs):
         return self.send_tasks(path, [params], **kwargs)[0]
 
-    def send_task_cli(self, path, params, block=True, queue=None, **kwargs):
-        if not self.started and not block:
+    def send_task_cli(self, path, params, queue=None, **kwargs):
+        if not self.started and queue:
             self.start()
 
         cli = ["python", "mrq/bin/mrq_run.py", "--quiet"]
         if queue:
             cli += ["--queue", queue]
-        if not block:
-            cli += ["--async"]
         cli += [path, json.dumps(params)]
 
         out = subprocess.check_output(cli).strip()
-        if block:
+        if not queue:
             return json.loads(out)
         return out
 

@@ -64,7 +64,7 @@ RAW_QUEUES = {
             "path": "tests.tasks.general.Retry",
             "params": {
                 "sleep": int(rawparam),
-                "countdown": 0
+                "delay": 0
             }
         }
     },

@@ -7,6 +7,13 @@ To do that, you should add these recurring scheduled jobs to your mrq-config.py:
 ```
 SCHEDULER_TASKS = [
 
+  # This will requeue jobs in the 'retry' status, until they reach their max_retries.
+  {
+    "path": "mrq.basetasks.cleaning.RequeueRetryJobs",
+    "params": {},
+    "interval": 60
+  },
+
   # This will requeue jobs marked as interrupted, for instance when a worker received SIGTERM
   {
     "path": "mrq.basetasks.cleaning.RequeueInterruptedJobs",

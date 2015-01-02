@@ -21,7 +21,7 @@ def test_cancel_by_path(worker, p_query):
 
     # Start the worker with only one greenlet so that tasks execute
     # sequentially
-    worker.start(flags="--gevent 1", queues="default q1 q2")
+    worker.start(flags="--greenlets 1", queues="default q1 q2")
 
     job_ids = []
     job_ids.append(worker.send_task("tests.tasks.general.Add", {

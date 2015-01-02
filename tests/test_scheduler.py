@@ -5,8 +5,8 @@ import pytest
 # We want to test that launching the scheduler several times queues tasks
 # only once.
 PROCESS_CONFIGS = [
-    ["--gevent 1"],
-    ["--gevent 1 --processes 5"]
+    ["--greenlets 1"],
+    ["--greenlets 1 --processes 5"]
 ]
 
 

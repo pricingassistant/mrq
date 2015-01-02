@@ -1,8 +1,7 @@
 import datetime
 from bson import ObjectId
-import pymongo
 import time
-from .exceptions import RetryInterrupt, CancelInterrupt
+from .exceptions import RetryInterrupt, MaxRetriesInterrupt
 from .utils import load_class_by_path
 from .queue import Queue
 from .context import get_current_worker, log, connections, get_current_config, metric
@@ -17,26 +16,14 @@ import sys
 
 class Job(object):
 
-    # Seconds the job can last before timeouting
-    timeout = 300
+    timeout = None
+    result_ttl = None
+    max_retries = None
+    retry_delay = None
 
-    # Seconds the results are kept in MongoDB
-    result_ttl = 7 * 24 * 3600
+    # All values above can be overrided from the TASKS config
 
     progress = 0
-
-    # Exceptions that don't mark the task as failed but as retry
-    retry_on_exceptions = (
-        pymongo.errors.AutoReconnect,
-        pymongo.errors.OperationFailure,
-        pymongo.errors.ConnectionFailure,
-        RetryInterrupt
-    )
-
-    # Exceptions that will make the task as cancelled
-    cancel_on_exceptions = (
-        CancelInterrupt
-    )
 
     _memory_stop = 0
     _memory_start = 0
@@ -70,6 +57,7 @@ class Job(object):
             self.fetch(start=False, full_data=False)
 
     def exists(self):
+        """ Returns True if a job with the current _id exists in MongoDB. """
         return bool(self.collection.find_one({"_id": self.id}, fields={"_id": 1}))
 
     def fetch(self, start=False, full_data=True):
@@ -87,7 +75,8 @@ class Job(object):
                 "_id": 0,
                 "path": 1,
                 "params": 1,
-                "status": 1
+                "status": 1,
+                "retry_count": 1
             }
 
         if start:
@@ -126,11 +115,15 @@ class Job(object):
             return
 
         if "path" in self.data:
-            task_def = get_current_config().get("tasks", {}).get(
+            cfg = get_current_config()
+            task_def = cfg.get("tasks", {}).get(
                 self.data["path"]
             ) or {}
-            self.timeout = task_def.get("timeout", self.timeout)
-            self.result_ttl = task_def.get("result_ttl", self.result_ttl)
+
+            self.timeout = task_def.get("timeout", cfg["default_job_timeout"])
+            self.result_ttl = task_def.get("result_ttl", cfg["default_job_result_ttl"])
+            self.max_retries = task_def.get("max_retries", cfg["default_job_max_retries"])
+            self.retry_delay = task_def.get("retry_delay", cfg["default_job_retry_delay"])
 
     def set_progress(self, ratio, save=False):
         self.data["progress"] = ratio
@@ -141,7 +134,7 @@ class Job(object):
             self.save()
 
     def save(self):
-        """ Will be called at each worker report. """
+        """ Persists the current job metadata to MongoDB. Will be called at each worker report. """
 
         if not self.saved and self.data and "progress" in self.data:
             # TODO should we save more fields?
@@ -178,101 +171,32 @@ class Job(object):
         else:
             return inserted
 
-    def save_status(
-            self,
-            status,
-            result=None,
-            exception=False,
-            dateretry=None,
-            queue=None,
-            w=1):
+    def retry(self, queue=None, delay=None, max_retries=None):
+        """ Marks the current job as needing to be retried. Interrupts it. """
 
-        if self.id is None:
-            return
+        max_retries = max_retries
+        if max_retries is None:
+            max_retries = self.max_retries
 
-        now = datetime.datetime.utcnow()
-        updates = {
-            "status": status,
-            "dateupdated": now
-        }
+        if self.data.get("retry_count", 0) >= max_retries:
+            raise MaxRetriesInterrupt()
 
-        if self.datestarted:
-            updates["totaltime"] = (now - self.datestarted).total_seconds()
-        if result is not None:
-            updates["result"] = result
+        exc = RetryInterrupt()
 
-        if dateretry is not None:
-            updates["dateretry"] = dateretry
-        if queue is not None:
-            updates["queue"] = queue
-        if get_current_config().get("trace_greenlets"):
-            current_greenlet = gevent.getcurrent()
+        exc.queue = queue or self.data.get("queue") or "default"
+        exc.retry_count = self.data.get("retry_count", 0) + 1
+        exc.delay = delay
+        if exc.delay is None:
+            exc.delay = self.retry_delay
 
-            # TODO are we sure the current job is doing the save_status() on itself?
-            if hasattr(current_greenlet, "_trace_time"):
-                # pylint: disable=protected-access
-                updates["time"] = current_greenlet._trace_time
-                updates["switches"] = current_greenlet._trace_switches
-
-        if exception:
-            trace = traceback.format_exc()
-            log.error(trace)
-            updates["traceback"] = trace
-            updates["exceptiontype"] = sys.exc_info()[0].__name__
-
-        # Make the job document expire
-        if status in ("success", "cancel"):
-            updates["dateexpires"] = now + \
-                datetime.timedelta(seconds=self.result_ttl)
-
-        if status == "success" and "progress" in self.data:
-            updates["progress"] = 1
-
-        self.collection.update({
-            "_id": self.id
-        }, {"$set": updates}, w=w, manipulate=False)
-
-        metric("jobs.status.%s" % status)
-
-        if self.data:
-            self.data.update(updates)
-
-    def save_retry(self, exc, exception=False):
-
-        countdown = 24 * 3600
-
-        if isinstance(exc, RetryInterrupt) and exc.countdown is not None:
-            countdown = exc.countdown
-
-        queue = None
-        if isinstance(exc, RetryInterrupt) and exc.queue:
-            queue = exc.queue
-
-        if countdown == 0:
-            self.requeue(queue=queue)
-        else:
-            now = datetime.datetime.utcnow()
-            self.save_status(
-                "retry",
-                exception=exception,
-                dateretry=now + datetime.timedelta(seconds=countdown),
-                queue=queue
-            )
-
-    def retry(self, queue=None, countdown=None, max_retries=None):
-
-        if self.task.cancel_on_retry:
-            raise CancelInterrupt()
-        else:
-            exc = RetryInterrupt()
-            exc.queue = queue
-            exc.countdown = countdown
-            raise exc
+        raise exc
 
     def cancel(self):
-        self.save_status("cancel")
+        """ Markes the current job as cancelled. Doesn't interrupt it. """
+        self._save_status("cancel")
 
-    def requeue(self, queue=None):
+    def requeue(self, queue=None, retry_count=0):
+        """ Requeues the current job. Doesn't interrupt it """
 
         if not queue:
             if not self.data or not self.data.get("queue"):
@@ -281,7 +205,10 @@ class Job(object):
 
         queue_obj = Queue(queue)
 
-        self.save_status("queued", queue=queue)
+        self._save_status("queued", updates={
+            "queue": queue,
+            "retry_count": retry_count
+        })
 
         # Between these two lines, jobs can become "lost" too.
 
@@ -300,9 +227,9 @@ class Job(object):
 
         self.task.is_main_task = True
 
-        result = self.task.run(self.data["params"])
+        result = self.task.run_wrapped(self.data["params"])
 
-        self.save_status("success", result)
+        self.save_success(result)
 
         if get_current_config().get("trace_greenlets"):
 
@@ -358,6 +285,84 @@ class Job(object):
 
         raise Exception(
             "Waited for job result for %ss seconds, timeout." % timeout)
+
+    def save_retry(self, retry_exc):
+
+        # If delay=0, requeue right away, don't go through the "retry" status
+        if retry_exc.delay == 0:
+            self.requeue(queue=retry_exc.queue, retry_count=retry_exc.retry_count)
+
+        else:
+
+            dateretry = datetime.datetime.utcnow() + datetime.timedelta(seconds=retry_exc.delay)
+            updates = {
+                "dateretry": dateretry,
+                "queue": retry_exc.queue,
+                "retry_count": retry_exc.retry_count
+            }
+
+            self._save_status("retry", updates, exception=True)
+
+    def save_success(self, result=None):
+
+        dateexpires = datetime.datetime.utcnow() + datetime.timedelta(seconds=self.result_ttl)
+        updates = {
+            "dateexpires": dateexpires
+        }
+        if result is not None:
+            updates["result"] = result
+        if "progress" in self.data:
+            updates["progress"] = 1
+
+        self._save_status("success", updates)
+
+    def save_cancel(self):
+
+        dateexpires = datetime.datetime.utcnow() + datetime.timedelta(seconds=self.result_ttl)
+        updates = {
+            "dateexpires": dateexpires
+        }
+
+        self._save_status("cancel", updates)
+
+    def _save_status(self, status, updates=None, exception=False, w=1):
+
+        if self.id is None:
+            return
+
+        now = datetime.datetime.utcnow()
+        db_updates = {
+            "status": status,
+            "dateupdated": now
+        }
+        db_updates.update(updates or {})
+
+        if self.datestarted:
+            db_updates["totaltime"] = (now - self.datestarted).total_seconds()
+
+        if get_current_config().get("trace_greenlets"):
+            current_greenlet = gevent.getcurrent()
+
+            # TODO are we sure the current job is doing the save_status() on itself?
+            if hasattr(current_greenlet, "_trace_time"):
+                # pylint: disable=protected-access
+                db_updates["time"] = current_greenlet._trace_time
+                db_updates["switches"] = current_greenlet._trace_switches
+
+        if exception:
+            trace = traceback.format_exc()
+            log.error(trace)
+            db_updates["traceback"] = trace
+            db_updates["exceptiontype"] = sys.exc_info()[0].__name__
+
+        self.collection.update({
+            "_id": self.id
+        }, {"$set": db_updates}, w=w, manipulate=False)
+
+        metric("jobs.status.%s" % status)
+
+        if self.data:
+            self.data.update(db_updates)
 
     def set_current_io(self, io_data):
 

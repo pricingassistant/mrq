@@ -1,21 +1,30 @@
 site_name: MRQ
 theme: readthedocs
+dev_addr: '0.0.0.0:8000'
 pages:
+
 - ["index.md", "Introduction"]
 - ["get-started.md", "Get Started"]
-- ["dashboard.md", "Dashboard"]
-- ["queues.md", "Queues"]
-- ["configuration.md", "Configuration"]
-- ["design.md", "Design and architecture"]
-- ["tests.md", "Tests"]
-- ["performance.md", "Performance"]
-- ["deploy.md", "Deploy"]
 
-- ["cli/mrq-run.md", "CLI", "mrq-run"]
-- ["cli/mrq-worker.md", "CLI", "mrq-worker"]
-- ["cli/mrq-dashboard.md", "CLI", "mrq-dashboard"]
-- ["memory-leaks.md", "More", "Hunt memory leaks"]
-- ["jobs-maintenance.md", "More", "Jobs maintenance"]
-- ["metrics.md", "More", "Metrics"]
-- ["dependencies.md", "...", "Dependencies & credits"]
-- ["license.md", "...", "License"]
+- ["jobs.md", "Basic usage", "Jobs & Tasks"]
+- ["workers.md", "Basic usage", "Workers"]
+- ["queues.md", "Basic usage", "Queues"]
+- ["configuration.md", "Basic usage", "Configuration"]
+- ["command-line.md", "Basic usage", "Command line"]
+
+- ["dashboard.md", "Visibility", "Dashboard"]
+- ["memory-leaks.md", "Visibility", "Hunting memory leaks"]
+- ["metrics.md", "Visibility", "Metrics"]
+- ["io-monitoring.md", "Visibility", "I/O Monitoring"]
+
+- ["design.md", "Advanced", "Design and architecture"]
+- ["performance.md", "Advanced", "Performance"]
+- ["recurring-jobs.md", "Advanced", "Recurring jobs"]
+- ["jobs-maintenance.md", "Advanced", "Jobs maintenance"]
+- ["best-practices.md", "Advanced", "Best practices"]
+
+- ["contributing.md", "About MRQ", "Contributing"]
+- ["tests.md", "About MRQ", "Tests"]
+- ["changelog.md", "About MRQ", "Changelog"]
+- ["dependencies.md", "About MRQ", "Dependencies & credits"]
+- ["license.md", "About MRQ", "License"]

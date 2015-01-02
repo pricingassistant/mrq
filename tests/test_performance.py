@@ -24,7 +24,7 @@ def test_network_latency(worker, p_latency, p_min, p_max):
 
 def benchmark_task(worker, taskpath, taskparams, tasks=1000, greenlets=50, processes=0, max_seconds=10, profile=False, quiet=True, raw=False, queues="default", config=None):
 
-    worker.start(flags="--profile --processes %s --gevent %s%s%s%s" % (
+    worker.start(flags="--profile --processes %s --greenlets %s%s%s%s" % (
         processes,
         greenlets,
         " --profile" if profile else "",

@@ -1,5 +1,5 @@
-from .utils import load_class_by_path, group_iter
-from .context import connections, get_current_config, metric
+from .utils import group_iter
+from .context import connections, get_current_config, metric, queue_job, queue_jobs, queue_raw_jobs, run_task
 from .redishelpers import redis_zaddbyscore, redis_zpopbyscore, redis_lpopsafe
 from .redishelpers import redis_group_command
 import time
@@ -378,60 +378,20 @@ class Queue(object):
         return jobs
 
 
-def send_raw_tasks(queue, params_list, **kwargs):
-    """ Queue some tasks on a raw queue """
+#
+# Deprecated methods. Tagged for removal in 1.0.0
+#
 
-    q = Queue(queue)
-    q.enqueue_raw_jobs(params_list, **kwargs)
+def send_raw_tasks(*args, **kwargs):
+    return queue_raw_jobs(*args, **kwargs)
 
 
 def send_task(path, params, **kwargs):
-    """ Queue one task on a regular queue """
-
     return send_tasks(path, [params], **kwargs)[0]
 
 
 def send_tasks(path, params_list, queue=None, sync=False, batch_size=1000):
-    """ Queue several task on a regular queue """
-
-    if len(params_list) == 0:
-        return []
-
     if sync:
-        task_class = load_class_by_path(path)
-        return [task_class().run(params) for params in params_list]
+        return [run_task(path, params) for params in params_list]
 
-    if queue is None:
-        task_def = get_current_config().get("tasks", {}).get(path) or {}
-        queue = task_def.get("queue", "default")
-
-    queue_obj = Queue(queue)
-
-    if queue_obj.is_raw:
-        raise Exception("Can't queue regular jobs on a raw queue")
-
-    all_ids = []
-
-    # Avoid circular import
-    from .job import Job
-
-    for params_group in group_iter(params_list, n=batch_size):
-
-        metric("jobs.status.queued", len(params_group))
-
-        job_ids = Job.insert([{
-            "path": path,
-            "params": params,
-            "queue": queue,
-            "status": "queued"
-        } for params in params_group], w=1, return_jobs=False)
-
-        # Between these 2 calls, a task can be inserted in MongoDB but not queued in Redis.
-        # This is the same as dequeueing a task from Redis and being stopped before updating
-        # the "started" flag in MongoDB.
-
-        queue_obj.enqueue_job_ids([str(x) for x in job_ids])
-
-        all_ids += job_ids
-
-    return all_ids
+    return queue_jobs(path, params_list, queue=queue, batch_size=batch_size)

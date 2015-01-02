@@ -28,7 +28,7 @@ def get_diff_after_jobs(worker, n_tasks, leak, sleep=0):
 def test_memoryleaks_noleak(worker):
 
     worker.start(
-        flags="--trace_memory --gevent 1 --mongodb_logs 0 --report_interval 10000")
+        flags="--trace_memory --greenlets 1 --mongodb_logs 0 --report_interval 10000")
 
     # Send it once to add to imports
     get_diff_after_jobs(worker, 10, 0)
@@ -53,7 +53,7 @@ def test_memoryleaks_noleak(worker):
 def test_memoryleaks_1mleak(worker):
 
     worker.start(
-        flags="--trace_memory --gevent 1 --mongodb_logs 0 --report_interval 10000")
+        flags="--trace_memory --greenlets 1 --mongodb_logs 0 --report_interval 10000")
 
     # Send it once to add to imports
     get_diff_after_jobs(worker, 10, 0)

@@ -7,7 +7,7 @@ def test_cancel_by_path(worker):
 
     # Start the worker with only one greenlet so that tasks execute
     # sequentially
-    worker.start(flags="--gevent 1")
+    worker.start(flags="--greenlets 1")
 
     job_id1 = worker.send_task(
         "tests.tasks.general.MongoInsert", {"a": 41, "sleep": 2}, block=False)

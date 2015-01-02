@@ -14,8 +14,8 @@ from werkzeug.serving import run_with_reloader
 
 sys.path.insert(0, os.getcwd())
 
-from mrq.queue import send_task, Queue
-from mrq.context import connections, set_current_config, get_current_config
+from mrq.queue import Queue
+from mrq.context import connections, set_current_config, get_current_config, queue_job
 from mrq.config import get_config
 
 from mrq.dashboard.utils import jsonify, requires_auth
@@ -273,7 +273,7 @@ def api_job_traceback(job_id):
 @app.route('/api/jobaction', methods=["POST"])
 @requires_auth
 def api_job_action():
-    return jsonify({"job_id": send_task("mrq.basetasks.utils.JobAction",
+    return jsonify({"job_id": queue_job("mrq.basetasks.utils.JobAction",
                                         {k: v for k,
                                          v in request.form.iteritems()},
                                         queue=get_current_config()["dashboard_queue"])})

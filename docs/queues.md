@@ -1,8 +1,17 @@
-# Raw queues
+# Regular queues
 
 With regular queues, MRQ stores the task metadata in MongoDB and the task IDs in a Redis list. This design allows a good compromise between performance and visibility.
 
-Raw queues give you more performance and some new features in exchange for a bit less visibility. In their case, only the parameters of a task are stored in serialized form in Redis when queued, and they are inserted in MongoDB only after being dequeued by a worker.
+You can transform a queue into a [pile](https://en.wikipedia.org/wiki/LIFO_(computing)) by appending `_reverse` to its name:
+
+```makefile
+# Will dequeue the last jobs added to the queue "default"
+$ mrq-worker default_reverse
+```
+
+# Raw queues
+
+Raw queues give you more performance and some powerful features in exchange for a bit less visibility for individual queued jobs. In their case, only the parameters of a task are stored in serialized form in Redis when queued, and they are inserted in MongoDB only after being dequeued by a worker.
 
 There are 4 types of raw queues. The type of a queue is determined by a suffix in its name:
 
@@ -33,9 +42,9 @@ RAW_QUEUES = {
 This task adds two integers. To queue tasks, you can do from the code:
 
 ```python
-from mrq.queue import send_raw_tasks
+from mrq.context import queue_raw_jobs
 
-send_raw_tasks("myqueue_raw", [
+queue_raw_jobs("myqueue_raw", [
   ["1 1"],
   ["42 8"]
 ])
@@ -50,13 +59,13 @@ $ mrq-worker high myqueue_raw
 Queueing on timed sets is a bit different, you can pass unix timestamps directly:
 
 ```python
-from mrq.queue import send_raw_tasks
+from mrq.context import queue_raw_jobs
 import time
 
-send_raw_tasks("myqueue_timed_set", {
+queue_raw_jobs("myqueue_timed_set", {
   "rawparam_xxx": time.time(),
   "rawparam_yyy": time.time() + 3600  # Do this in an hour
 })
 ```
 
-For more examples of raw queue configuration, check https://github.com/pricingassistant/mrq/blob/master/tests/fixtures/config-raw1.py
+For more examples of raw queue configuration, check [the tests](https://github.com/pricingassistant/mrq/blob/master/tests/fixtures/config-raw1.py)

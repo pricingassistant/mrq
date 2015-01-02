@@ -1,7 +1,7 @@
-from mrq.queue import send_task, Queue
+from mrq.queue import Queue
 from mrq.task import Task
 from mrq.job import Job
-from mrq.context import log, connections
+from mrq.context import log, connections, run_task
 import datetime
 import time
 
@@ -11,10 +11,10 @@ class RequeueInterruptedJobs(Task):
     """ Requeue jobs that were marked as status=interrupt when a worker got a SIGTERM. """
 
     def run(self, params):
-        return send_task("mrq.basetasks.utils.JobAction", {
+        return run_task("mrq.basetasks.utils.JobAction", {
             "status": "interrupt",
-            "action": "requeue"
-        }, sync=True)
+            "action": "requeue_retry"
+        })
 
 
 class RequeueRetryJobs(Task):
@@ -22,11 +22,11 @@ class RequeueRetryJobs(Task):
     """ Requeue jobs that were marked as retry. """
 
     def run(self, params):
-        return send_task("mrq.basetasks.utils.JobAction", {
+        return run_task("mrq.basetasks.utils.JobAction", {
             "status": "retry",
             "dateretry": {"$lte": datetime.datetime.utcnow()},
-            "action": "requeue"
-        }, sync=True)
+            "action": "requeue_retry"
+        })
 
 
 class RequeueStartedJobs(Task):
@@ -49,8 +49,10 @@ class RequeueStartedJobs(Task):
         # There shouldn't be that much "started" jobs so we can quite safely
         # iterate over them.
         collection = connections.mongodb_jobs.mrq_jobs
+
+        fields = {"_id": 1, "datestarted": 1, "queue": 1, "path": 1, "retry_count": 1}
         for job_data in collection.find(
-                {"status": "started"}, fields={"_id": 1, "datestarted": 1, "queue": 1, "path": 1}):
+                {"status": "started"}, fields=fields):
             job = Job(job_data["_id"])
             job.set_data(job_data)
 
@@ -164,9 +166,3 @@ class RequeueLostJobs(Task):
             job.requeue(queue=job_data["queue"])
 
         return stats
-
-
-# class CleanupStoppedWorkers(Task):
-#   """ Remove stopped or timeouted workers from mongodb.mrq_workers. """
-
-#   def run(self, params):

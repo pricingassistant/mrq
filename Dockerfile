@@ -38,7 +38,13 @@ RUN pip install --use-mirrors -r requirements-dashboard.txt
 # TODO remove me. https://github.com/kevin1024/pytest-httpbin/issues/9
 RUN pip install pytest-httpbin==0.0.3
 
+# Redis
 EXPOSE 6379
+# MongoDB
 EXPOSE 27017
+# Dashboard
 EXPOSE 5555
+# Worker monitoring port
 EXPOSE 20020
+# docs
+EXPOSE 8000

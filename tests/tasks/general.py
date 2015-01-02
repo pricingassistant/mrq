@@ -1,7 +1,6 @@
 from time import sleep
 from mrq.task import Task
-from mrq.context import log, retry_current_job, connections, get_current_config, get_current_job, progress, subpool_map
-from mrq.queue import send_task
+from mrq.context import log, retry_current_job, connections, get_current_config, get_current_job, set_job_progress, subpool_map, queue_job
 import urllib2
 import json
 
@@ -22,10 +21,6 @@ class Add(Task):
 
 class TimeoutFromConfig(Add):
     pass
-
-
-class TimeoutFromConfigAndCancel(Add):
-    cancel_on_timeout = True
 
 
 class Fetch(Task):
@@ -67,15 +62,15 @@ class Retry(Task):
     def run(self, params):
 
         log.info("Retrying in %s on %s" %
-                 (params.get("countdown"), params.get("queue")))
+                 (params.get("delay"), params.get("queue")))
 
         connections.mongodb_logs.tests_inserts.insert(params)
 
-        if params.get("cancel_on_retry"):
-            self.cancel_on_retry = params.get("cancel_on_retry")
-
         retry_current_job(
-            queue=params.get("queue"), countdown=params.get("countdown"))
+            queue=params.get("queue"),
+            delay=params.get("delay"),
+            max_retries=params.get("max_retries")
+        )
 
         raise Exception("Should not be reached")
 
@@ -103,7 +98,7 @@ class Progress(Task):
     def run(self, params):
 
         for i in range(1, 100):
-            progress(0.01 * i, save=params["save"])
+            set_job_progress(0.01 * i, save=params["save"])
             sleep(0.1)
 
 
@@ -157,4 +152,4 @@ class GetMetrics(Task):
 class SendTask(Task):
 
     def run(self, params):
-        return send_task(params["path"], params["params"])
+        return queue_job(params["path"], params["params"])

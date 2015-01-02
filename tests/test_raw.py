@@ -6,9 +6,9 @@ import pytest
 
 
 @pytest.mark.parametrize(["p_queue", "p_pushback", "p_timed", "p_flags"], [
-    ["test_timed_set", False, True, "--gevent 10"],
-    ["pushback_timed_set", True, True, "--gevent 10"],
-    ["test_sorted_set", False, False, "--gevent 1"]
+    ["test_timed_set", False, True, "--greenlets 10"],
+    ["pushback_timed_set", True, True, "--greenlets 10"],
+    ["test_sorted_set", False, False, "--greenlets 1"]
 ])
 def test_raw_sorted(worker, p_queue, p_pushback, p_timed, p_flags):
 
@@ -84,7 +84,7 @@ def test_raw_sorted(worker, p_queue, p_pushback, p_timed, p_flags):
 def test_raw_set(worker, p_queue, p_set):
 
     worker.start(
-        flags="--gevent 10 --config tests/fixtures/config-raw1.py", queues=p_queue)
+        flags="--greenlets 10 --config tests/fixtures/config-raw1.py", queues=p_queue)
 
     test_collection = worker.mongodb_logs.tests_inserts
     jobs_collection = worker.mongodb_jobs.mrq_jobs
@@ -106,7 +106,7 @@ def test_raw_set(worker, p_queue, p_set):
 def test_raw_started(worker):
 
     worker.start(
-        flags="--gevent 2 --config tests/fixtures/config-raw1.py", queues="teststarted_raw teststartedx")
+        flags="--greenlets 2 --config tests/fixtures/config-raw1.py", queues="teststarted_raw teststartedx")
 
     worker.send_raw_tasks("teststarted_raw", [2, 2, 2], block=False)
     time.sleep(1)
@@ -148,7 +148,7 @@ def test_raw_exception(worker):
     p_queue = "testexception_raw"
 
     worker.start(
-        flags="--gevent 10 --config tests/fixtures/config-raw1.py", queues=p_queue)
+        flags="--greenlets 10 --config tests/fixtures/config-raw1.py", queues=p_queue)
 
     jobs_collection = worker.mongodb_jobs.mrq_jobs
     assert jobs_collection.count() == 0
@@ -166,7 +166,7 @@ def test_raw_exception(worker):
     worker.stop(deps=False)
 
     worker.start(
-        deps=False, flags="--gevent 10 --config tests/fixtures/config-raw1.py", queues="default")
+        deps=False, flags="--greenlets 10 --config tests/fixtures/config-raw1.py", queues="default")
 
     worker.send_task(
         "mrq.basetasks.utils.JobAction",
@@ -189,7 +189,7 @@ def test_raw_exception(worker):
     worker.stop(deps=False)
 
     worker.start(
-        deps=False, flags="--gevent 10 --config tests/fixtures/config-raw1.py", queues="default testx")
+        deps=False, flags="--greenlets 10 --config tests/fixtures/config-raw1.py", queues="default testx")
 
     time.sleep(1)
 
@@ -205,7 +205,7 @@ def test_raw_retry(worker):
     p_queue = "testretry_raw"
 
     worker.start(
-        flags="--gevent 10 --config tests/fixtures/config-raw1.py", queues=p_queue)
+        flags="--greenlets 10 --config tests/fixtures/config-raw1.py", queues=p_queue)
 
     jobs_collection = worker.mongodb_jobs.mrq_jobs
     assert jobs_collection.count() == 0
@@ -248,7 +248,7 @@ def test_raw_mixed(worker, p_queue, p_greenlets):
     assert Queue("test_raw").size() == 3
     assert Queue("default").size() == 1
 
-    worker.start(flags="--gevent %s --config tests/fixtures/config-raw1.py" %
+    worker.start(flags="--greenlets %s --config tests/fixtures/config-raw1.py" %
                  p_greenlets, queues=p_queue, deps=False)
 
     test_collection = worker.mongodb_logs.tests_inserts

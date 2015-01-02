@@ -1,5 +1,4 @@
-from .context import log
-from .queue import send_task
+from .context import log, queue_job
 import datetime
 import ujson as json
 
@@ -117,7 +116,7 @@ class Scheduler(object):
             )
 
             if task_data:
-                send_task(
+                queue_job(
                     task_data["path"],
                     task_data["params"],
                     queue=task.get("queue"))

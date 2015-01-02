@@ -3,8 +3,8 @@ import pytest
 
 
 @pytest.mark.parametrize(["p_flags"], [
-    ["--gevent 50"],
-    ["--processes 10 --gevent 5"]
+    ["--greenlets 50"],
+    ["--processes 10 --greenlets 5"]
 ])
 def test_parallel_100sleeps(worker, p_flags):
 
