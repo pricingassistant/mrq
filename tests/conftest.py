@@ -78,7 +78,7 @@ class ProcessFixture(object):
                 time.sleep(0.1)
 
         if self.wait_port:
-            wait_for_net_service("127.0.0.1", int(self.wait_port))
+            wait_for_net_service("127.0.0.1", int(self.wait_port), poll_interval=0.01)
 
     def stop(self, force=False, timeout=None, block=True, sig=15):
 
@@ -239,7 +239,7 @@ class WorkerFixture(ProcessFixture):
         return out
 
     def get_report(self):
-        wait_for_net_service("127.0.0.1", 20020)
+        wait_for_net_service("127.0.0.1", 20020, poll_interval=0.01)
         f = urllib2.urlopen("http://127.0.0.1:20020")
         data = json.load(f)
         f.close()
