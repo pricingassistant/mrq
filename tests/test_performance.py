@@ -10,7 +10,7 @@ import pytest
 ])
 def test_network_latency(worker, p_latency, p_min, p_max):
 
-    worker.start(flags=" --no_mongodb_ensure_indexes --add_network_latency=%s" % (p_latency))
+    worker.start(flags=" --no_mongodb_ensure_indexes --add_network_latency=%s" % (p_latency), trace=False)
 
     start_time = time.time()
 
@@ -24,14 +24,19 @@ def test_network_latency(worker, p_latency, p_min, p_max):
 
 def benchmark_task(worker, taskpath, taskparams, tasks=1000, greenlets=50, processes=0, max_seconds=10, profile=False, quiet=True, raw=False, queues="default", config=None):
 
-    worker.start(flags="--profile --processes %s --greenlets %s%s%s%s" % (
+    worker.start(flags="--processes %s --greenlets %s%s%s%s" % (
         processes,
         greenlets,
         " --profile" if profile else "",
         " --quiet" if quiet else "",
         " --config %s" % config if config else ""
-    ), queues=queues)
+    ), queues=queues, trace=False)
 
+    # Warm up the workers with one simple task.
+    print "Warming up workers..."
+    worker.send_tasks("tests.tasks.general.Add", [{"a": i, "b": 0, "sleep": 0} for i in range(greenlets * min(1, processes))])
+
+    print "Starting benchmark..."
     start_time = time.time()
 
     # result = worker.send_tasks("tests.tasks.general.Add",
@@ -51,11 +56,12 @@ def benchmark_task(worker, taskpath, taskparams, tasks=1000, greenlets=50, proce
     return result, total_time
 
 
-def test_performance_simpleadds_regular(worker):
+@pytest.mark.parametrize(["p_processes"], [[0], [2]])
+def test_performance_simpleadds_regular(worker, p_processes):
 
     n_tasks = 10000
     n_greenlets = 30
-    n_processes = 0
+    n_processes = p_processes
     max_seconds = 35
 
     result, total_time = benchmark_task(worker,
@@ -136,7 +142,7 @@ def test_performance_httpstatic_fast(worker, httpstatic):
 
 def test_performance_queue_cancel_requeue(worker):
 
-    worker.start()
+    worker.start(trace=False)
 
     n_tasks = 10000
 
