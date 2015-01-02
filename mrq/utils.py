@@ -97,7 +97,7 @@ def lazyproperty(fn):
 
 
 # http://code.activestate.com/recipes/576655-wait-for-network-service-to-appear/
-def wait_for_net_service(server, port, timeout=None):
+def wait_for_net_service(server, port, timeout=None, poll_interval=0.1):
     """ Wait for network service to appear
         @param timeout: in seconds, if None or 0 wait forever
         @return: True of False, if timeout is None may return only True or
@@ -136,7 +136,7 @@ def wait_for_net_service(server, port, timeout=None):
         else:
             s.close()
             return True
-        time.sleep(0.1)
+        time.sleep(poll_interval)
 
 
 class LazyObject(object):
