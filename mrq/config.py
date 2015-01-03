@@ -165,6 +165,12 @@ def add_parser_args(parser, config_type):
         type=int,
         help='Seconds before a job in retry status is requeued again')
 
+    parser.add_argument(
+        '--use_large_job_ids',
+        action='store_true',
+        default=False,
+        help='Do not use compacted job IDs in Redis. For compatibility with 0.1.x only')
+
     # mrq-run-specific arguments
 
     if config_type == "run":

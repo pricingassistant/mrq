@@ -49,11 +49,11 @@ def main():
     else:
         worker_class = load_class_by_path(cfg["worker_class"])
         job = worker_class.job_class(None)
-        job.data = {
+        job.set_data({
             "path": cfg["taskpath"],
             "params": params,
             "queue": cfg["queue"]
-        }
+        })
         job.datestarted = datetime.datetime.utcnow()
         set_current_job(job)
         ret = job.perform()

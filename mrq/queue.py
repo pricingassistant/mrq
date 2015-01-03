@@ -1,8 +1,8 @@
-from .utils import group_iter
-from .context import connections, get_current_config, metric, queue_job, queue_jobs, queue_raw_jobs, run_task
+from .context import connections, get_current_config, metric, queue_jobs, queue_raw_jobs, run_task
 from .redishelpers import redis_zaddbyscore, redis_zpopbyscore, redis_lpopsafe
 from .redishelpers import redis_group_command
 import time
+from bson import ObjectId
 
 
 class Queue(object):
@@ -14,6 +14,8 @@ class Queue(object):
     is_sorted = False
     is_set = False
     is_reverse = False
+
+    use_large_ids = False
 
     def __init__(self, queue_id):
         if isinstance(queue_id, Queue):
@@ -40,6 +42,8 @@ class Queue(object):
         if "_sorted" in self.id:
             self.is_sorted = True
 
+        self.use_large_ids = get_current_config()["use_large_job_ids"]
+
     @property
     def redis_key(self):
         """ Returns the redis key used to store this queue. """
@@ -63,6 +67,22 @@ class Queue(object):
         """ Returns the specific configuration for this queue """
 
         return get_current_config().get("raw_queues", {}).get(self.id) or {}
+
+    def serialize_job_ids(self, job_ids):
+        """ Returns job_ids serialized for storage in Redis """
+        if len(job_ids) == 0 or self.use_large_ids:
+            return job_ids
+        elif isinstance(job_ids[0], ObjectId):
+            return [x.binary for x in job_ids]
+        else:
+            return [x.decode('hex') for x in job_ids]
+
+    def unserialize_job_ids(self, job_ids):
+        """ Unserialize job_ids stored in Redis """
+        if len(job_ids) == 0 or self.use_large_ids:
+            return job_ids
+        else:
+            return [x.encode('hex') for x in job_ids]
 
     def size(self):
         """ Returns the total number of jobs on the queue """
@@ -99,19 +119,19 @@ class Queue(object):
 
         # ZSET
         if self.is_sorted:
-            return connections.redis.zrange(
+            return self.unserialize_job_ids(connections.redis.zrange(
                 self.redis_key,
                 skip,
-                skip + limit - 1)
+                skip + limit - 1))
         # SET
         elif self.is_set:
-            return connections.redis.srandmember(self.redis_key, limit)
+            return self.unserialize_job_ids(connections.redis.srandmember(self.redis_key, limit))
         # LIST
         else:
-            return connections.redis.lrange(
+            return self.unserialize_job_ids(connections.redis.lrange(
                 self.redis_key,
                 skip,
-                skip + limit - 1)
+                skip + limit - 1))
 
     def get_sorted_graph(
             self,
@@ -183,13 +203,18 @@ class Queue(object):
 
             if not isinstance(job_ids, dict) and self.is_timed:
                 now = time.time()
-                job_ids = {str(x): now for x in job_ids}
+                job_ids = {x: now for x in self.serialize_job_ids(job_ids)}
+            else:
+
+                serialized_job_ids = self.serialize_job_ids(job_ids.keys())
+                values = job_ids.values()
+                job_ids = {k: values[i] for i, k in enumerate(serialized_job_ids)}
 
             connections.redis.zadd(self.redis_key, **job_ids)
 
         # LIST
         else:
-            connections.redis.rpush(self.redis_key, *job_ids)
+            connections.redis.rpush(self.redis_key, *self.serialize_job_ids(job_ids))
 
         metric("queues.%s.enqueued" % self.id, len(job_ids))
         metric("queues.all.enqueued", len(job_ids))
@@ -208,7 +233,7 @@ class Queue(object):
 
             if not isinstance(params_list, dict) and self.is_timed:
                 now = time.time()
-                params_list = {str(x): now for x in params_list}
+                params_list = {x: now for x in params_list}
 
             connections.redis.zadd(self.redis_key, **params_list)
 
@@ -365,7 +390,7 @@ class Queue(object):
                 worker.status = "spawn"
 
             jobs += [job_class(_job_id, queue=self.id, start=True)
-                     for _job_id in job_ids if _job_id]
+                     for _job_id in self.unserialize_job_ids(job_ids) if _job_id]
 
             # Now that the jobs have been marked as started in Mongo, we can
             # remove them from the started queue.

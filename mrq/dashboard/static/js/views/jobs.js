@@ -236,6 +236,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
                   'success': "label-success",
                   'timeout': "label-danger",
                   'failed': "label-danger",
+                  'maxretries': "label-danger",
                   'interrupt': "label-danger",
                   'cancel': "label-warning",
                   'retry': "label-warning"

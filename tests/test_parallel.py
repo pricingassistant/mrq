@@ -19,7 +19,7 @@ def test_parallel_100sleeps(worker, p_flags):
     total_time = time.time() - start_time
 
     # But should be done quickly!
-    assert total_time < 10
+    assert total_time < 15
 
     # ... and return correct results
     assert result == range(100)

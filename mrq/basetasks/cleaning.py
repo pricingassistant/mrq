@@ -91,19 +91,26 @@ class RequeueRedisStartedJobs(Task):
         job_ids = connections.redis.zrangebyscore(
             redis_key_started, "-inf", time.time() - params.get("timeout", 60))
 
-        for job_id in job_ids:
+        # TODO this should be wrapped inside Queue or Worker
+        # we shouldn't access these internals here
+        queue_obj = Queue("default")
+        unserialized_job_ids = queue_obj.unserialize_job_ids(job_ids)
 
-            queue = Job(job_id, start=False, fetch=False).fetch(
+        for i, job_id in enumerate(job_ids):
+
+            queue = Job(unserialized_job_ids[i], start=False, fetch=False).fetch(
                 full_data=True).data["queue"]
+
+            queue_obj = Queue(queue)
 
             stats["fetched"] += 1
 
-            log.info("Requeueing %s on %s" % (job_id, queue))
+            log.info("Requeueing %s on %s" % (unserialized_job_ids[i], queue))
 
             # TODO LUA script & don't rpush if not in zset anymore.
             with connections.redis.pipeline(transaction=True) as pipeline:
                 pipeline.zrem(redis_key_started, job_id)
-                pipeline.rpush(Queue(queue).redis_key, job_id)
+                pipeline.rpush(queue_obj.redis_key, job_id)
                 pipeline.execute()
 
             stats["requeued"] += 1

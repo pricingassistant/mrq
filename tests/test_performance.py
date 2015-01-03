@@ -93,7 +93,7 @@ def test_performance_simpleadds_raw(worker, p_queue, p_greenlets):
 
     result, total_time = benchmark_task(worker,
                                         p_queue,
-                                        range(n_tasks),
+                                        [str(i) for i in range(n_tasks)],
                                         tasks=n_tasks,
                                         greenlets=n_greenlets,
                                         processes=n_processes,
