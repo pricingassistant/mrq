@@ -141,7 +141,17 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
         self.refresh_logs(job_id);
 
       } else if (action == "copycommand") {
-        window.prompt("There is you command", $(evt.currentTarget).data("command"))
+
+        var html = "<textarea style='width:100%; height:400px;'>Loading...</textarea>";
+
+        var job_data = self.jobData[job_id];
+
+        self.$(".js-jobs-modal .js-jobs-modal-content").html(html);
+        self.$(".js-jobs-modal h4").html("Command-line for this job");
+        self.$(".js-jobs-modal").modal({});
+
+        self.$(".js-jobs-modal textarea")[0].value = "mrq-run " + job_data.path + " '" + JSON.stringify(job_data.params).replace("'","\\'") + "'";
+
       } else if (action == "viewtraceback") {
 
         self.$(".js-jobs-modal .js-jobs-modal-content").html("Loading...");
@@ -328,9 +338,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
                   "<button class='btn btn-xs btn-default' data-action='viewlogs'><span class='glyphicon glyphicon-align-left'></span> Logs</button>"+
                   "<button class='pull-right btn btn-xs btn-default' data-action='viewresult'><span class='glyphicon glyphicon-file'></span> Result</button>"+
                   "<br/><br/>"+
-                  "<button class='pull-right btn btn-xs btn-default' data-action='copycommand' data-command='"+
-                  "mrq-run " + source.path + " &#39" + JSON.stringify(source.params) + "&#39" +
-                  "'><span class='glyphicon glyphicon-floppy-save'></span> Command</button>"+
+                  "<button class='pull-right btn btn-xs btn-default' data-action='copycommand'><span class='glyphicon glyphicon-floppy-save'></span> Command</button>"+
                   "<br/><br/>"+
                   "<button class='btn btn-xs btn-danger pull-right' data-action='cancel'><span class='glyphicon glyphicon-remove-circle'></span> Cancel</button>"+
                   "<button class='btn btn-xs btn-warning' data-action='requeue'><span class='glyphicon glyphicon-refresh'></span> Requeue</button>"+
@@ -342,7 +350,17 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
 
 
         ],
-        "aaSorting":[ [0,'asc'] ]
+        "aaSorting":[ [0,'asc'] ],
+
+        "fnDrawCallback": function (oSettings) {
+
+          self.jobData = {};
+
+          _.each(oSettings.aoData,function(row) {
+            var oData = row._aData;
+            self.jobData[oData["_id"]] = oData;
+          });
+        }
       });
 
       this.initDataTable(datatableConfig);

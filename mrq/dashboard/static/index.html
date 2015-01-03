@@ -313,7 +313,6 @@
             </div>
             <div class="form-group">
               <select class="form-control input-sm js-datatable-filters-status" id="jobs-form-status">
-
                 <option <%= filters.status==""?"selected='selected'":"" %> value="">-statuses-</option>
                 <% _.each(["queued", "started", "success", "failed", "retry", "maxretries", "timeout", "interrupt", "cancel"], function(k) { %>
                   <option <%= filters.status==k?"selected='selected'":"" %> value="<%= k %>"><%= k %></option>
