@@ -51,10 +51,13 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
     },
 
     refreshStackTrace: function(jobId)  {
+      var self = this;
+
       $.ajax("/api/job/"+jobId+"/traceback", {
         "type": "GET",
         "success": function(data) {
-          self.$(".js-jobs-modal .js-jobs-modal-content").html(_.escape(data["traceback"].replace(/\\n/g, "<br/>")));
+          var stack = self.format_traceback(data["traceback"]);
+          self.$(".js-jobs-modal .js-jobs-modal-content").html(stack);
           self.$(".js-jobs-modal h4").html("Stack Trace");
           self.$(".js-jobs-modal").modal({});
         },
@@ -78,8 +81,8 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
         });
 
         if (job_data && job_data["stack"]) {
-          var html = _.escape((job_data["stack"] || []).join("").replace(/\\n/g, "<br/>"));
-          self.$(".js-jobs-modal .js-jobs-modal-content").html(html);
+          var stack = self.format_traceback((job_data["stack"] || []).join(""));
+          self.$(".js-jobs-modal .js-jobs-modal-content").html(stack);
         } else {
           self.$(".js-jobs-modal-callstack-outdated").show();
         }
@@ -99,6 +102,32 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
       data["action"] = action;
       self.jobaction(evt, data);
 
+    },
+
+    format_traceback: function(stack) {
+
+      // Escape it to avoid XSS
+      stack = _.escape(stack.replace(/\\n/g, "<br/>"));
+
+      // Try to insert links to source code
+      var online_repositories = window.MRQ_CONFIG.dashboard_autolink_repositories || [];
+
+      if (online_repositories.length) {
+
+        stack = stack.replace(/File &quot;(.+?)&quot;, line ([0-9]+)/gm, function(m, file_path, line) {
+          for (var i=0;i<online_repositories.length;i++) {
+            var regex = new RegExp(online_repositories[i][0]);
+            if (file_path.match(regex)) {
+              var file_url = file_path.replace(regex, online_repositories[i][1]);
+              return "File &quot;<a target='_blank' href='"+file_url+"'>"+file_path+"</a>&quot;, line <a target='_blank' href='"+file_url+"#L"+line+"'>"+line+"</a>";
+            }
+          }
+          return m;
+        });
+
+      }
+
+      return stack;
     },
 
     row_jobaction:function(evt) {

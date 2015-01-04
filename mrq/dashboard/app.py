@@ -1,7 +1,7 @@
 from gevent import monkey
 monkey.patch_all()
 
-from flask import Flask, request
+from flask import Flask, request, render_template
 
 import time
 import os
@@ -27,14 +27,21 @@ parser = argparse.ArgumentParser(description='Start the MRQ dashboard')
 cfg = get_config(parser=parser, config_type="dashboard")
 set_current_config(cfg)
 
-app = Flask("dashboard", static_folder=os.path.join(
-    CURRENT_DIRECTORY, "static"))
+app = Flask(
+    "dashboard",
+    static_folder=os.path.join(CURRENT_DIRECTORY, "static"),
+    template_folder=os.path.join(CURRENT_DIRECTORY, "templates")
+)
+
+WHITELISTED_MRQ_CONFIG_KEYS = ["dashboard_autolink_repositories"]
 
 
 @app.route('/')
 @requires_auth
 def root():
-    return app.send_static_file("index.html")
+    return render_template("index.html", MRQ_CONFIG={
+        k: v for k, v in cfg.items() if k in WHITELISTED_MRQ_CONFIG_KEYS
+    })
 
 
 @app.route('/api/datatables/taskexceptions')
