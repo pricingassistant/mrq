@@ -49,16 +49,17 @@ Create a sample project and write a simple task :
   $ vim tasks.py
 ```
 
+```python
+from mrq.task import Task
+import urllib2
 
-    from mrq.task import Task
-    import urllib2
-
-    class Fetch(Task):
-        def run(self, params):
-            f = urllib2.urlopen(params.get("url"))
-            t = f.read()
-            f.close()
-            return len(t)
+class Fetch(Task):
+    def run(self, params):
+        f = urllib2.urlopen(params.get("url"))
+        t = f.read()
+        f.close()
+        return len(t)
+```
 
 You can now run it using `mrq-run` :
 ```
@@ -93,7 +94,7 @@ $ mrq-run --async --queue fetches tasks.Fetch url http://www.google.com &&
 
 Now start the dasbhoard with `mrq-dashboard &` and go check your newly created queue and job on [localhost:5555](http://localhost:5555/#jobs)
 
-Instanciate a worker with `mrq-worker` and you can follow it on the dashboard as it executes in parallel all the enqueued jobs
+Instantiate a worker with `mrq-worker` and you can follow it on the dashboard as it executes in parallel all the enqueued jobs
 
 ```
 $ mrq-worker --gevent 10 fetches
