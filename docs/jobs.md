@@ -1,10 +1,8 @@
 # Jobs & Tasks
 
-A **Job** is an unit of work that can be added to a Queue. It will be later dequeued by a Worker.
+A **Task** is a Python class wrapping a unit of processing. A task may invoke other tasks, synchronously or asynchronously (by queuing them as proper jobs).
 
-A **Task** is a Python class wrapping your asynchronous code.
-
-Jobs have a main Task, that will be called when the Job starts. In this Job context, the main Task can then call sub-Tasks or any other Python code.
+A **Job** is an instance of the execution of a Task. It must link to a specific Task via it's path and it must have parameters. It must be queued in a Queue. A Worker then dequeues and executes it. The worker updates it with metadata about it's execution : status, traceback ...
 
 ## Job statuses
 
