@@ -1,4 +1,6 @@
 from gevent import GreenletExit
+import traceback
+import sys
 
 
 # Inherits from BaseException to avoid being caught when not intended.
@@ -10,9 +12,14 @@ class RetryInterrupt(BaseException):
     delay = None
     queue = None
     retry_count = 0
+    original_exception = None
 
     def __str__(self):
-        return "<RetryInterrupt #%s: %s seconds, %s queue>" % (self.retry_count, self.delay, self.queue)
+        s = "<RetryInterrupt #%s: %s seconds, %s queue>" % (self.retry_count, self.delay, self.queue)
+        if self.original_exception is not None:
+            s += "\n---- Original exception: -----\n%s" % ("".join(traceback.format_exception(*self.original_exception)))
+
+        return s
 
 
 class MaxRetriesInterrupt(BaseException):

@@ -189,6 +189,12 @@ class Job(object):
         if exc.delay is None:
             exc.delay = self.retry_delay
 
+        # Often, a retry will be raised inside an "except" block.
+        # Keep track of the first exception for debugging purposes.
+        original_exception = sys.exc_info()
+        if original_exception[0] is not None:
+            exc.original_exception = original_exception
+
         raise exc
 
     def cancel(self):
