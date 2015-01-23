@@ -296,6 +296,14 @@ def add_parser_args(parser, config_type):
             type=str,
             help='Overwrite the local IP, to be displayed in the dashboard.')
 
+        parser.add_argument(
+            '--max_sleep',
+            default=1.,
+            type=float,
+            action='store',
+            help='Max seconds while worker may sleep waiting for a new job. '
+                 'Can be < 1.')
+
 
 def get_config(
         sources=(
