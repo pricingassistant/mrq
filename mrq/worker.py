@@ -375,11 +375,6 @@ class Worker(object):
                     self.status = "full"
                     gevent.sleep(0.01)
 
-                quiet = not (wait_count % 20 == 0 or wait_count > 1000)
-
-                if not quiet:
-                    self.log.info('Fetching %s jobs from %s' % (free_pool_slots, self.queues))
-
                 jobs = []
 
                 for queue_name in self.queues:
