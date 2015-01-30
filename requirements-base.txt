@@ -1,4 +1,4 @@
-argparse==1.1
+argparse>=1.1
 redis==2.10.3
 pymongo==2.7.2
 gevent==1.0.1
