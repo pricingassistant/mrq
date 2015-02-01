@@ -1,28 +1,41 @@
 from gevent import GreenletExit
 import traceback
-import sys
 
 
 # Inherits from BaseException to avoid being caught when not intended.
-class TimeoutInterrupt(BaseException):
-    pass
+class _MrqInterrupt(BaseException):
 
-
-class RetryInterrupt(BaseException):
-    delay = None
-    queue = None
-    retry_count = 0
     original_exception = None
 
+    def _get_exception_name(self):
+        return self.__class__.__name__
+
     def __str__(self):
-        s = "<RetryInterrupt #%s: %s seconds, %s queue>" % (self.retry_count, self.delay, self.queue)
+        s = self._get_exception_name()
         if self.original_exception is not None:
             s += "\n---- Original exception: -----\n%s" % ("".join(traceback.format_exception(*self.original_exception)))
 
         return s
 
 
-class MaxRetriesInterrupt(BaseException):
+class TimeoutInterrupt(_MrqInterrupt):
+    pass
+
+
+class AbortInterrupt(_MrqInterrupt):
+    pass
+
+
+class RetryInterrupt(_MrqInterrupt):
+    delay = None
+    queue = None
+    retry_count = 0
+
+    def _get_exception_name(self):
+        return "%s #%s: %s seconds, %s queue" % (self.__class__.__name__, self.retry_count, self.delay, self.queue)
+
+
+class MaxRetriesInterrupt(_MrqInterrupt):
     pass
 
 

@@ -31,7 +31,7 @@ TASKS = {
         # Seconds before a job in retry status is requeued again
         "retry_delay": 600,
 
-        # Keep jobs with status in ("success", "cancel") that many seconds
+        # Keep jobs with status in ("success", "cancel", "abort") that many seconds
         # in MongoDB
         "result_ttl": 7 * 24 * 3600,
 

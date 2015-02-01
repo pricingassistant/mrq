@@ -125,9 +125,15 @@ def build_api_datatables_query(req):
             req.args.get("redisqueue")).list_job_ids(limit=1000)]}
     else:
 
-        for param in ["queue", "path", "status", "exceptiontype"]:
+        for param in ["queue", "path", "exceptiontype"]:
             if req.args.get(param):
                 query[param] = req.args.get(param)
+        if req.args.get("status"):
+            statuses = req.args.get(param).split("-")
+            if len(statuses) == 1:
+                query[param] = statuses[0]
+            else:
+                query[param] = {"$in": statuses}
         if req.args.get("id"):
             query["_id"] = ObjectId(req.args.get("id"))
         if req.args.get("worker"):
@@ -280,9 +286,11 @@ def api_job_traceback(job_id):
 @app.route('/api/jobaction', methods=["POST"])
 @requires_auth
 def api_job_action():
+    params = {k: v for k, v in request.form.iteritems()}
+    if params.get("status") and "-" in params.get("status"):
+        params["status"] = params.get("status").split("-")
     return jsonify({"job_id": queue_job("mrq.basetasks.utils.JobAction",
-                                        {k: v for k,
-                                         v in request.form.iteritems()},
+                                        params,
                                         queue=get_current_config()["dashboard_queue"])})
 
 

@@ -40,7 +40,10 @@ class JobAction(Task):
                 "dateretry",
                 "exceptiontype"]:
             if self.params.get(k):
-                query[k] = self.params.get(k)
+                if isinstance(self.params[k], (list, tuple)):
+                    query[k] = {"$in": list(self.params[k])}
+                else:
+                    query[k] = self.params[k]
 
         if self.params.get("params"):
             params_dict = json.loads(self.params.get("params"))  # pylint: disable=no-member

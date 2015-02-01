@@ -82,6 +82,12 @@ def retry_current_job(delay=None, max_retries=None, queue=None):
         current_job.retry(delay=delay, max_retries=max_retries, queue=queue)
 
 
+def abort_current_job():
+    current_job = get_current_job()
+    if current_job:
+        current_job.abort()
+
+
 def _connections_factory(attr):
 
     config = get_current_config()

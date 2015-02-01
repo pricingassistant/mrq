@@ -14,7 +14,7 @@ from gevent.pywsgi import WSGIServer
 from collections import defaultdict
 
 from .job import Job
-from .exceptions import (TimeoutInterrupt, StopRequested, JobInterrupt,
+from .exceptions import (TimeoutInterrupt, StopRequested, JobInterrupt, AbortInterrupt,
                          RetryInterrupt, MaxRetriesInterrupt)
 from .context import (set_current_worker, set_current_job, get_current_job,
                       connections, enable_greenlet_tracing)
@@ -485,6 +485,10 @@ class Worker(object):
         except MaxRetriesInterrupt:
             self.log.error("Max retries reached")
             job._save_status("maxretries", exception=True)
+
+        except AbortInterrupt:
+            self.log.error("Caught abort")
+            job._save_status("abort", exception=True)
 
         except TimeoutInterrupt:
             self.log.error("Job timeouted after %s seconds" % job.timeout)

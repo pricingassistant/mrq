@@ -142,7 +142,7 @@ def add_parser_args(parser, config_type):
         default=7 * 24 * 3600,
         action='store',
         type=int,
-        help='Seconds the results are kept in MongoDB when status in ("success", "cancel")')
+        help='Seconds the results are kept in MongoDB when status in ("success", "cancel", "abort")')
 
     parser.add_argument(
         '--default_job_timeout',

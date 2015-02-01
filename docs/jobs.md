@@ -19,7 +19,8 @@ When everything goes fine, a job will go through 3 statuses:
 However, to be reliable a task queue needs to prepare for everything that can go wrong. These statuses will help you manage those cases:
 
 * ```failed```: A Python Exception was raised during the execution of the job. It can be an Exception you raised yourself or an error in a module you are using. MRQ's Dashboard features a view where you can have a look at the tracebacks to debug these exceptions.
-* ```cancel```: The job was cancelled. This will happen mainly when you cancel jobs from the Dashboard before they run. Be careful, cancelling jobs when they are `started` won't interrupt the job.
+* ```cancel```: The job was cancelled. This will happen mainly when you cancel jobs from the Dashboard before they run. Be careful, cancelling jobs when they are `started` won't interrupt the currently running job.
+* ```abort```: The job was aborted. This happens while the job is running and `abort_current_job()` is called. Often this will be the result of an unrecoverable error that you don't want to retry but still want logged in the Dashboard for some time (see `result_ttl`)
 * ```interrupt```: While running this job, the worker was interrupted and had the time to save this status. This happens when the worker process receives the UNIX signal SIGTERM or two SIGINTs (which can happen by sending Ctrl-C two times). This status won't be set if the process is interrupted with a SIGKILL or any other abrupt means like a power off, and the task will stay in `started` state until requeued or cancelled by a maintenance job.
 * ```timeout```: The job took too long to finish and was interrupted by the worker. Timeouts can be set globally or for each task.
 * ```retry```: The method `task.retry()` was called to interrupt the job but mark it for being retried later. This may be useful when calling unreliable 3rd-party services.
@@ -69,6 +70,10 @@ The `delay` parameter defaults to the value of `retry_delay` in the task configu
 The `max_retries` parameter defaults to the value of `max_retries` in the task configuration. If the task has already been retried more than this, its status will be changed to `maxretries`.
 
 If the `queue` parameter is supplied, the job will be enventually requeued on that queue. If not, it will stay on its original queue.
+
+* `abort_current_job()`
+
+Stops the execution of the current job (by raising an `AbortInterrupt`) and mark it with the status `abort`. It will stay visible in the Dashboard for `result_ttl` seconds.
 
 * `get_current_job()`
 

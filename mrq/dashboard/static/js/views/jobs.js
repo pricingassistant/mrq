@@ -278,6 +278,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
                   'maxretries': "label-danger",
                   'interrupt': "label-danger",
                   'cancel': "label-warning",
+                  'abort': "label-warning",
                   'retry': "label-warning"
                 };
                 var css_class = status_classes[source.status] || "label-info";

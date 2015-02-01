@@ -1,6 +1,7 @@
 from time import sleep
 from mrq.task import Task
-from mrq.context import log, retry_current_job, connections, get_current_config, get_current_job, set_job_progress, subpool_map, queue_job
+from mrq.context import (log, retry_current_job, connections, get_current_config, get_current_job,
+                         set_job_progress, subpool_map, queue_job, abort_current_job)
 import urllib2
 import json
 
@@ -82,6 +83,13 @@ class RaiseException(Task):
         sleep(params.get("sleep", 0))
 
         raise Exception(params.get("message", ""))
+
+
+class Abort(Task):
+
+    def run(self, params):
+
+        abort_current_job()
 
 
 class ReturnParams(Task):

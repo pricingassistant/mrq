@@ -1,7 +1,7 @@
 import datetime
 from bson import ObjectId
 import time
-from .exceptions import RetryInterrupt, MaxRetriesInterrupt
+from .exceptions import RetryInterrupt, MaxRetriesInterrupt, AbortInterrupt
 from .utils import load_class_by_path
 from .queue import Queue
 from .context import get_current_worker, log, connections, get_current_config, metric
@@ -85,7 +85,7 @@ class Job(object):
             self.set_data(self.collection.find_and_modify(
                 {
                     "_id": self.id,
-                    "status": {"$nin": ["cancel"]}
+                    "status": {"$nin": ["cancel", "abort", "maxretries"]}
                 },
                 {"$set": {
                     "status": "started",
@@ -171,6 +171,14 @@ class Job(object):
         else:
             return inserted
 
+    def _attach_original_exception(self, exc):
+        """ Often, a retry will be raised inside an "except" block.
+            This Keep track of the first exception for debugging purposes. """
+
+        original_exception = sys.exc_info()
+        if original_exception[0] is not None:
+            exc.original_exception = original_exception
+
     def retry(self, queue=None, delay=None, max_retries=None):
         """ Marks the current job as needing to be retried. Interrupts it. """
 
@@ -189,12 +197,14 @@ class Job(object):
         if exc.delay is None:
             exc.delay = self.retry_delay
 
-        # Often, a retry will be raised inside an "except" block.
-        # Keep track of the first exception for debugging purposes.
-        original_exception = sys.exc_info()
-        if original_exception[0] is not None:
-            exc.original_exception = original_exception
+        self._attach_original_exception(exc)
 
+        raise exc
+
+    def abort(self):
+        """ Aborts the current task mid-excution. """
+        exc = AbortInterrupt()
+        self._attach_original_exception(exc)
         raise exc
 
     def cancel(self):
