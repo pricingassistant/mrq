@@ -1,7 +1,15 @@
+## Worker
 
-## Worker statuses
+A worker is a unit of processing, that dequeues jobs and executes them.
 
-A Worker is always in one of these statuses:
+It is started with a list of queues to listen to, in a specific order.
+
+It can be started with concurrency options (multiple processes and / or multiple greenlets). We call this whole group a single 'worker' even though it is able to dequeue multiple jobs in parallel.
+
+
+## Statuses
+
+At any time, a worker is in one of these statuses:
 
 * `init`: General worker initialization
 * `wait`: Waiting for new jobs from Redis
