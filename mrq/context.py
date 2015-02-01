@@ -6,7 +6,9 @@ import re
 import time
 from .utils import LazyObject, load_class_by_path, group_iter
 from itertools import count as itertools_count
+from .config import get_config
 
+# This should be MRQ's only Python object shared by all the jobs in the same process
 _GLOBAL_CONTEXT = {
 
     # Contains all the running greenlets for this worker. greenletid => Job object
@@ -19,8 +21,16 @@ _GLOBAL_CONTEXT = {
     "config": None
 }
 
-# Global log object, usable from all tasks
+# Global log object, usable from all jobs
 log = Logger(None, job="current")
+
+
+def setup_context(**kwargs):
+    """ Setup MRQ's environment.
+
+        Note: gevent should probably be initialized too if you want to use concurrency.
+    """
+    set_current_config(get_config(**kwargs))
 
 
 def set_current_job(job):
@@ -44,7 +54,6 @@ def get_current_job(greenlet_id=None):
 
 def set_current_worker(worker):
     _GLOBAL_CONTEXT["worker"] = worker
-    set_current_config(worker.config)
 
 
 def get_current_worker():

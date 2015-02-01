@@ -21,13 +21,14 @@ sys.path.insert(0, os.getcwd())
 
 from mrq import config
 from mrq.utils import load_class_by_path
+from mrq.context import set_current_config
 
 
 def main():
 
     parser = argparse.ArgumentParser(description='Start a RQ worker')
 
-    cfg = config.get_config(parser=parser, config_type="worker")
+    cfg = config.get_config(parser=parser, config_type="worker", sources=("file", "env", "args"))
 
     # If we are launching with a --processes option and without the SUPERVISOR_ENABLED env
     # then we should just call supervisord.
@@ -100,7 +101,9 @@ def main():
 
         worker_class = load_class_by_path(cfg["worker_class"])
 
-        w = worker_class(cfg)
+        set_current_config(cfg)
+
+        w = worker_class()
 
         exitcode = w.work_loop()
 

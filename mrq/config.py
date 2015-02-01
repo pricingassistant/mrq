@@ -300,12 +300,11 @@ def add_parser_args(parser, config_type):
 def get_config(
         sources=(
             "file",
-            "env",
-            "args"),
+            "env"),
         env_prefix="MRQ_",
         file_path=None,
         parser=None,
-        config_type="worker"):
+        config_type=None):
     """ Returns a config dict merged from several possible sources """
 
     if not parser:
@@ -314,7 +313,7 @@ def get_config(
     add_parser_args(parser, config_type)
 
     if config_type in ["run"]:
-        default_config = parser.parse_args(["x"]).__dict__
+        default_config = parser.parse_args(["notask"]).__dict__
     else:
         default_config = parser.parse_args([]).__dict__
 

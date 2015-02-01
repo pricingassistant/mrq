@@ -20,9 +20,8 @@ First, initialize a REPL with MRQ configured and guppy loaded:
 ```
 $ pip install guppy
 $ python
->>> from mrq import config
->>> from mrq.context import set_current_config, run_task
->>> set_current_config(config.get_config(sources=("file", "env"), config_type="run"))
+>>> from mrq.context import setup_context, run_task
+>>> setup_context()
 >>> from guppy import hpy
 >>> hp = hpy()
 ```

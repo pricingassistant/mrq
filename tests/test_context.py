@@ -1,5 +1,6 @@
 import json
 import time
+import os
 
 
 def test_context_get(worker):
@@ -80,3 +81,18 @@ def test_context_metric_failed(worker):
     assert metrics.get("jobs.status.started") == 2
     assert metrics.get("jobs.status.failed") == 1
     assert metrics.get("jobs.status.success") is None
+
+
+def test_context_setup():
+
+    try:
+        import subprocess32 as subprocess
+    except:
+        import subprocess
+
+    process = subprocess.Popen("python tests/fixtures/standalone_script1.py",
+                               shell=True, close_fds=True, env={"MRQ_NAME": "testname1", "PYTHONPATH": os.getcwd()}, cwd=os.getcwd(), stdout=subprocess.PIPE)
+
+    out, err = process.communicate()
+
+    assert out.endswith("42\ntestname1\n")

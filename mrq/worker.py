@@ -16,7 +16,7 @@ from collections import defaultdict
 from .job import Job
 from .exceptions import (TimeoutInterrupt, StopRequested, JobInterrupt, AbortInterrupt,
                          RetryInterrupt, MaxRetriesInterrupt)
-from .context import (set_current_worker, set_current_job, get_current_job,
+from .context import (set_current_worker, set_current_job, get_current_job, get_current_config,
                       connections, enable_greenlet_tracing)
 from .queue import Queue
 
@@ -35,9 +35,7 @@ class Worker(object):
     mongodb_logs = None
     redis = None
 
-    def __init__(self, config):
-
-        self.config = config
+    def __init__(self):
 
         set_current_worker(self)
 
@@ -57,7 +55,7 @@ class Worker(object):
         self.graceful_stop = None
 
         self.id = ObjectId()
-        if config["name"]:
+        if self.config.get("name"):
             self.name = self.config["name"]
         else:
             # Generate a somewhat human-readable name for this worker
@@ -84,6 +82,10 @@ class Worker(object):
             "tasks": defaultdict(float),
             "total": 0
         }
+
+    @property
+    def config(self):
+        return get_current_config()
 
     def connect(self, force=False):
 

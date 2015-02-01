@@ -24,7 +24,7 @@ CURRENT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 
 parser = argparse.ArgumentParser(description='Start the MRQ dashboard')
 
-cfg = get_config(parser=parser, config_type="dashboard")
+cfg = get_config(parser=parser, config_type="dashboard", sources=("file", "env", "args"))
 set_current_config(cfg)
 
 app = Flask(

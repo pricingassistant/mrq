@@ -27,7 +27,7 @@ def main():
 
     parser = argparse.ArgumentParser(description='Runs a task')
 
-    cfg = config.get_config(parser=parser, config_type="run")
+    cfg = config.get_config(parser=parser, config_type="run", sources=("file", "env", "args"))
     cfg["is_cli"] = True
     set_current_config(cfg)
 
