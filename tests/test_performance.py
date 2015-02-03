@@ -28,6 +28,8 @@ def test_job_max_latency(worker, p_max_latency, p_min_observed_latency, p_max_ob
     # Sleep a while with an idle worker to make the poll interval go up
     time.sleep(30)
 
+    # TODO, will fail if sleeps synchronize and by chance we send the task just when a sleep() is finished
+    # Average several ones over an interval instead?
     latency = get_latency() - base_latency
 
     print "Observed latency: %ss" % latency
