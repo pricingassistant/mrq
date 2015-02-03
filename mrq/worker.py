@@ -403,7 +403,7 @@ class Worker(object):
                 if len(jobs) < free_pool_slots:
                     self.status = "wait"
                     wait_count += 1
-                    gevent.sleep(min(self.config["max_sleep"], 0.001 * wait_count))
+                    gevent.sleep(min(self.config["max_latency"], 0.001 * wait_count))
 
         except StopRequested:
             pass
