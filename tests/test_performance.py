@@ -2,6 +2,38 @@ import time
 from mrq.queue import Queue
 import pytest
 
+@pytest.mark.parametrize(["p_max_latency", "p_min_observed_latency", "p_max_observed_latency"], [
+    [1, 0.03, 1],
+    [0.01, -1, 0.02]
+])
+def test_job_max_latency(worker, p_max_latency, p_min_observed_latency, p_max_observed_latency):
+
+    worker.start(flags=" --greenlets=1 --max_latency=%s" % (p_max_latency), trace=False)
+
+    def get_latency():
+        t = time.time()
+        return worker.send_task("tests.tasks.general.GetTime", {}) - t
+
+    # Warm up the worker
+    get_latency()
+
+    # This is the latency induced by our test system & general task work
+    # We're on the same machine so even in different processes time.time() should be pretty reliable
+    base_latency = get_latency()
+    print "Base latency: %ss" % base_latency
+
+    min_latency = min([get_latency() for _ in range(0, 5)])
+    print "FYI, min latency = %ss" % min_latency
+
+    # Sleep a while with an idle worker to make the poll interval go up
+    time.sleep(30)
+
+    latency = get_latency() - base_latency
+
+    print "Observed latency: %ss" % latency
+
+    assert p_min_observed_latency <= latency < p_max_observed_latency
+
 
 @pytest.mark.parametrize(["p_latency", "p_min", "p_max"], [
     [0, 0, 3],

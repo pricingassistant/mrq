@@ -1,9 +1,9 @@
-from time import sleep
 from mrq.task import Task
 from mrq.context import (log, retry_current_job, connections, get_current_config, get_current_job,
                          set_job_progress, subpool_map, queue_job, abort_current_job)
 import urllib2
 import json
+import time
 
 
 class Add(Task):
@@ -15,13 +15,20 @@ class Add(Task):
 
         if params.get("sleep", 0):
             log.info("sleeping", params.get("sleep", 0))
-            sleep(params.get("sleep", 0))
+            time.sleep(params.get("sleep", 0))
 
         return res
 
 
 class TimeoutFromConfig(Add):
     pass
+
+
+class GetTime(Task):
+
+    def run(self, params):
+
+        return time.time()
 
 
 class Fetch(Task):
@@ -53,7 +60,7 @@ class Leak(Task):
             LEAKS.append(["1" for _ in range(params.get("size", 0))])
 
         if params.get("sleep", 0) > 0:
-            sleep(params.get("sleep", 0))
+            time.sleep(params.get("sleep", 0))
 
         return params.get("return")
 
@@ -80,7 +87,7 @@ class RaiseException(Task):
 
     def run(self, params):
 
-        sleep(params.get("sleep", 0))
+        time.sleep(params.get("sleep", 0))
 
         raise Exception(params.get("message", ""))
 
@@ -96,7 +103,7 @@ class ReturnParams(Task):
 
     def run(self, params):
 
-        sleep(params.get("sleep", 0))
+        time.sleep(params.get("sleep", 0))
 
         return params
 
@@ -107,7 +114,7 @@ class Progress(Task):
 
         for i in range(1, 100):
             set_job_progress(0.01 * i, save=params["save"])
-            sleep(0.1)
+            time.sleep(0.1)
 
 
 class MongoInsert(Task):
@@ -118,7 +125,7 @@ class MongoInsert(Task):
             {"params": params}, manipulate=False)
 
         if params.get("sleep", 0) > 0:
-            sleep(params.get("sleep", 0))
+            time.sleep(params.get("sleep", 0))
 
         return params
 
@@ -141,7 +148,7 @@ class SubPool(Task):
         if x == "exception":
             raise Exception(x)
 
-        sleep(x)
+        time.sleep(x)
 
         return x
 
