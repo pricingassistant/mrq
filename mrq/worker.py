@@ -377,11 +377,6 @@ class Worker(object):
                     self.status = "full"
                     gevent.sleep(0.01)
 
-                quiet = not (wait_count % 20 == 0 or wait_count > 1000)
-
-                if not quiet:
-                    self.log.info('Fetching %s jobs from %s' % (free_pool_slots, self.queues))
-
                 jobs = []
 
                 for queue_name in self.queues:
@@ -410,7 +405,7 @@ class Worker(object):
                 if len(jobs) < free_pool_slots:
                     self.status = "wait"
                     wait_count += 1
-                    gevent.sleep(min(1, 0.001 * wait_count))
+                    gevent.sleep(min(self.config["max_latency"], 0.001 * wait_count))
 
         except StopRequested:
             pass
