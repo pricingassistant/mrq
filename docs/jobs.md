@@ -55,6 +55,9 @@ Queues multiple jobs at once. Returns a list of IDs of the jobs.
 
 Queues multiple jobs at once on a [raw queue](queues.md#raw-queues). The queued jobs have no IDs on a raw queue so this function has no return.
 
+* `get_job_result(job_id)`
+
+Returns a `dict` with `result` (can be any type) and `status`.
 
 ## Context API
 
