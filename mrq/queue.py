@@ -1,8 +1,8 @@
-from .context import connections, get_current_config, metric, queue_jobs, queue_raw_jobs, run_task
 from .redishelpers import redis_zaddbyscore, redis_zpopbyscore, redis_lpopsafe
 from .redishelpers import redis_group_command
 import time
 from bson import ObjectId
+import context
 
 
 class Queue(object):
@@ -42,17 +42,17 @@ class Queue(object):
         if "_sorted" in self.id:
             self.is_sorted = True
 
-        self.use_large_ids = get_current_config()["use_large_job_ids"]
+        self.use_large_ids = context.get_current_config()["use_large_job_ids"]
 
     @property
     def redis_key(self):
         """ Returns the redis key used to store this queue. """
-        return "%s:q:%s" % (get_current_config()["redis_prefix"], self.id)
+        return "%s:q:%s" % (context.get_current_config()["redis_prefix"], self.id)
 
     @classmethod
     def redis_key_started(cls):
         """ Returns the global redis key used to store started job ids """
-        return "%s:s:started" % get_current_config()["redis_prefix"]
+        return "%s:s:started" % context.get_current_config()["redis_prefix"]
 
     def get_retry_queue(self):
         """ For raw queues, returns the name of the linked queue for job statuses
@@ -66,7 +66,7 @@ class Queue(object):
     def get_config(self):
         """ Returns the specific configuration for this queue """
 
-        return get_current_config().get("raw_queues", {}).get(self.id) or {}
+        return context.get_current_config().get("raw_queues", {}).get(self.id) or {}
 
     def serialize_job_ids(self, job_ids):
         """ Returns job_ids serialized for storage in Redis """
@@ -89,20 +89,20 @@ class Queue(object):
 
         # ZSET
         if self.is_sorted:
-            return connections.redis.zcard(self.redis_key)
+            return context.connections.redis.zcard(self.redis_key)
         # SET
         elif self.is_set:
-            return connections.redis.scard(self.redis_key)
+            return context.connections.redis.scard(self.redis_key)
         # LIST
         else:
-            return connections.redis.llen(self.redis_key)
+            return context.connections.redis.llen(self.redis_key)
 
     def count_jobs_to_dequeue(self):
         """ Returns the number of jobs that can be dequeued right now from the queue. """
 
         # timed ZSET
         if self.is_timed:
-            return connections.redis.zcount(
+            return context.connections.redis.zcount(
                 self.redis_key,
                 "-inf",
                 time.time())
@@ -119,16 +119,16 @@ class Queue(object):
 
         # ZSET
         if self.is_sorted:
-            return self.unserialize_job_ids(connections.redis.zrange(
+            return self.unserialize_job_ids(context.connections.redis.zrange(
                 self.redis_key,
                 skip,
                 skip + limit - 1))
         # SET
         elif self.is_set:
-            return self.unserialize_job_ids(connections.redis.srandmember(self.redis_key, limit))
+            return self.unserialize_job_ids(context.connections.redis.srandmember(self.redis_key, limit))
         # LIST
         else:
-            return self.unserialize_job_ids(connections.redis.lrange(
+            return self.unserialize_job_ids(context.connections.redis.lrange(
                 self.redis_key,
                 skip,
                 skip + limit - 1))
@@ -145,7 +145,7 @@ class Queue(object):
         if not self.is_sorted:
             raise Exception("Not a sorted queue")
 
-        with connections.redis.pipeline(transaction=exact) as pipe:
+        with context.connections.redis.pipeline(transaction=exact) as pipe:
             interval = float(stop - start) / slices
             for i in range(0, slices):
                 pipe.zcount(self.redis_key,
@@ -165,9 +165,9 @@ class Queue(object):
     def all_active(cls):
         """ List active queues, based on their lengths in Redis. """
 
-        prefix = get_current_config()["redis_prefix"]
+        prefix = context.get_current_config()["redis_prefix"]
         queues = []
-        for key in connections.redis.keys():
+        for key in context.connections.redis.keys():
             if key.startswith(prefix):
                 queues.append(Queue(key[len(prefix) + 3:]))
 
@@ -178,9 +178,9 @@ class Queue(object):
         """ List all known queues (Raw + MongoDB)"""
 
         # Start with raw queues we know exist from the config
-        queues = {x: 0 for x in get_current_config().get("raw_queues", {})}
+        queues = {x: 0 for x in context.get_current_config().get("raw_queues", {})}
 
-        stats = list(connections.mongodb_jobs.mrq_jobs.aggregate([
+        stats = list(context.connections.mongodb_jobs.mrq_jobs.aggregate([
             {"$match": {"status": "queued"}},
             {"$group": {"_id": "$queue", "jobs": {"$sum": 1}}}
         ])["result"])
@@ -210,14 +210,14 @@ class Queue(object):
                 values = job_ids.values()
                 job_ids = {k: values[i] for i, k in enumerate(serialized_job_ids)}
 
-            connections.redis.zadd(self.redis_key, **job_ids)
+            context.connections.redis.zadd(self.redis_key, **job_ids)
 
         # LIST
         else:
-            connections.redis.rpush(self.redis_key, *self.serialize_job_ids(job_ids))
+            context.connections.redis.rpush(self.redis_key, *self.serialize_job_ids(job_ids))
 
-        metric("queues.%s.enqueued" % self.id, len(job_ids))
-        metric("queues.all.enqueued", len(job_ids))
+        context.metric("queues.%s.enqueued" % self.id, len(job_ids))
+        context.metric("queues.all.enqueued", len(job_ids))
 
     def enqueue_raw_jobs(self, params_list):
         """ Add Jobs to this queue with raw parameters. They are not yet in MongoDB. """
@@ -235,18 +235,18 @@ class Queue(object):
                 now = time.time()
                 params_list = {x: now for x in params_list}
 
-            connections.redis.zadd(self.redis_key, **params_list)
+            context.connections.redis.zadd(self.redis_key, **params_list)
 
         # SET
         elif self.is_set:
-            connections.redis.sadd(self.redis_key, *params_list)
+            context.connections.redis.sadd(self.redis_key, *params_list)
 
         # LIST
         else:
-            connections.redis.rpush(self.redis_key, *params_list)
+            context.connections.redis.rpush(self.redis_key, *params_list)
 
-        metric("queues.%s.enqueued" % self.id, len(params_list))
-        metric("queues.all.enqueued", len(params_list))
+        context.metric("queues.%s.enqueued" % self.id, len(params_list))
+        context.metric("queues.all.enqueued", len(params_list))
 
     def remove_raw_jobs(self, params_list):
         """ Remove jobs from a raw queue with their raw params. """
@@ -259,23 +259,23 @@ class Queue(object):
 
         # ZSET
         if self.is_sorted:
-            connections.redis.zrem(self.redis_key, *iter(params_list))
+            context.connections.redis.zrem(self.redis_key, *iter(params_list))
 
         # SET
         elif self.is_set:
-            connections.redis.srem(self.redis_key, *params_list)
+            context.connections.redis.srem(self.redis_key, *params_list)
 
         else:
             # O(n)! Use with caution.
             for k in params_list:
-                connections.redis.lrem(self.redis_key, 1, k)
+                context.connections.redis.lrem(self.redis_key, 1, k)
 
-        metric("queues.%s.removed" % self.id, len(params_list))
-        metric("queues.all.removed", len(params_list))
+        context.metric("queues.%s.removed" % self.id, len(params_list))
+        context.metric("queues.all.removed", len(params_list))
 
     def empty(self):
         """ Empty a queue. """
-        return connections.redis.delete(self.redis_key)
+        return context.connections.redis.delete(self.redis_key)
 
     def dequeue_jobs(self, max_jobs=1, job_class=None, worker=None):
         """ Fetch a maximum of max_jobs from this queue """
@@ -285,7 +285,7 @@ class Queue(object):
             job_class = Job
 
         # Used in tests to simulate workers exiting abruptly
-        simulate_zombie_jobs = get_current_config().get("simulate_zombie_jobs")
+        simulate_zombie_jobs = context.get_current_config().get("simulate_zombie_jobs")
 
         jobs = []
 
@@ -330,7 +330,7 @@ class Queue(object):
             elif self.is_sorted:
 
                 # TODO Lua?
-                with connections.redis.pipeline(transaction=True) as pipe:
+                with context.connections.redis.pipeline(transaction=True) as pipe:
                     pipe.zrange(self.redis_key, 0, max_jobs - 1)
                     pipe.zremrangebyrank(self.redis_key, 0, max_jobs - 1)
                     params = pipe.execute()[0]
@@ -394,11 +394,11 @@ class Queue(object):
 
             # Now that the jobs have been marked as started in Mongo, we can
             # remove them from the started queue.
-            connections.redis.zrem(Queue.redis_key_started(), *job_ids)
+            context.connections.redis.zrem(Queue.redis_key_started(), *job_ids)
 
         for job in jobs:
-            metric("queues.%s.dequeued" % job.queue, 1)
-        metric("queues.all.dequeued", len(jobs))
+            context.metric("queues.%s.dequeued" % job.queue, 1)
+        context.metric("queues.all.dequeued", len(jobs))
 
         return jobs
 
@@ -408,7 +408,7 @@ class Queue(object):
 #
 
 def send_raw_tasks(*args, **kwargs):
-    return queue_raw_jobs(*args, **kwargs)
+    return context.queue_raw_jobs(*args, **kwargs)
 
 
 def send_task(path, params, **kwargs):
@@ -417,6 +417,6 @@ def send_task(path, params, **kwargs):
 
 def send_tasks(path, params_list, queue=None, sync=False, batch_size=1000):
     if sync:
-        return [run_task(path, params) for params in params_list]
+        return [context.run_task(path, params) for params in params_list]
 
-    return queue_jobs(path, params_list, queue=queue, batch_size=batch_size)
+    return context.queue_jobs(path, params_list, queue=queue, batch_size=batch_size)

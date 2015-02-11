@@ -48,10 +48,9 @@ class RequeueStartedJobs(Task):
 
         # There shouldn't be that much "started" jobs so we can quite safely
         # iterate over them.
-        collection = connections.mongodb_jobs.mrq_jobs
 
         fields = {"_id": 1, "datestarted": 1, "queue": 1, "path": 1, "retry_count": 1}
-        for job_data in collection.find(
+        for job_data in connections.mongodb_jobs.mrq_jobs.find(
                 {"status": "started"}, fields=fields):
             job = Job(job_data["_id"])
             job.set_data(job_data)
@@ -122,12 +121,10 @@ class RequeueLostJobs(Task):
 
     """ Requeue jobs that were queued but don't appear in Redis anymore.
 
-        They could have been lost either by a Redis flush
+        They could have been lost by a Redis flush or another severe issue
     """
 
     def run(self, params):
-
-        collection = connections.mongodb_jobs.mrq_jobs
 
         # If there are more than this much items on the queue, we don't try to check if our mongodb
         # jobs are still queued.
@@ -138,38 +135,48 @@ class RequeueLostJobs(Task):
             "requeued": 0
         }
 
-        for job_data in collection.find({
-            "status": "queued"
-        }, fields={"_id": 1, "queue": 1}).sort([("_id", 1)]):
+        all_queues = Queue.all()
 
-            stats["fetched"] += 1
+        for queue_name in all_queues:
 
-            queue = Queue(job_data["queue"])
+            queue = Queue(queue_name)
             queue_size = queue.size()
+
+            if queue.is_raw:
+                continue
+
+            log.info("Checking queue %s" % queue_name)
+
             if queue_size > max_queue_items:
                 log.info("Stopping because queue %s has %s items" %
-                         (queue, queue_size))
-                break
+                         (queue_name, queue_size))
+                continue
 
             queue_jobs_ids = set(queue.list_job_ids(limit=max_queue_items + 1))
             if len(queue_jobs_ids) >= max_queue_items:
                 log.info(
                     "Stopping because queue %s actually had more than %s items" %
-                    (queue, len(queue_jobs_ids)))
-                break
+                    (queue_name, len(queue_jobs_ids)))
+                continue
 
-            if str(job_data["_id"]) in queue_jobs_ids:
-                log.info("Stopping because we found job %s in redis" %
-                         job_data["_id"])
-                break
+            for job_data in connections.mongodb_jobs.mrq_jobs.find({
+                "queue": queue_name,
+                "status": "queued"
+            }, fields={"_id": 1}).sort([["_id", 1]]):
 
-            # At this point, this job is not on the queue and we're sure
-            # the queue is less than max_queue_items
-            # We can safely requeue the job.
-            log.info("Requeueing %s on %s" % (job_data["_id"], queue.id))
+                stats["fetched"] += 1
 
-            stats["requeued"] += 1
-            job = Job(job_data["_id"])
-            job.requeue(queue=job_data["queue"])
+                if str(job_data["_id"]) in queue_jobs_ids:
+                    log.info("Found job %s on queue %s. Stopping" % (job_data["_id"], queue.id))
+                    break
+
+                # At this point, this job is not on the queue and we're sure
+                # the queue is less than max_queue_items
+                # We can safely requeue the job.
+                log.info("Requeueing %s on %s" % (job_data["_id"], queue.id))
+
+                stats["requeued"] += 1
+                job = Job(job_data["_id"])
+                job.requeue(queue=queue_name)
 
         return stats

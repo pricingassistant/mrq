@@ -236,9 +236,9 @@ def test_interrupt_redis_flush(worker):
     res = worker.send_task(
         "mrq.basetasks.cleaning.RequeueLostJobs", {}, block=True, queue="cleaning")
 
-    # We should try the first job only, and when seeing it's there we should
+    # We should try the first job on each queue only, and when seeing it's there we should
     # stop.
-    assert res["fetched"] == 1
+    assert res["fetched"] == 2
     assert res["requeued"] == 0
 
     assert Queue("default").size() == 2

@@ -95,11 +95,9 @@ class Worker(object):
         # Accessing connections attributes will automatically connect
         self.redis = connections.redis
         self.mongodb_jobs = connections.mongodb_jobs
+        self.mongodb_logs = connections.mongodb_logs
 
-        if self.config["mongodb_logs"] == "0":
-            self.log_handler.set_collection(False)  # Disable
-        else:
-            self.mongodb_logs = connections.mongodb_logs
+        if self.mongodb_logs:
             self.log_handler.set_collection(self.mongodb_logs.mrq_logs)
 
         self.connected = True

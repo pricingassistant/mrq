@@ -42,7 +42,7 @@ RAW_QUEUES = {
 This task adds two integers. To queue tasks, you can do from the code:
 
 ```python
-from mrq.context import queue_raw_jobs
+from mrq.job import queue_raw_jobs
 
 queue_raw_jobs("myqueue_raw", [
   ["1 1"],
@@ -59,7 +59,7 @@ $ mrq-worker high myqueue_raw
 Queueing on timed sets is a bit different, you can pass unix timestamps directly:
 
 ```python
-from mrq.context import queue_raw_jobs
+from mrq.job import queue_raw_jobs
 import time
 
 queue_raw_jobs("myqueue_timed_set", {

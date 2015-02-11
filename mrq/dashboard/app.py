@@ -15,7 +15,8 @@ from werkzeug.serving import run_with_reloader
 sys.path.insert(0, os.getcwd())
 
 from mrq.queue import Queue
-from mrq.context import connections, set_current_config, get_current_config, queue_job
+from mrq.context import connections, set_current_config, get_current_config
+from mrq.job import queue_job
 from mrq.config import get_config
 
 from mrq.dashboard.utils import jsonify, requires_auth

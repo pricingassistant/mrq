@@ -41,6 +41,9 @@ def test_general_simple_task_one(worker):
     assert db_jobs[0]["time"] < 0.1
     assert db_jobs[0]["switches"] >= 1
 
+    from mrq.job import get_job_result
+    assert get_job_result(db_jobs[0]["_id"]) == {"result": 42, "status": "success"}
+
     db_workers = list(worker.mongodb_jobs.mrq_workers.find())
     assert len(db_workers) == 1
     assert db_workers[0]["_id"] == db_jobs[0]["worker"]
@@ -60,6 +63,23 @@ def test_general_simple_task_one(worker):
     db_logs = list(
         worker.mongodb_logs.mrq_logs.find({"worker": db_workers[0]["_id"]}))
     assert len(db_logs) >= 1
+
+
+def test_general_nologs(worker):
+
+    worker.start(flags="--mongodb_logs=0")
+
+    assert worker.send_task(
+        "tests.tasks.general.Add", {"a": 41, "b": 1, "sleep": 1}
+    ) == 42
+
+    db_workers = list(worker.mongodb_jobs.mrq_workers.find())
+    assert len(db_workers) == 1
+
+    # Worker logs
+    db_logs = list(
+        worker.mongodb_logs.mrq_logs.find({"worker": db_workers[0]["_id"]}))
+    assert len(db_logs) == 0
 
 
 def test_general_simple_no_trace(worker):

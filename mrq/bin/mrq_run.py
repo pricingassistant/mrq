@@ -19,7 +19,8 @@ import datetime
 sys.path.insert(0, os.getcwd())
 
 from mrq import config, utils
-from mrq.context import set_current_config, set_current_job, queue_job
+from mrq.context import set_current_config, set_current_job
+from mrq.job import queue_job
 from mrq.utils import load_class_by_path
 
 

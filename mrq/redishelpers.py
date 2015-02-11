@@ -1,12 +1,12 @@
-from .context import connections
 from .utils import memoize
+import context
 
 
 @memoize
 def redis_zaddbyscore():
     """ Increments multiple keys in a sorted set & returns them """
 
-    return connections.redis.register_script("""
+    return context.connections.redis.register_script("""
 local zset = KEYS[1]
 local min = ARGV[1]
 local max = ARGV[2]
@@ -27,7 +27,7 @@ return data
 def redis_zpopbyscore():
     """ Pops multiple keys by score """
 
-    return connections.redis.register_script("""
+    return context.connections.redis.register_script("""
 local zset = KEYS[1]
 local min = ARGV[1]
 local max = ARGV[2]
@@ -47,7 +47,7 @@ return data
 def redis_lpopsafe():
     """ Safe version of LPOP that also adds the key in a "started" zset """
 
-    return connections.redis.register_script("""
+    return context.connections.redis.register_script("""
 local key = KEYS[1]
 local zset_started = KEYS[2]
 local count = ARGV[1]
@@ -74,7 +74,7 @@ return data
 
 
 def redis_group_command(command, cnt, redis_key):
-    with connections.redis.pipeline(transaction=False) as pipe:
+    with context.connections.redis.pipeline(transaction=False) as pipe:
         for _ in range(cnt):
             getattr(pipe, command)(redis_key)
         return [x for x in pipe.execute() if x]

@@ -39,9 +39,9 @@ The main entry point for all tasks. `params` is always a dict. The return value 
 A boolean indicating whether the task is the main task of this job. If False, the task is a sub-task. This shouldn't make a difference for most apps.
 
 
-## Context API
+## Job API
 
-The Context API provides most of the methods you will use for interacting with MRQ. These methods can be imported from `mrq.context`:
+In `mrq.job` you will find methods to create jobs and enqueue them:
 
 * `queue_job(main_task_path, params, queue=None)`
 
@@ -55,9 +55,14 @@ Queues multiple jobs at once. Returns a list of IDs of the jobs.
 
 Queues multiple jobs at once on a [raw queue](queues.md#raw-queues). The queued jobs have no IDs on a raw queue so this function has no return.
 
-* `run_task(path, params)`
 
-Executes the task located at `path` synchronously and returns its result. This doesn't create a new Job context. Use this to call sub-tasks from the code of your main task.
+## Context API
+
+The Context API provides the method used to get and interact with the current greenlet context. These methods can be imported from `mrq.context`:
+
+* `get_current_job()`
+
+Returns the Job instance currently being executed. If None, you are outside of a Job context. This can only happen when calling code from your tasks outside of `mrq-run` or `mrq-worker`.
 
 * `retry_current_job(delay=None, max_retries=None, queue=None)`
 
@@ -73,9 +78,9 @@ If the `queue` parameter is supplied, the job will be enventually requeued on th
 
 Stops the execution of the current job (by raising an `AbortInterrupt`) and mark it with the status `abort`. It will stay visible in the Dashboard for `result_ttl` seconds.
 
-* `get_current_job()`
+* `set_current_job_progress(ratio)`
 
-Returns the Job instance currently being executed. If None, you are outside of a Job context. This can only happen when calling code from your tasks outside of `mrq-run` or `mrq-worker`.
+Shorthand for get_current_job().set_progress(). Ratio is a float between 0 and 1.
 
 * `get_current_worker()`
 
@@ -84,14 +89,6 @@ Returns the current Worker instance.
 * `get_current_config()`
 
 Return the current Config dict.
-
-* `set_job_progress(ratio)`
-
-Shorthand for get_current_job().set_progress(). Ratio is a float between 0 and 1.
-
-* `metric(name, incr=1, **kwargs)`
-
-Can be used to send metrics to a 3rd-party service like Graphite.
 
 * `subpool_map(pool_size, func, iterable)`
 
@@ -104,3 +101,20 @@ A regular Python logging object that should be used in your task code. It will m
 * `connections`
 
 A lazy-loaded object containing the worker's connections to MongoDB and Redis. You can implement your own connection factories to instanciate other services lazily.
+
+* `run_task(path, params)`
+
+Executes the task located at `path` synchronously and returns its result. This doesn't create a new Job context. Use this to call sub-tasks from the code of your main task.
+
+
+## Helpers API
+
+Helpers are util functions which use the current context or the configuration:
+
+* `metric(name, incr=1, **kwargs)`
+
+Can be used to send metrics to a 3rd-party service like Graphite.
+
+* `ratelimit(key, limit, per=1, redis=None)`
+
+Returns an integer with the number of available actions for the current period, in seconds. If zero, rate was already reached.

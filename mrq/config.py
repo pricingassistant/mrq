@@ -54,7 +54,7 @@ def add_parser_args(parser, config_type):
         help='Run profiling on the whole worker')
 
     parser.add_argument(
-        '--mongodb_jobs',
+        '--mongodb_jobs', '--mongodb',
         action='store',
         default="mongodb://127.0.0.1:27017/mrq",
         help='MongoDB URI for the jobs, scheduled_jobs & workers database')
@@ -62,8 +62,8 @@ def add_parser_args(parser, config_type):
     parser.add_argument(
         '--mongodb_logs',
         action='store',
-        default="mongodb://127.0.0.1:27017/mrq",
-        help='MongoDB URI for the logs database. If set to "0", will disable remote logs.')
+        default="1",
+        help='MongoDB URI for the logs database. If set to "0", will disable remote logs. If set to "1", will use main MongoDB.')
 
     parser.add_argument(
         '--mongodb_logs_size',

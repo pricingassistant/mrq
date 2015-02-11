@@ -1,5 +1,5 @@
 """ Helpers are util functions which use the context """
-from mrq.context import connections
+from mrq.context import connections, get_current_config
 import time
 
 
@@ -26,3 +26,9 @@ def ratelimit(key, limit, per=1, redis=None):
         return 0
     else:
         return limit - current
+
+
+def metric(name, incr=1, **kwargs):
+    cfg = get_current_config()
+    if cfg.get("metric_hook"):
+        return cfg.get("metric_hook")(name, incr=incr, **kwargs)

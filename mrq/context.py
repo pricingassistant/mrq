@@ -4,7 +4,7 @@ import gevent.pool
 import urlparse
 import re
 import time
-from .utils import LazyObject, load_class_by_path, group_iter
+from .utils import LazyObject, load_class_by_path
 from itertools import count as itertools_count
 from .config import get_config
 
@@ -131,6 +131,11 @@ def _connections_factory(attr):
 
         if type(config_obj) in [str, unicode]:
 
+            if attr == "mongodb_logs" and config_obj == "1":
+                return connections.mongodb_jobs
+            elif config_obj in ("0"):
+                return None
+
             try:
                 # MongoKit's Connection object is just a wrapped MongoClient.
                 from mongokit import Connection as MongoClient   # pylint: disable=import-error
@@ -208,18 +213,6 @@ def enable_greenlet_tracing():
     greenlet.settrace(trace)  # pylint: disable=no-member
 
 
-def set_job_progress(ratio, save=False):
-    job = get_current_job()
-    if job:
-        job.set_progress(ratio, save=save)
-
-
-def metric(name, incr=1, **kwargs):
-    cfg = get_current_config()
-    if cfg.get("metric_hook"):
-        return cfg.get("metric_hook")(name, incr=incr, **kwargs)
-
-
 def subpool_map(pool_size, func, iterable):
     """ Starts a Gevent pool and run a map. Takes care of setting current_job and cleaning up. """
 
@@ -256,61 +249,28 @@ def run_task(path, params):
     return task_class().run_wrapped(params)
 
 
-def queue_raw_jobs(queue, params_list, **kwargs):
-    """ Queue some jobs on a raw queue """
-
-    from .queue import Queue
-    queue_obj = Queue(queue)
-    queue_obj.enqueue_raw_jobs(params_list, **kwargs)
+def set_current_job_progress(ratio, save=False):
+    job = get_current_job()
+    if job:
+        job.set_progress(ratio, save=save)
 
 
-def queue_job(main_task_path, params, **kwargs):
-    """ Queue one job on a regular queue """
+# Imports for backward compatibility
+def queue_raw_jobs(*args, **kwargs):
+    from .job import queue_raw_jobs
+    return queue_raw_jobs(*args, **kwargs)
 
-    return queue_jobs(main_task_path, [params], **kwargs)[0]
+
+def queue_job(*args, **kwargs):
+    from .job import queue_job
+    return queue_job(*args, **kwargs)
 
 
-def queue_jobs(main_task_path, params_list, queue=None, batch_size=1000):
-    """ Queue multiple jobs on a regular queue """
+def queue_jobs(*args, **kwargs):
+    from .job import queue_jobs
+    return queue_jobs(*args, **kwargs)
 
-    if len(params_list) == 0:
-        return []
 
-    if queue is None:
-        task_def = get_current_config().get("tasks", {}).get(main_task_path) or {}
-        queue = task_def.get("queue", "default")
-
-    from .queue import Queue
-    from .job import Job
-
-    queue_obj = Queue(queue)
-
-    if queue_obj.is_raw:
-        raise Exception("Can't queue regular jobs on a raw queue")
-
-    all_ids = []
-
-    for params_group in group_iter(params_list, n=batch_size):
-
-        metric("jobs.status.queued", len(params_group))
-
-        # Insert the job in MongoDB
-        job_ids = Job.insert([{
-            "path": main_task_path,
-            "params": params,
-            "queue": queue,
-            "status": "queued"
-        } for params in params_group], w=1, return_jobs=False)
-
-        # Between these 2 calls, a task can be inserted in MongoDB but not queued in Redis.
-        # This is the same as dequeueing a task from Redis and being stopped before updating
-        # the "started" flag in MongoDB.
-        #
-        # These jobs will be collected by mrq.basetasks.cleaning.RequeueLostJobs
-
-        # Insert the job ID in Redis
-        queue_obj.enqueue_job_ids([str(x) for x in job_ids])
-
-        all_ids += job_ids
-
-    return all_ids
+def metric(*args, **kwargs):
+    from .helpers import metric
+    return metric(*args, **kwargs)

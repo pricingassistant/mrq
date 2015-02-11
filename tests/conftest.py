@@ -13,11 +13,12 @@ import urllib2
 
 sys.path.append(os.getcwd())
 
-from mrq.job import Job
+from mrq.job import Job, queue_raw_jobs, queue_jobs
 from mrq.queue import Queue
 from mrq.config import get_config
 from mrq.utils import wait_for_net_service
-from mrq.context import connections, set_current_config, queue_raw_jobs, queue_jobs
+from mrq.context import connections, set_current_config
+
 
 set_current_config(get_config(sources=("env")))
 
