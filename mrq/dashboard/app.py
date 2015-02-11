@@ -130,11 +130,11 @@ def build_api_datatables_query(req):
             if req.args.get(param):
                 query[param] = req.args.get(param)
         if req.args.get("status"):
-            statuses = req.args.get(param).split("-")
+            statuses = req.args["status"].split("-")
             if len(statuses) == 1:
-                query[param] = statuses[0]
+                query["status"] = statuses[0]
             else:
-                query[param] = {"$in": statuses}
+                query["status"] = {"$in": statuses}
         if req.args.get("id"):
             query["_id"] = ObjectId(req.args.get("id"))
         if req.args.get("worker"):

@@ -13,7 +13,8 @@ class _MrqInterrupt(BaseException):
     def __str__(self):
         s = self._get_exception_name()
         if self.original_exception is not None:
-            s += "\n---- Original exception: -----\n%s" % ("".join(traceback.format_exception(*self.original_exception)))
+            tb = "".join(traceback.format_exception(*self.original_exception))
+            s += "\n---- Original exception: -----\n%s" % tb
 
         return s
 
@@ -32,7 +33,9 @@ class RetryInterrupt(_MrqInterrupt):
     retry_count = 0
 
     def _get_exception_name(self):
-        return "%s #%s: %s seconds, %s queue" % (self.__class__.__name__, self.retry_count, self.delay, self.queue)
+        return "%s #%s: %s seconds, %s queue" % (
+            self.__class__.__name__, self.retry_count, self.delay, self.queue
+        )
 
 
 class MaxRetriesInterrupt(_MrqInterrupt):

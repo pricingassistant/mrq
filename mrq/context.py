@@ -133,7 +133,7 @@ def _connections_factory(attr):
 
             if attr == "mongodb_logs" and config_obj == "1":
                 return connections.mongodb_jobs
-            elif config_obj in ("0"):
+            elif config_obj == "0":
                 return None
 
             try:
@@ -257,20 +257,20 @@ def set_current_job_progress(ratio, save=False):
 
 # Imports for backward compatibility
 def queue_raw_jobs(*args, **kwargs):
-    from .job import queue_raw_jobs
-    return queue_raw_jobs(*args, **kwargs)
+    from . import job
+    return job.queue_raw_jobs(*args, **kwargs)
 
 
 def queue_job(*args, **kwargs):
-    from .job import queue_job
-    return queue_job(*args, **kwargs)
+    from . import job
+    return job.queue_job(*args, **kwargs)
 
 
 def queue_jobs(*args, **kwargs):
-    from .job import queue_jobs
-    return queue_jobs(*args, **kwargs)
+    from . import job
+    return job.queue_jobs(*args, **kwargs)
 
 
 def metric(*args, **kwargs):
-    from .helpers import metric
-    return metric(*args, **kwargs)
+    from . import helpers
+    return helpers.metric(*args, **kwargs)

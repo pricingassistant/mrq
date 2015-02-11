@@ -24,7 +24,9 @@ class JobAction(Task):
 
         query = self.build_query()
 
-        return self.perform_action(self.params.get("action"), query, self.params.get("destination_queue"))
+        return self.perform_action(
+            self.params.get("action"), query, self.params.get("destination_queue")
+        )
 
     def build_query(self):
         query = {}

@@ -63,7 +63,8 @@ def add_parser_args(parser, config_type):
         '--mongodb_logs',
         action='store',
         default="1",
-        help='MongoDB URI for the logs database. If set to "0", will disable remote logs. If set to "1", will use main MongoDB.')
+        help='MongoDB URI for the logs database. ' +
+             ' "0" will disable remote logs, "1" will use main MongoDB.')
 
     parser.add_argument(
         '--mongodb_logs_size',
@@ -142,7 +143,7 @@ def add_parser_args(parser, config_type):
         default=7 * 24 * 3600,
         action='store',
         type=int,
-        help='Seconds the results are kept in MongoDB when status in ("success", "cancel", "abort")')
+        help='Seconds the results are kept in MongoDB when status in (success, cancel, abort)')
 
     parser.add_argument(
         '--default_job_timeout',

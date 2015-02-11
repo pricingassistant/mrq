@@ -1,5 +1,5 @@
 from .utils import memoize
-import context
+from . import context
 
 
 @memoize

@@ -2,7 +2,7 @@ from .redishelpers import redis_zaddbyscore, redis_zpopbyscore, redis_lpopsafe
 from .redishelpers import redis_group_command
 import time
 from bson import ObjectId
-import context
+from . import context
 
 
 class Queue(object):
@@ -125,7 +125,9 @@ class Queue(object):
                 skip + limit - 1))
         # SET
         elif self.is_set:
-            return self.unserialize_job_ids(context.connections.redis.srandmember(self.redis_key, limit))
+            return self.unserialize_job_ids(
+                context.connections.redis.srandmember(self.redis_key, limit)
+            )
         # LIST
         else:
             return self.unserialize_job_ids(context.connections.redis.lrange(

@@ -11,7 +11,7 @@ from collections import defaultdict
 import traceback
 import sys
 
-import context
+from . import context
 
 
 class Job(object):
