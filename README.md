@@ -36,33 +36,45 @@ MRQ was first developed at [Pricing Assistant](http://pricingassistant.com) and 
 
 # Get Started
 
- - Make sure you have installed the [dependencies](https://mrq.readthedocs.org/en/latest/dependencies/) : Redis and Mongo
+This 5-minute tutorial will show you how to run your first jobs with MRQ.
+
+## Installation
+
+ - Make sure you have installed the [dependencies](dependencies.md) : Redis and MongoDB
  - Install MRQ with `pip install mrq`
  - Start a mongo server with `mongod &`
  - Start a redis server with `redis-server &`
 
 
-Create a sample project and write a simple task :
-```
-  $ mkdir test-mrq && cd test-mrq
-  $ touch __init__.py
-  $ vim tasks.py
+## Write your first task
+
+Create a new directory and write a simple task in a file called `tasks.py` :
+
+```makefile
+$ mkdir test-mrq && cd test-mrq
+$ touch __init__.py
+$ vim tasks.py
 ```
 
 ```python
 from mrq.task import Task
 import urllib2
 
+
 class Fetch(Task):
+
     def run(self, params):
-        f = urllib2.urlopen(params.get("url"))
-        t = f.read()
-        f.close()
-        return len(t)
+
+        with urllib2.urlopen(params["url"]) as f:
+          t = f.read()
+          return len(t)
 ```
 
-You can now run it using `mrq-run` :
-```
+## Run it synchronously
+
+You can now run it from the command line using `mrq-run`:
+
+```makefile
 $ mrq-run tasks.Fetch url http://www.google.com
 
 2014-12-18 15:44:37.869029 [DEBUG] mongodb_jobs: Connecting to MongoDB at 127.0.0.1:27017/mrq...
@@ -72,11 +84,14 @@ $ mrq-run tasks.Fetch url http://www.google.com
 17655
 ```
 
-You can also enqueue a few tasks with
-```
-$ mrq-run --async --queue fetches tasks.Fetch url http://www.google.com &&
-  mrq-run --async --queue fetches tasks.Fetch url http://www.yahoo.com &&
-  mrq-run --async --queue fetches tasks.Fetch url http://www.wordpress.com
+## Run it asynchronously
+
+Let's schedule the same task 3 times with different parameters:
+
+```makefile
+$ mrq-run --queue fetches tasks.Fetch url http://www.google.com &&
+  mrq-run --queue fetches tasks.Fetch url http://www.yahoo.com &&
+  mrq-run --queue fetches tasks.Fetch url http://www.wordpress.com
 
 2014-12-18 15:49:05.688627 [DEBUG] mongodb_jobs: Connecting to MongoDB at 127.0.0.1:27017/mrq...
 2014-12-18 15:49:05.705400 [DEBUG] mongodb_jobs: ... connected.
@@ -92,12 +107,14 @@ $ mrq-run --async --queue fetches tasks.Fetch url http://www.google.com &&
 5492f772520d1887c5b32881
 ```
 
-Now start the dasbhoard with `mrq-dashboard &` and go check your newly created queue and job on [localhost:5555](http://localhost:5555/#jobs)
+You can see that instead of executing the tasks and returning their results right away, `mrq-run` has added them to the queue named `fetches` and printed their IDs.
 
-Instantiate a worker with `mrq-worker` and you can follow it on the dashboard as it executes in parallel all the enqueued jobs
+Now start MRQ's dasbhoard with `mrq-dashboard &` and go check your newly created queue and jobs on [localhost:5555](http://localhost:5555/#jobs)
 
-```
-$ mrq-worker --gevent 10 fetches
+They are ready to be dequeued by a worker. Start one with `mrq-worker` and follow it on the dashboard as it executes the queued jobs in parallel.
+
+```makefile
+$ mrq-worker fetches
 
 2014-12-18 15:52:57.362209 [INFO] Starting Gevent pool with 10 worker greenlets (+ report, logs, adminhttp)
 2014-12-18 15:52:57.388033 [INFO] redis: Connecting to Redis at 127.0.0.1...
@@ -105,21 +122,31 @@ $ mrq-worker --gevent 10 fetches
 2014-12-18 15:52:57.390996 [DEBUG] mongodb_jobs: ... connected.
 2014-12-18 15:52:57.391336 [DEBUG] mongodb_logs: Connecting to MongoDB at 127.0.0.1:27017/mrq...
 2014-12-18 15:52:57.392430 [DEBUG] mongodb_logs: ... connected.
-2014-12-18 15:52:57.523329 [INFO] Fetching 10 jobs from ['fetches']
-2014-12-18 15:52:57.537570 [DEBUG] Starting tasks.Fetch({u'url': u'http://www.google.com'})
+2014-12-18 15:52:57.523329 [INFO] Fetching 1 jobs from ['fetches']
 2014-12-18 15:52:57.567311 [DEBUG] Starting tasks.Fetch({u'url': u'http://www.google.com'})
-2014-12-18 15:52:57.567747 [DEBUG] Starting tasks.Fetch({u'url': u'http://www.yahoo.com'})
-2014-12-18 15:52:57.568080 [DEBUG] Starting tasks.Fetch({u'url': u'http://www.wordpress.com'})
-2014-12-18 15:52:57.798167 [INFO] Fetching 6 jobs from ['fetches']
-2014-12-18 15:52:58.432574 [INFO] Fetching 6 jobs from ['fetches']
 2014-12-18 15:52:58.670492 [DEBUG] Job 5492f771520d1887bfdf4b0f success: 1.135268s total
-2014-12-18 15:52:59.344227 [DEBUG] Job 5492f74b520d1887a38dd7c8 success: 1.816439s total
-2014-12-18 15:52:59.912086 [INFO] Fetching 8 jobs from ['fetches']
-2014-12-18 15:53:00.685727 [DEBUG] Job 5492f772520d1887c5b32881 success: 3.149119s total
-2014-12-18 15:53:01.578981 [INFO] Fetching 9 jobs from ['fetches']
+2014-12-18 15:52:57.523329 [INFO] Fetching 1 jobs from ['fetches']
+2014-12-18 15:52:57.567747 [DEBUG] Starting tasks.Fetch({u'url': u'http://www.yahoo.com'})
 2014-12-18 15:53:01.897873 [DEBUG] Job 5492f771520d1887c2d7d2db success: 4.361895s total
-2014-12-18 15:53:03.415555 [INFO] Fetching 10 jobs from ['fetches']
+2014-12-18 15:52:57.523329 [INFO] Fetching 1 jobs from ['fetches']
+2014-12-18 15:52:57.568080 [DEBUG] Starting tasks.Fetch({u'url': u'http://www.wordpress.com'})
+2014-12-18 15:53:00.685727 [DEBUG] Job 5492f772520d1887c5b32881 success: 3.149119s total
+2014-12-18 15:52:57.523329 [INFO] Fetching 1 jobs from ['fetches']
+2014-12-18 15:52:57.523329 [INFO] Fetching 1 jobs from ['fetches']
 ```
+
+You can interrupt the worker with Ctrl-C once it is finished.
+
+## Going further
+
+This was a preview on the very basic features of MRQ. What makes it actually useful is that:
+
+* You can run multiple workers in parallel. Each worker can also run multiple greenlets in parallel.
+* Workers can dequeue from multiple queues
+* You can queue jobs from your Python code to avoid using `mrq-run` from the command-line.
+
+These features will be demonstrated in a future example of a simple web crawler.
+
 
 # More
 

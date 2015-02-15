@@ -61,3 +61,6 @@ autopep8:
 
 pypi: linterrors
 	python setup.py sdist upload
+
+docs:
+	python scripts/propagate_docs.py
