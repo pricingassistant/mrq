@@ -94,6 +94,18 @@ def add_parser_args(parser, config_type):
         help='Redis key prefix')
 
     parser.add_argument(
+        '--redis_max_connections',
+        action='store',
+        default=1000,
+        help='Redis max connection pool size')
+
+    parser.add_argument(
+        '--redis_timeout',
+        action='store',
+        default=20,
+        help='Redis connection pool timeout to wait for an available connection')
+
+    parser.add_argument(
         '--name',
         default=None,
         action='store',

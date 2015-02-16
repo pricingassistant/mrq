@@ -115,11 +115,13 @@ def _connections_factory(attr):
             log.info("%s: Connecting to Redis at %s..." %
                      (attr, redis_url.hostname))
 
-            redis_pool = pyredis.ConnectionPool(
+            redis_pool = pyredis.BlockingConnectionPool(
                 host=redis_url.hostname,
                 port=redis_url.port,
                 db=int((redis_url.path or "").replace("/", "") or "0"),
-                password=redis_url.password
+                password=redis_url.password,
+                max_connections=int(config.get("redis_max_connections")),
+                timeout=int(config.get("redis_timeout"))
             )
             return pyredis.StrictRedis(connection_pool=redis_pool)
 
