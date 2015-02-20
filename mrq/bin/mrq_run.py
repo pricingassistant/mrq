@@ -19,7 +19,7 @@ import datetime
 sys.path.insert(0, os.getcwd())
 
 from mrq import config, utils
-from mrq.context import set_current_config, set_current_job
+from mrq.context import set_current_config, set_current_job, connections
 from mrq.job import queue_job
 from mrq.utils import load_class_by_path
 
@@ -59,6 +59,9 @@ def main():
         set_current_job(job)
         ret = job.perform()
         print json.dumps(ret)  # pylint: disable=no-member
+
+    # This shouldn't be needed as the process will exit and close any remaining sockets
+    # connections.redis.connection_pool.disconnect()
 
 if __name__ == "__main__":
     main()

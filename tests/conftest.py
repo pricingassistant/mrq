@@ -226,8 +226,6 @@ class WorkerFixture(ProcessFixture):
         return self.send_tasks(path, [params], **kwargs)[0]
 
     def send_task_cli(self, path, params, queue=None, **kwargs):
-        if not self.started and queue:
-            self.start()
 
         cli = ["python", "mrq/bin/mrq_run.py", "--quiet"]
         if queue:

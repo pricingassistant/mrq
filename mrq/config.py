@@ -102,7 +102,7 @@ def add_parser_args(parser, config_type):
     parser.add_argument(
         '--redis_timeout',
         action='store',
-        default=20,
+        default=30,
         help='Redis connection pool timeout to wait for an available connection')
 
     parser.add_argument(
