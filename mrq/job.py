@@ -191,7 +191,7 @@ class Job(object):
 
         exc = RetryInterrupt()
 
-        exc.queue = queue or self.data.get("queue") or "default"
+        exc.queue = queue or self.queue or "default"
         exc.retry_count = self.data.get("retry_count", 0) + 1
         exc.delay = delay
         if exc.delay is None:

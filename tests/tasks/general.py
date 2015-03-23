@@ -84,6 +84,16 @@ class Retry(Task):
         raise Exception("Should not be reached")
 
 
+class RetrySimple(Task):
+
+    def run(self, params):
+        connections.mongodb_logs.tests_inserts.insert(params)
+
+        retry_current_job()
+
+        raise Exception("Should not be reached")
+
+
 class RaiseException(Task):
 
     def run(self, params):

@@ -66,6 +66,34 @@ def test_retry_otherqueue_delay_nonzero(worker):
     assert job.data["status"] == "queued"
 
 
+def test_retry_from_other_queue_stays_on_queue(worker):
+    # worker.start(queues=["default", "exec"])
+
+    worker.send_task("tests.tasks.general.Retry", {
+        "delay": 1
+    }, queue="low", accept_statuses="retry")
+    # low is fetched by the default worker
+    assert Queue("default").size() == 0
+    assert Queue("exec").size() == 0
+
+    job_id = worker.mongodb_jobs.mrq_jobs.find()[0]["_id"]
+    job = Job(job_id).fetch()
+
+    assert job.data["status"] == "retry"
+    assert job.data["queue"] == "low"
+
+    time.sleep(1)
+    # Should do nothing yet
+    worker.send_task("mrq.basetasks.cleaning.RequeueRetryJobs", {}, block=True)
+
+    assert Queue("default").size() == 0
+    assert Queue("low").size() == 1
+
+    job = Job(job_id).fetch()
+    assert job.data["status"] == "queued"
+    assert job.data["queue"] == "low"
+
+
 def test_retry_max_retries(worker):
 
     # Task has maxretries=1
