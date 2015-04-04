@@ -10,7 +10,7 @@ import gc
 from collections import defaultdict
 import traceback
 import sys
-
+import urlparse
 from . import context
 
 
@@ -404,6 +404,8 @@ class Job(object):
     def trace_memory_start(self):
         """ Starts measuring memory consumption """
 
+        urlparse.clear_cache()  # Avoid polluting results with this builtin cache
+
         objgraph.show_growth(limit=10)
 
         gc.collect()
@@ -411,6 +413,8 @@ class Job(object):
 
     def trace_memory_stop(self):
         """ Stops measuring memory consumption """
+
+        urlparse.clear_cache()  # Avoid polluting results with this builtin cache
 
         objgraph.show_growth(limit=10)
 
