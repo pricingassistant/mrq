@@ -336,10 +336,17 @@ class Worker(object):
     def flush_logs(self, w=0):
         self.log_handler.flush(w=w)
 
-    def work_loop(self):
+    def work(self):
         """Starts the work loop.
 
         """
+        self.work_init()
+
+        self.work_loop(max_jobs=self.max_jobs)
+
+        return self.work_stop()
+
+    def work_init(self):
 
         self.connect()
 
@@ -356,6 +363,10 @@ class Worker(object):
             self.greenlets["admin"] = gevent.spawn(self.greenlet_admin)
 
         self.install_signal_handlers()
+
+    def work_loop(self, max_jobs=None):
+
+        self.done_jobs = 0
 
         # has_raw = any(q.is_raw or q.is_sorted for q in [Queue(x) for x in self.queues])
 
@@ -394,7 +405,8 @@ class Worker(object):
                     # TODO investigate spawn_raw?
                     self.gevent_pool.spawn(self.perform_job, job)
 
-                if self.max_jobs and self.max_jobs >= self.done_jobs:
+                # TODO consider this when dequeuing jobs to have strict limits
+                if max_jobs and self.done_jobs >= max_jobs:
                     self.log.info("Reached max_jobs=%s" % self.done_jobs)
                     break
 
@@ -421,28 +433,30 @@ class Worker(object):
             except StopRequested:
                 pass
 
-            self.status = "kill"
+    def work_stop(self):
 
-            self.gevent_pool.kill(exception=JobInterrupt, block=True)
+        self.status = "kill"
 
-            for g in self.greenlets:
-                g_time = getattr(self.greenlets[g], "_trace_time", 0)
-                g_switches = getattr(self.greenlets[g], "_trace_switches", None)
-                self.greenlets[g].kill(block=True)
-                self.log.debug(
-                    "Greenlet for %s killed (%0.5fs, %s switches)." %
-                    (g, g_time, g_switches))
+        self.gevent_pool.kill(exception=JobInterrupt, block=True)
 
-            self.status = "stop"
-
-            self.report_worker(w=1)
-            self.flush_logs(w=1)
-
-            g_time = getattr(self.greenlet, "_trace_time", 0)
-            g_switches = getattr(self.greenlet, "_trace_switches", None)
+        for g in self.greenlets:
+            g_time = getattr(self.greenlets[g], "_trace_time", 0)
+            g_switches = getattr(self.greenlets[g], "_trace_switches", None)
+            self.greenlets[g].kill(block=True)
             self.log.debug(
-                "Exiting main worker greenlet (%0.5fs, %s switches)." %
-                (g_time, g_switches))
+                "Greenlet for %s killed (%0.5fs, %s switches)." %
+                (g, g_time, g_switches))
+
+        self.status = "stop"
+
+        self.report_worker(w=1)
+        self.flush_logs(w=1)
+
+        g_time = getattr(self.greenlet, "_trace_time", 0)
+        g_switches = getattr(self.greenlet, "_trace_switches", None)
+        self.log.debug(
+            "Exiting main worker greenlet (%0.5fs, %s switches)." %
+            (g_time, g_switches))
 
         return self.exitcode
 

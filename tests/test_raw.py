@@ -108,14 +108,23 @@ def test_raw_started(worker):
     worker.start(
         flags="--greenlets 2 --config tests/fixtures/config-raw1.py", queues="teststarted_raw teststartedx")
 
-    worker.send_raw_tasks("teststarted_raw", [2, 2, 2], block=False)
-    time.sleep(1)
+    worker.send_raw_tasks("teststarted_raw", ["f1", "f2", "f3"], block=False)
+    time.sleep(2)
     jobs_collection = worker.mongodb_jobs.mrq_jobs
 
     assert jobs_collection.find({"status": "started", "queue": "teststartedx"}).count() == 2
     assert jobs_collection.count() == 2
 
-    time.sleep(2)
+    worker.mongodb_jobs.tests_flags.insert({"flag": "f1"})
+    time.sleep(1)
+
+    assert jobs_collection.find({"status": "success", "queue": "teststartedx"}).count() == 1
+    assert jobs_collection.find({"status": "started", "queue": "teststartedx"}).count() == 2
+    assert jobs_collection.count() == 3
+
+    worker.mongodb_jobs.tests_flags.insert({"flag": "f2"})
+    worker.mongodb_jobs.tests_flags.insert({"flag": "f3"})
+    time.sleep(1)
 
     worker.stop(block=True)
 
@@ -191,7 +200,7 @@ def test_raw_exception(worker):
     worker.start(
         deps=False, flags="--greenlets 10 --config tests/fixtures/config-raw1.py", queues="default testx")
 
-    time.sleep(1)
+    time.sleep(2)
 
     assert Queue(p_queue).size() == 0
     assert jobs_collection.count() == 2
@@ -215,8 +224,9 @@ def test_raw_retry(worker):
 
     failjob = list(jobs_collection.find())[0]
 
-    assert Queue("testx").size() == 1
     assert Queue("default").size() == 0
+    assert Queue("testx").size() == 1
+
     assert Queue(p_queue).size() == 0
     assert jobs_collection.count() == 1
     assert failjob["status"] == "queued"

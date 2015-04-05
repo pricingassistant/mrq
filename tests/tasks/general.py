@@ -84,6 +84,22 @@ class Retry(Task):
         raise Exception("Should not be reached")
 
 
+class WaitForFlag(Task):
+
+    def run(self, params):
+
+        flag = None
+
+        while True:
+            flag = connections.mongodb_logs.tests_flags.find_one({"flag": params["flag"]})
+
+            if flag:
+                break
+            time.sleep(0.1)
+
+        return flag
+
+
 class RetrySimple(Task):
 
     def run(self, params):

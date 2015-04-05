@@ -1,6 +1,7 @@
 import argparse
 import os
 import sys
+import re
 from .version import VERSION
 from .utils import get_local_ip
 import atexit
@@ -325,6 +326,7 @@ def get_config(
         env_prefix="MRQ_",
         file_path=None,
         parser=None,
+        extra=None,
         config_type=None):
     """ Returns a config dict merged from several possible sources """
 
@@ -382,11 +384,16 @@ def get_config(
             if part == "env":
                 value = os.environ.get(env_prefix + name.upper())
                 if value:
+                    if name == "queues":
+                        value = re.split("\s+", value)
                     merged_config[name] = value
             elif part == "args" and name in from_args:
                 merged_config[name] = from_args[name]
             elif part == "file" and name in from_file:
                 merged_config[name] = from_file[name]
+
+    if extra:
+        merged_config.update(extra)
 
     if merged_config["profile"]:
         import cProfile

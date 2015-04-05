@@ -111,11 +111,9 @@ RAW_QUEUES = {
     "teststarted_raw": {
         "retry_queue": "teststartedx",
         "job_factory": lambda rawparam: {
-            "path": "tests.tasks.general.Add",
+            "path": "tests.tasks.general.WaitForFlag",
             "params": {
-                "a": int(rawparam),
-                "b": 0,
-                "sleep": int(rawparam)
+                "flag": rawparam
             }
         }
     }

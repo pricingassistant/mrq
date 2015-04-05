@@ -105,7 +105,7 @@ def main():
 
         w = worker_class()
 
-        exitcode = w.work_loop()
+        exitcode = w.work()
 
         sys.exit(exitcode)
 
