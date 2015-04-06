@@ -72,3 +72,94 @@ Partition of a set of 130043 objects. Total size = 15682088 bytes.
 ```
 
 Here, it seems that surprisingly, most of the strings are actually docstrings. This can happen if you work with large Python modules like scipy or boto. One might consider stripping them manually or with Python's optimized mode.
+
+# Running a full worker
+
+Sometimes memory leaks are complex and need a big number of jobs to be detected. To do that you can run a full worker, wrapped in calls to guppy to inspect memory usage after N jobs.
+
+This real-life example also includes code that clears some Python caches to avoid polluting results.
+
+```
+$ pip install guppy
+$ python
+
+# Be as close to a Worker environment as possible
+import os
+if "GEVENT_RESOLVER" not in os.environ:
+    os.environ["GEVENT_RESOLVER"] = "ares"
+
+from gevent import monkey
+monkey.patch_all()
+
+from mrq.context import setup_context, run_task, log, get_current_config
+from mrq.utils import load_class_by_path
+from guppy import hpy
+import sys, urlparse, gc, re, linecache
+
+hp = hpy()
+
+setup_context(config_type="worker", extra={"greenlets": 10, "queues": ["stats_timed_set"]})
+worker_class = load_class_by_path(get_current_config()["worker_class"])
+w = worker_class()
+w.work_init()
+
+def work_heap(max_jobs):
+  gc.collect()
+  hp.setrelheap()
+  w.work_loop(max_jobs=max_jobs)
+  # Clear some Python caches to clean the results
+  urlparse.clear_cache()
+  re.purge()
+  linecache.clearcache()
+  log.handler.reset()
+  gc.collect()
+  return hp.heap()
+
+# Run a few jobs to eliminate side-effects from loading code and modules for the first time
+work_heap(10)
+
+# Now we can run a larger number of jobs
+h = work_heap(1000)
+```
+
+Then you can debug the heap with Guppy:
+```
+>>> h
+Partition of a set of 347 objects. Total size = 61320 bytes.
+ Index  Count   %     Size   % Cumulative  % Kind (class / dict of class)
+     0    215  62    18920  31     18920  31 __builtin__.weakref
+     1      4   1     8800  14     27720  45 dict of mongokit.document.DocumentProperties
+     2     17   5     8328  14     36048  59 list
+     3      4   1     5792   9     41840  68 mongokit.helpers.DotCollapsedDict
+     4      8   2     4544   7     46384  76 dict (no owner)
+     5      4   1     3616   6     50000  82 mongokit.document.DocumentProperties
+     6      5   1     1160   2     51160  83 __builtin__.set
+     7      4   1     1120   2     52280  85 dict of mongokit.helpers.DotCollapsedDict
+     8      1   0     1048   2     53328  87 dict of 0x279e1f0
+     9      1   0     1048   2     54376  89 dict of 0x2905040
+<18 more rows. Type e.g. '_.more' to view.>
+>>> h[0].byvia
+Partition of a set of 215 objects. Total size = 18920 bytes.
+ Index  Count   %     Size   % Cumulative  % Referred Via:
+     0      4   2      352   2       352   2 '[19]'
+     1      4   2      352   2       704   4 '[20]'
+     2      3   1      264   1       968   5 '[17]'
+     3      3   1      264   1      1232   7 '[18]'
+     4      3   1      264   1      1496   8 '[27]'
+     5      3   1      264   1      1760   9 '[28]'
+     6      3   1      264   1      2024  11 '[29]'
+     7      3   1      264   1      2288  12 '[33]'
+     8      3   1      264   1      2552  13 '[35]'
+     9      3   1      264   1      2816  15 '[5]'
+<147 more rows. Type e.g. '_.more' to view.>
+>>> h[0].byvia[0].referrers
+Partition of a set of 4 objects. Total size = 2144 bytes.
+ Index  Count   %     Size   % Cumulative  % Kind (class / dict of class)
+     0      4 100     2144 100      2144 100 list
+>>> h[0].byvia[0].referrers.byvia
+Partition of a set of 4 objects. Total size = 2144 bytes.
+ Index  Count   %     Size   % Cumulative  % Referred Via:
+     0      4 100     2144 100      2144 100 '->tp_subclasses'
+```
+
+In this case, it seems we are leaking references to subclasses, which is a [known Python issue](http://bugs.python.org/issue980092).
