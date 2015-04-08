@@ -189,7 +189,13 @@ class Worker(object):
                 time.sleep(self.config["report_interval"])
 
     def get_memory(self):
-        return self.process.get_memory_info().rss
+        mmaps = self.process.get_memory_maps()
+        mem = {
+            "rss": sum([x.rss for x in mmaps]),
+            "swap": sum([x.swap for x in mmaps])
+        }
+        mem["total"] = mem["rss"] + mem["swap"]
+        return mem
 
     def get_worker_report(self):
         """ Returns a dict containing all the data we can about the current status of the worker and
@@ -231,7 +237,7 @@ class Worker(object):
                 "system": 0,
                 "percent": 0
             }
-            mem_rss = 0
+            mem = {"rss": 0, "swap": 0, "total": 0}
         else:
             cpu_times = self.process.get_cpu_times()
             cpu = {
@@ -239,7 +245,7 @@ class Worker(object):
                 "system": cpu_times.system,
                 "percent": self.process.get_cpu_percent(0)
             }
-            mem_rss = self.get_memory()
+            mem = self.get_memory()
 
         # Avoid sharing passwords or sensitive config!
         whitelisted_config = [
@@ -272,9 +278,7 @@ class Worker(object):
             "process": {
                 "pid": self.process.pid,
                 "cpu": cpu,
-                "mem": {
-                    "rss": mem_rss
-                }
+                "mem": mem
                 # https://code.google.com/p/psutil/wiki/Documentation
                 # get_open_files
                 # get_connections

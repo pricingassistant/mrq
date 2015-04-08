@@ -92,13 +92,14 @@ from gevent import monkey
 monkey.patch_all()
 
 from mrq.context import setup_context, run_task, log, get_current_config
+from mrq.queue import send_tasks
 from mrq.utils import load_class_by_path
 from guppy import hpy
 import sys, urlparse, gc, re, linecache
 
 hp = hpy()
 
-setup_context(config_type="worker", extra={"greenlets": 10, "queues": ["stats_timed_set"]})
+setup_context(config_type="worker", extra={"greenlets": 10, "queues": ["default"], "mongodb_logs":0, "report_interval":10000})
 worker_class = load_class_by_path(get_current_config()["worker_class"])
 w = worker_class()
 w.work_init()
@@ -115,11 +116,14 @@ def work_heap(max_jobs):
   gc.collect()
   return hp.heap()
 
+# Optional: Queue some jobs
+send_tasks("tests.tasks.general.Leak", [{} for _ in range(110)])
+
 # Run a few jobs to eliminate side-effects from loading code and modules for the first time
 work_heap(10)
 
 # Now we can run a larger number of jobs
-h = work_heap(1000)
+h = work_heap(100)
 ```
 
 Then you can debug the heap with Guppy:

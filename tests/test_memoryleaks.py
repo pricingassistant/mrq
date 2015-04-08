@@ -5,7 +5,7 @@ def get_diff_after_jobs(worker, n_tasks, leak, sleep=0):
 
     time.sleep(3)
 
-    mem_start = worker.get_report()["process"]["mem"]["rss"]
+    mem_start = worker.get_report()["process"]["mem"]["total"]
 
     worker.send_tasks(
         "tests.tasks.general.Leak",
@@ -16,7 +16,7 @@ def get_diff_after_jobs(worker, n_tasks, leak, sleep=0):
 
     time.sleep(3)
 
-    mem_stop = worker.get_report()["process"]["mem"]["rss"]
+    mem_stop = worker.get_report()["process"]["mem"]["total"]
 
     diff = mem_stop - mem_start
 

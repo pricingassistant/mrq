@@ -11,6 +11,11 @@ from collections import defaultdict
 import traceback
 import sys
 import urlparse
+import re
+import linecache
+import fnmatch
+import encodings
+import copy_reg
 from . import context
 
 
@@ -401,22 +406,40 @@ class Job(object):
             io_data["started"] = time.time()
             self._current_io = io_data
 
+    def trace_memory_clean_caches(self):
+        """ Avoid polluting results with some builtin python caches """
+
+        urlparse.clear_cache()
+        re.purge()
+        linecache.clearcache()
+        copy_reg.clear_extension_cache()
+
+        if hasattr(fnmatch, "purge"):
+            fnmatch.purge()
+        elif hasattr(fnmatch, "_purge"):
+            fnmatch._purge()
+
+        if hasattr(encodings, "_cache") and len(encodings._cache) > 0:
+            encodings._cache = {}
+
+        context.log.handler.flush()
+
     def trace_memory_start(self):
         """ Starts measuring memory consumption """
 
-        urlparse.clear_cache()  # Avoid polluting results with this builtin cache
+        self.trace_memory_clean_caches()
 
-        objgraph.show_growth(limit=10)
+        objgraph.show_growth(limit=30)
 
         gc.collect()
-        self._memory_start = self.worker.get_memory()
+        self._memory_start = self.worker.get_memory()["total"]
 
     def trace_memory_stop(self):
         """ Stops measuring memory consumption """
 
-        urlparse.clear_cache()  # Avoid polluting results with this builtin cache
+        self.trace_memory_clean_caches()
 
-        objgraph.show_growth(limit=10)
+        objgraph.show_growth(limit=30)
 
         trace_type = context.get_current_config()["trace_memory_type"]
         if trace_type:
@@ -426,18 +449,18 @@ class Job(object):
                 trace_type,
                 self.id)
 
-            objgraph.show_chain(
-                objgraph.find_backref_chain(
-                    random.choice(
-                        objgraph.by_type(trace_type)
-                    ),
-                    objgraph.is_proper_module
+            chain = objgraph.find_backref_chain(
+                random.choice(
+                    objgraph.by_type(trace_type)
                 ),
-                filename=filename
+                objgraph.is_proper_module
             )
+            objgraph.show_chain(chain, filename=filename)
+            del filename
+            del chain
 
         gc.collect()
-        self._memory_stop = self.worker.get_memory()
+        self._memory_stop = self.worker.get_memory()["total"]
 
         diff = self._memory_stop - self._memory_start
 
