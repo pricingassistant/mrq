@@ -117,18 +117,18 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models", "moment
             }
           },
           {
-            "sTitle": "RSS",
+            "sTitle": "Memory",
             "sClass": "col-mem",
             "sType":"numeric",
             "sWidth":"130px",
             "mData":function(source, type/*, val*/) {
               if (type == "display") {
 
-                return Math.round((source.process.mem.rss / (1024*1024)) *10)/10 + "M"
+                return Math.round((source.process.mem.total / (1024*1024)) *10)/10 + "M"
                  + "<br/>"
-                 + '<span class="inlinesparkline" values="'+self.addToCounter("worker.mem."+source._id, source.process.mem.rss / (1024*1024), 50).join(",")+'"></span>';
+                 + '<span class="inlinesparkline" values="'+self.addToCounter("worker.mem."+source._id, source.process.mem.total / (1024*1024), 50).join(",")+'"></span>';
               } else {
-                return source.process.mem.rss
+                return source.process.mem.total
               }
             }
           },
