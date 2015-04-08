@@ -415,7 +415,7 @@ class Job(object):
         copy_reg.clear_extension_cache()
 
         if hasattr(fnmatch, "purge"):
-            fnmatch.purge()
+            fnmatch.purge()  # pylint: disable=no-member
         elif hasattr(fnmatch, "_purge"):
             fnmatch._purge()
 
