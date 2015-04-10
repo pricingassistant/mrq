@@ -192,7 +192,7 @@ class Worker(object):
         mmaps = self.process.get_memory_maps()
         mem = {
             "rss": sum([x.rss for x in mmaps]),
-            "swap": sum([x.swap for x in mmaps])
+            "swap": sum([getattr(x, 'swap', getattr(x, 'swapped')) for x in mmaps])
         }
         mem["total"] = mem["rss"] + mem["swap"]
         return mem
