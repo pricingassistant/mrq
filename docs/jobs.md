@@ -47,11 +47,11 @@ In `mrq.job` you will find methods to create jobs and enqueue them:
 
 Queues a job. If `queue` is not provided, the default queue for that Task as defined in the configuration will be used. If there is none, the queue `default` will be used. Returns the ID of the job.
 
-* `queue_jobs(main_task_path, list_of_params, queue=None, batch_size=1000)`
+* `queue_jobs(main_task_path, params_list, queue=None, batch_size=1000)`
 
 Queues multiple jobs at once. Returns a list of IDs of the jobs.
 
-* `queue_raw_jobs(list_of_raw_params, queue=None, batch_size=1000)`
+* `queue_raw_jobs(queue, params_list, batch_size=1000)`
 
 Queues multiple jobs at once on a [raw queue](queues.md#raw-queues). The queued jobs have no IDs on a raw queue so this function has no return.
 
