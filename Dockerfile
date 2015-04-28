@@ -8,6 +8,10 @@ RUN apt-get upgrade -y
 
 RUN apt-get install -y gcc make g++ build-essential libc6-dev tcl curl adduser mongodb-10gen python python-pip python-dev strace git software-properties-common libev-dev nginx graphviz
 
+# python pip seems to bug on ubuntu 14.04 with IncompleteRead
+RUN curl "https://bootstrap.pypa.io/get-pip.py" -o "get-pip.py"
+RUN python get-pip.py
+
 # Then add PPAs (after software-properties-common is installed)
 # RUN add-apt-repository -y ppa:pypy/ppa
 # RUN apt-get update
