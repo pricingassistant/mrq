@@ -63,7 +63,7 @@ class Job(object):
 
     def exists(self):
         """ Returns True if a job with the current _id exists in MongoDB. """
-        return bool(self.collection.find_one({"_id": self.id}, fields={"_id": 1}))
+        return bool(self.collection.find_one({"_id": self.id}, projection={"_id": 1}))
 
     def fetch(self, start=False, full_data=True):
         """ Get the current job data and possibly flag it as started. """
@@ -97,7 +97,7 @@ class Job(object):
                     "datestarted": self.datestarted,
                     "worker": self.worker.id
                 }},
-                fields=fields)
+                projection=fields)
             )
 
             context.metric("jobs.status.started")
@@ -105,7 +105,7 @@ class Job(object):
         else:
             self.set_data(self.collection.find_one({
                 "_id": self.id
-            }, fields=fields))
+            }, projection=fields))
 
         if self.data is None:
             context.log.info(
@@ -294,7 +294,7 @@ class Job(object):
             job_data = self.collection.find_one({
                 "_id": ObjectId(self.id),
                 "status": {"$nin": ["started", "queued"]}
-            }, fields=({
+            }, projection=({
                 "_id": 0,
                 "result": 1,
                 "status": 1

@@ -232,7 +232,7 @@ def api_datatables(unit):
 
     if collection is not None:
 
-        cursor = collection.find(query, fields=fields)
+        cursor = collection.find(query, projection=fields)
 
         if sort:
             cursor.sort(sort)
@@ -259,7 +259,7 @@ def api_job_result(job_id):
     collection = connections.mongodb_jobs.mrq_jobs
 
     job_data = collection.find_one(
-        {"_id": ObjectId(job_id)}, fields=["result"])
+        {"_id": ObjectId(job_id)}, projection=["result"])
     if not job_data:
         return jsonify({})
 
@@ -273,7 +273,7 @@ def api_job_result(job_id):
 def api_job_traceback(job_id):
     collection = connections.mongodb_jobs.mrq_jobs
     job_data = collection.find_one(
-        {"_id": ObjectId(job_id)}, fields=["traceback"])
+        {"_id": ObjectId(job_id)}, projection=["traceback"])
 
     if not job_data:
         job_data = {}
@@ -309,7 +309,7 @@ def api_logs():
     if request.args.get("last_log_id"):
         query["_id"] = {"$gt": ObjectId(request.args.get("min_log_id"))}
 
-    logs = list(collection.find(query, fields={"_id": 1, "logs": 1}))
+    logs = list(collection.find(query, projection={"_id": 1, "logs": 1}))
 
     data = {
         "logs": "\n".join([lines["logs"] for lines in logs]),

@@ -99,7 +99,7 @@ class JobAction(Task):
 
             # Requeue task by groups of maximum 1k items (if all in the same
             # queue)
-            cursor = self.collection.find(query, fields=["_id", "queue"])
+            cursor = self.collection.find(query, projection=["_id", "queue"])
 
             # We must freeze the list because queries below would change it.
             # This could not fit in memory, research adding {"stats": {"$ne":

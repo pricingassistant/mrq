@@ -5,20 +5,22 @@ machine:
 general:
   artifacts:
     - "pytest-report.html"
+    - "lint-report.txt"
     - "htmlcov/"
 
 test:
   override:
-    - mkdir -p $CIRCLE_TEST_REPORTS/junit:
-        parallel: true
+    - docker version
+    - make linterrors
     - docker run -i -t -v `pwd`:/app:rw -w /app mrq_local py.test tests/ -s -v --junitxml=pytest-report.xml --html=pytest-report.html --cov mrq --cov-report html:
         parallel: true
-    - mv pytest-report.xml $CIRCLE_TEST_REPORTS/junit/mrq.xml:
+    - mkdir -p $CIRCLE_TEST_REPORTS/junit && mv pytest-report.xml $CIRCLE_TEST_REPORTS/junit/mrq.xml:
         parallel: true
+    - make lint > lint-report.txt
 
 dependencies:
   override:
-    - mkdir -p ~/docker
+    - mkdir -p ~/docker && ls -la ~/docker
     - if [[ -e ~/docker/image.tgz ]]; then gunzip -c ~/docker/image.tgz | docker load; fi
     - docker build -t mrq_local .
     - docker save mrq_local | gzip -c > ~/docker/image.tgz

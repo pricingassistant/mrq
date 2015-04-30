@@ -42,7 +42,7 @@ def test_raw_sorted(worker, p_queue, p_pushback, p_timed, p_flags):
 
         assert Queue(p_queue).size() == 0
         assert test_collection.count() == 3
-        assert list(test_collection.find(fields={"params": 1, "_id": 0}).limit(1)) == [
+        assert list(test_collection.find(projection={"params": 1, "_id": 0}).limit(1)) == [
             {"params": {"sorted_set": "aaa"}}
         ]
         return
@@ -56,7 +56,7 @@ def test_raw_sorted(worker, p_queue, p_pushback, p_timed, p_flags):
     assert jobs_collection.count() == 1
     assert list(jobs_collection.find())[0]["status"] == "success"
 
-    assert list(test_collection.find(fields={"params": 1, "_id": 0})) == [
+    assert list(test_collection.find(projection={"params": 1, "_id": 0})) == [
         {"params": {"timed_set": "aaa"}}
     ]
 

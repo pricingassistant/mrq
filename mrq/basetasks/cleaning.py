@@ -51,7 +51,7 @@ class RequeueStartedJobs(Task):
 
         fields = {"_id": 1, "datestarted": 1, "queue": 1, "path": 1, "retry_count": 1}
         for job_data in connections.mongodb_jobs.mrq_jobs.find(
-                {"status": "started"}, fields=fields):
+                {"status": "started"}, projection=fields):
             job = Job(job_data["_id"])
             job.set_data(job_data)
 
@@ -162,7 +162,7 @@ class RequeueLostJobs(Task):
             for job_data in connections.mongodb_jobs.mrq_jobs.find({
                 "queue": queue_name,
                 "status": "queued"
-            }, fields={"_id": 1}).sort([["_id", 1]]):
+            }, projection={"_id": 1}).sort([["_id", 1]]):
 
                 stats["fetched"] += 1
 

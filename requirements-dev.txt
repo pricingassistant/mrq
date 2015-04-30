@@ -4,6 +4,7 @@ pytest-cov==1.8.1
 pytest-html==1.0
 pytest-httpbin==0.0.6
 pytest-circleci==0.0.2
+pytest-instafail==0.3.0
 
 subprocess32==3.2.5
 #git+https://github.com/srlindsay/gevent-profiler@master#egg=gevent-profiler==0.2
