@@ -21,9 +21,11 @@ test:
 dependencies:
   override:
     - mkdir -p ~/docker && ls -la ~/docker
-    - if [[ -e ~/docker/image.tgz ]]; then gunzip -c ~/docker/image.tgz | docker load; fi
+    - rm -rf ~/docker/*
+    - if [[ -e ~/docker/image.tar ]]; then docker load -i ~/docker/image.tar; fi
+    - ./scripts/git-set-file-times
     - docker build -t mrq_local .
-    - docker save mrq_local | gzip -c > ~/docker/image.tgz
+    - docker save mrq_local > ~/docker/image.tar
 
   cache_directories:
     - "~/docker"
