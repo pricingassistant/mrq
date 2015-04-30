@@ -4,6 +4,7 @@ import gevent.pool
 import urlparse
 import re
 import time
+import pymongo
 from .utils import LazyObject, load_class_by_path
 from itertools import count as itertools_count
 from .config import get_config
@@ -104,6 +105,9 @@ def _connections_factory(attr):
     # Connection strings may be stored directly in config
     config_obj = config.get(attr)
 
+    def versiontuple(v):
+        return tuple(map(int, (v.split("."))))
+
     if attr.startswith("redis"):
         if type(config_obj) in [str, unicode]:
 
@@ -157,7 +161,7 @@ def _connections_factory(attr):
 
             log.debug("%s: Connecting to MongoDB at %s/%s..." % (attr, mongo_hosts, mongo_name))
 
-            kwargs = {"use_greenlets": True}
+            kwargs = {}
             options = {}
             if mongo_options:
                 options = {
@@ -166,9 +170,14 @@ def _connections_factory(attr):
                 }
 
             # We automatically switch to MongoReplicaSetClient when getting a replicaSet option.
-            # This should cover most use-cases.
+            # This should cover most use-cases before pymongo 3.0.0 which switches automatically.
             # http://api.mongodb.org/python/current/examples/high_availability.html#mongoreplicasetclient
-            if options.get("replicaSet"):
+            if options.get("replicaSet") and versiontuple(pymongo.version) < versiontuple("3.0.0"):
+                try:
+                    from mongokit import ReplicaSetConnection as MongoReplicaSetClient  # pylint: disable=import-error
+                except ImportError:
+                    from pymongo import MongoReplicaSetClient
+
                 db = MongoReplicaSetClient(config_obj, **kwargs)[mongo_name]
             else:
                 db = MongoClient(config_obj, **kwargs)[mongo_name]

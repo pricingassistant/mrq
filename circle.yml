@@ -1,7 +1,27 @@
 machine:
   services:
     - docker
-    
+
+general:
+  artifacts:
+    - "pytest-report.html"
+    - "htmlcov/"
+
 test:
   override:
-    - make test_circle
+    - mkdir -p $CIRCLE_TEST_REPORTS/junit:
+        parallel: true
+    - docker run -i -t -v `pwd`:/app:rw -w /app mrq_local py.test tests/ -s -v --junitxml=pytest-report.xml --html=pytest-report.html --cov mrq --cov-report html:
+        parallel: true
+    - mv pytest-report.xml $CIRCLE_TEST_REPORTS/junit/mrq.xml:
+        parallel: true
+
+dependencies:
+  override:
+    - mkdir -p ~/docker
+    - if [[ -e ~/docker/image.tgz ]]; then gunzip -c ~/docker/image.tgz | docker load; fi
+    - docker build -t mrq_local .
+    - docker save mrq_local | gzip -c > ~/docker/image.tgz
+
+  cache_directories:
+    - "~/docker"
