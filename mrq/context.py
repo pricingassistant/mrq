@@ -81,6 +81,9 @@ def set_current_config(config):
         from mrq.monkey import patch_import
         patch_import()
 
+    if config["mongodb_logs"] == "0":
+        log.handler.collection = False
+
 
 def get_current_config():
     return _GLOBAL_CONTEXT["config"]

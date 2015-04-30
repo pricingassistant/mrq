@@ -185,7 +185,7 @@ class Queue(object):
         stats = list(context.connections.mongodb_jobs.mrq_jobs.aggregate([
             {"$match": {"status": "queued"}},
             {"$group": {"_id": "$queue", "jobs": {"$sum": 1}}}
-        ])["result"])
+        ]))
 
         queues.update({x["_id"]: x["jobs"] for x in stats})
 

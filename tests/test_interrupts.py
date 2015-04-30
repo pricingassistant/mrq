@@ -63,9 +63,10 @@ def test_interrupt_worker_double_sigint(worker, p_flags):
     worker.start(flags=p_flags)
 
     job_id = worker.send_task(
-        "tests.tasks.general.Add", {"a": 41, "b": 1, "sleep": 10}, block=False)
+        "tests.tasks.general.Add", {"a": 41, "b": 1, "sleep": 20}, block=False)
 
-    time.sleep(1)
+    while Job(job_id).fetch().data["status"] == "queued":
+        time.sleep(0.1)
 
     job = Job(job_id).fetch().data
     assert job["status"] == "started"
@@ -77,22 +78,26 @@ def test_interrupt_worker_double_sigint(worker, p_flags):
 
     # Should not be accepting new jobs!
     job_id2 = worker.send_task(
-        "tests.tasks.general.Add", {"a": 42, "b": 1, "sleep": 10}, block=False)
+        "tests.tasks.general.Add", {"a": 42, "b": 1, "sleep": 20}, block=False)
 
     time.sleep(1)
 
-    job = Job(job_id2).fetch().data
-    assert job.get("status") == "queued"
+    job2 = Job(job_id2).fetch().data
+    assert job2.get("status") == "queued"
+
+    job = Job(job_id).fetch().data
+    assert job["status"] == "started"
 
     # Sending a second kill -2 should make it stop
     worker.stop(block=True, deps=False, force=True)
 
-    time.sleep(1)
+    while Job(job_id).fetch().data["status"] == "started":
+        time.sleep(0.1)
 
     job = Job(job_id).fetch().data
     assert job["status"] == "interrupt"
 
-    assert time.time() - start_time < 8
+    assert time.time() - start_time < 15
 
     # Then try the cleaning task that requeues interrupted jobs
 

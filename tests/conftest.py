@@ -101,7 +101,7 @@ class ProcessFixture(object):
             if not block:
                 return
 
-            for _ in range(1000):
+            for _ in range(2000):
 
                 try:
                     p = psutil.Process(self.process.pid)
@@ -114,7 +114,7 @@ class ProcessFixture(object):
 
                 time.sleep(0.01)
 
-            assert False, "Process '%s' was still in state %s after 10 seconds..." % (
+            assert False, "Process '%s' was still in state %s after 20 seconds..." % (
                 self.cmdline, p.status)
 
 

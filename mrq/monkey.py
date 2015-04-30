@@ -81,8 +81,27 @@ def patch_pymongo(config):
         return mrq_monkey_patched
 
     from pymongo.collection import Collection
-    for method in ["find", "update", "insert", "remove", "find_and_modify"]:
-        if getattr(Collection, method).__name__ != "mrq_monkey_patched":
+    pymongo_method_whitelist = (
+        "bulk_write",
+        "find", "find_one_and_delete", "find_one_and_replace", "find_one_and_update",
+        "update", "update_one", "update_many",
+        "drop",
+        "count",
+        "save",
+        "insert", "insert_one", "insert_many",
+        "replace_one",
+        "remove", "delete_one", "delete_many",
+        "find_and_modify",
+        "parallel_scan",
+        "options",
+        "aggregate",
+        "group", "distinct",
+        "rename",
+        "map_reduce", "inline_map_reduce",
+        "create_indexes", "create_index", "ensure_index", "drop_index", "reindex", "list_indexes"
+    )
+    for method in pymongo_method_whitelist:
+        if hasattr(Collection, method) and getattr(Collection, method).__name__ != "mrq_monkey_patched":
             setattr(Collection, method, gen_monkey_patch(Collection, method))
 
     # MongoKit completely replaces the code from PyMongo's find() function, so we
@@ -352,7 +371,7 @@ def patch_io_pymongo_cursor():
 
             if job:
 
-                subtype = "find"
+                subtype = "cursor"
                 collection = self._Cursor__collection.name  # pylint: disable=no-member
 
                 if collection == "$cmd":

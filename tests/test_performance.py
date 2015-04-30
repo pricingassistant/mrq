@@ -2,6 +2,7 @@ import time
 from mrq.queue import Queue
 import pytest
 
+
 @pytest.mark.parametrize(["p_max_latency", "p_min_observed_latency", "p_max_observed_latency"], [
     [1, 0.03, 1],
     [0.01, -1, 0.02]
@@ -26,15 +27,20 @@ def test_job_max_latency(worker, p_max_latency, p_min_observed_latency, p_max_ob
     print "FYI, min latency = %ss" % min_latency
 
     # Sleep a while with an idle worker to make the poll interval go up
-    time.sleep(30)
+    latencies = []
+    for i in range(10):
+        time.sleep(3)
 
-    # TODO, will fail if sleeps synchronize and by chance we send the task just when a sleep() is finished
-    # Average several ones over an interval instead?
-    latency = get_latency() - base_latency
+        latency = get_latency() - min_latency
 
-    print "Observed latency: %ss" % latency
+        print "Observed latency (corrected): %ss" % latency
 
-    assert p_min_observed_latency <= latency < p_max_observed_latency
+        latencies.append(latency)
+
+    avg_latency = float(sum(latencies)) / len(latencies)
+    print "Average observed latency: %ss" % avg_latency
+
+    assert p_min_observed_latency <= avg_latency < p_max_observed_latency
 
 
 @pytest.mark.parametrize(["p_latency", "p_min", "p_max"], [

@@ -43,3 +43,4 @@ pypy
 mrq-config.py
 dump.rdb
 supervisord.pid
+memory_traces

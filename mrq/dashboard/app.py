@@ -51,7 +51,7 @@ def api_task_exceptions():
         {"$match": {"status": "failed"}},
         {"$group": {"_id": {"path": "$path", "exceptiontype": "$exceptiontype"},
                     "jobs": {"$sum": 1}}},
-    ])["result"])
+    ]))
 
     stats.sort(key=lambda x: -x["jobs"])
     start = int(request.args.get("iDisplayStart", 0))
@@ -74,7 +74,7 @@ def api_jobstatuses():
         # https://jira.mongodb.org/browse/SERVER-11447
         {"$sort": {"status": 1}},
         {"$group": {"_id": "$status", "jobs": {"$sum": 1}}}
-    ])["result"])
+    ]))
 
     stats.sort(key=lambda x: x["_id"])
 
@@ -94,7 +94,7 @@ def api_taskpaths():
     stats = list(connections.mongodb_jobs.mrq_jobs.aggregate([
         {"$sort": {"path": 1}},  # https://jira.mongodb.org/browse/SERVER-11447
         {"$group": {"_id": "$path", "jobs": {"$sum": 1}}}
-    ])["result"])
+    ]))
 
     stats.sort(key=lambda x: -x["jobs"])
 

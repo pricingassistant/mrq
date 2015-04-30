@@ -46,7 +46,7 @@ def test_current_job_inspect(worker):
 
 @pytest.mark.parametrize(["p_testtype", "p_testparams", "p_type", "p_data"], [
     ["mongodb-insert", {"a": 41, "b": 1}, "mongodb.insert", {'collection': 'mrq.tests_inserts'}],
-    ["mongodb-find", {"a": 41, "b": 1}, "mongodb.find", {'collection': 'mrq.tests_inserts'}],
+    ["mongodb-find", {"a": 41, "b": 1}, "mongodb.cursor", {'collection': 'mrq.tests_inserts'}],
     ["mongodb-count", {"a": 41, "b": 1}, "mongodb.count", {'collection': 'mrq.tests_inserts'}],
 
     ["redis-llen", {"key": "test:key"}, "redis.llen", {"key": "test:key"}],
