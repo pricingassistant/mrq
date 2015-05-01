@@ -50,7 +50,7 @@ class Scheduler(object):
                     datetime.datetime.utcnow(), task["dailytime"])
                 task["interval"] = 3600 * 24
 
-            self.collection.insert(task)
+            self.collection.find_one_and_update({"hash": task["hash"]}, {"$set": task}, upsert=True)
             log.debug("Scheduler: added %s" % task["hash"])
 
         self.refresh()

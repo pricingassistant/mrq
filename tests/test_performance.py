@@ -23,13 +23,13 @@ def test_job_max_latency(worker, p_max_latency, p_min_observed_latency, p_max_ob
     base_latency = get_latency()
     print "Base latency: %ss" % base_latency
 
-    min_latency = min([get_latency() for _ in range(0, 5)])
+    min_latency = min([get_latency() for _ in range(0, 20)])
     print "FYI, min latency = %ss" % min_latency
 
     # Sleep a while with an idle worker to make the poll interval go up
     latencies = []
-    for i in range(10):
-        time.sleep(3)
+    for i in range(6):
+        time.sleep(5)
 
         latency = get_latency() - min_latency
 

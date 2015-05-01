@@ -12,7 +12,7 @@ test:
   override:
     - docker version
     - make linterrors
-    - docker run -i -t -v `pwd`:/app:rw -w /app mrq_local py.test tests/ -s -v --junitxml=pytest-report.xml --html=pytest-report.html --cov mrq --cov-report html:
+    - docker run -i -t -v `pwd`:/app:rw -w /app mrq_local py.test tests/ -v --junitxml=pytest-report.xml --html=pytest-report.html --cov mrq --cov-report html:
         parallel: true
     - mkdir -p $CIRCLE_TEST_REPORTS/junit && mv pytest-report.xml $CIRCLE_TEST_REPORTS/junit/mrq.xml:
         parallel: true
@@ -21,7 +21,6 @@ test:
 dependencies:
   override:
     - mkdir -p ~/docker && ls -la ~/docker
-    - rm -rf ~/docker/*
     - if [[ -e ~/docker/image.tar ]]; then docker load -i ~/docker/image.tar; fi
     - ./scripts/git-set-file-times
     - docker build -t mrq_local .

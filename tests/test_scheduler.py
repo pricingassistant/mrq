@@ -66,7 +66,7 @@ def test_scheduler_dailytime(worker, p_flags):
         env={
             # We need to pass this in the environment so that each worker has the
             # exact same hash
-            "MRQ_TEST_SCHEDULER_TIME": str(time.time() + 4)
+            "MRQ_TEST_SCHEDULER_TIME": str(time.time() + 5)
         })
 
     collection = worker.mongodb_jobs.tests_inserts
@@ -74,15 +74,17 @@ def test_scheduler_dailytime(worker, p_flags):
 
     # It should be done a first time immediately
     time.sleep(3)
-    assert collection.find().count() == 2
-    assert collection.find({"b": "test"}).count() == 1
+    inserts = list(collection.find())
+    assert len(inserts) == 2
+    print inserts
+    assert collection.find({"params.b": "test"}).count() == 1
 
     # Then a second time once the dailytime passes
     time.sleep(7)
     assert collection.find().count() == 4
-    assert collection.find({"b": "test"}).count() == 2
+    assert collection.find({"params.b": "test"}).count() == 2
 
     # Nothing more should happen today
     time.sleep(4)
     assert collection.find().count() == 4
-    assert collection.find({"b": "test"}).count() == 2
+    assert collection.find({"params.b": "test"}).count() == 2
