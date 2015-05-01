@@ -25,7 +25,7 @@ def test_retry_otherqueue_delay_zero(worker):
 
     time.sleep(1)
 
-    assert worker.mongodb_logs.tests_inserts.find().count() == 1
+    assert worker.mongodb_jobs.tests_inserts.find().count() == 1
 
     assert Queue("default").size() == 0
     assert Queue("noexec").size() == 1

@@ -38,6 +38,6 @@ def test_cancel_by_path(worker):
 
     assert job2.get("result") is None
 
-    assert worker.mongodb_logs.tests_inserts.count() == 1
+    assert worker.mongodb_jobs.tests_inserts.count() == 1
 
     assert Queue("default").size() == 0

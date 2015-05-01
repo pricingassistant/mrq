@@ -16,7 +16,7 @@ test:
         parallel: true
     - mkdir -p $CIRCLE_TEST_REPORTS/junit && mv pytest-report.xml $CIRCLE_TEST_REPORTS/junit/mrq.xml:
         parallel: true
-    - make lint > lint-report.txt
+    - make lint 2>&1 1> lint-report.txt ; echo "Linted."
 
 dependencies:
   override:

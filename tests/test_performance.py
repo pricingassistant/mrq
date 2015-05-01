@@ -50,7 +50,7 @@ def test_job_max_latency(worker, p_max_latency, p_min_observed_latency, p_max_ob
 ])
 def test_network_latency(worker, p_latency, p_min, p_max):
 
-    worker.start(flags=" --no_mongodb_ensure_indexes --add_network_latency=%s" % (p_latency), trace=False)
+    worker.start(flags=" --mongodb_logs 0 --report_interval 10000 --no_mongodb_ensure_indexes --add_network_latency=%s" % (p_latency), trace=False)
 
     start_time = time.time()
 

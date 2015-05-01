@@ -73,7 +73,7 @@ class Retry(Task):
         log.info("Retrying in %s on %s" %
                  (params.get("delay"), params.get("queue")))
 
-        connections.mongodb_logs.tests_inserts.insert(params)
+        connections.mongodb_jobs.tests_inserts.insert(params)
 
         retry_current_job(
             queue=params.get("queue"),
@@ -103,7 +103,7 @@ class WaitForFlag(Task):
 class RetrySimple(Task):
 
     def run(self, params):
-        connections.mongodb_logs.tests_inserts.insert(params)
+        connections.mongodb_jobs.tests_inserts.insert(params)
 
         retry_current_job()
 
@@ -148,7 +148,7 @@ class MongoInsert(Task):
 
     def run(self, params):
 
-        connections.mongodb_logs.tests_inserts.insert(
+        connections.mongodb_jobs.tests_inserts.insert(
             {"params": params}, manipulate=False)
 
         if params.get("sleep", 0) > 0:

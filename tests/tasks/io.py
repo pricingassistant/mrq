@@ -17,16 +17,16 @@ class TestIo(Task):
 
         if params["test"] == "mongodb-insert":
 
-            return connections.mongodb_logs.tests_inserts.insert({"params": params["params"]}, manipulate=False)
+            return connections.mongodb_jobs.tests_inserts.insert({"params": params["params"]}, manipulate=False)
 
         elif params["test"] == "mongodb-find":
 
-            cursor = connections.mongodb_logs.tests_inserts.find({"test": "x"})
+            cursor = connections.mongodb_jobs.tests_inserts.find({"test": "x"})
             return list(cursor)
 
         elif params["test"] == "mongodb-count":
 
-            return connections.mongodb_logs.tests_inserts.count()
+            return connections.mongodb_jobs.tests_inserts.count()
 
         elif params["test"] == "redis-llen":
 

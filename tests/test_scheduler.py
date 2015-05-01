@@ -16,10 +16,11 @@ def test_scheduler_simple(worker, p_flags):
     worker.start(
         flags="--scheduler --config tests/fixtures/config-scheduler1.py %s" % p_flags)
 
-    collection = worker.mongodb_logs.tests_inserts
+    collection = worker.mongodb_jobs.tests_inserts
     scheduled_jobs = worker.mongodb_jobs.mrq_scheduled_jobs
 
-    time.sleep(3)
+    while not collection.count():
+        time.sleep(1)
 
     # There are 4 test tasks with 5 second interval
     inserts = list(collection.find())
@@ -42,7 +43,8 @@ def test_scheduler_simple(worker, p_flags):
     worker.start(
         deps=False, flags="--scheduler --config tests/fixtures/config-scheduler2.py %s" % p_flags)
 
-    time.sleep(3)
+    while not collection.count():
+        time.sleep(1)
 
     jobs2 = list(scheduled_jobs.find())
     assert len(jobs2) == 4
@@ -51,7 +53,8 @@ def test_scheduler_simple(worker, p_flags):
     # Only 3 should have been replaced and ran immediately again because they
     # have different config.
     inserts = list(collection.find())
-    assert len(inserts) == 3
+    print inserts
+    assert len(inserts) == 3, inserts
 
 
 @pytest.mark.parametrize(["p_flags"], PROCESS_CONFIGS)
@@ -66,7 +69,7 @@ def test_scheduler_dailytime(worker, p_flags):
             "MRQ_TEST_SCHEDULER_TIME": str(time.time() + 4)
         })
 
-    collection = worker.mongodb_logs.tests_inserts
+    collection = worker.mongodb_jobs.tests_inserts
     assert collection.find().count() == 0
 
     # It should be done a first time immediately
