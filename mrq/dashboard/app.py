@@ -324,7 +324,7 @@ def api_logs():
 
 def main():
     app.debug = True
-    run_simple('', int(os.environ.get("PORT", 5555)), app, use_reloader=True)
+    run_simple('', int(os.environ.get("PORT", 5555)), app)
 
 
 if __name__ == '__main__':
