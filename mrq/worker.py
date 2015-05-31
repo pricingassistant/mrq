@@ -8,7 +8,9 @@ import socket
 import traceback
 import psutil
 import sys
+import json as json_stdlib
 import ujson as json
+import BaseHTTPServer
 from bson import ObjectId
 from gevent.pywsgi import WSGIServer
 from collections import defaultdict
@@ -19,6 +21,7 @@ from .exceptions import (TimeoutInterrupt, StopRequested, JobInterrupt, AbortInt
 from .context import (set_current_worker, set_current_job, get_current_job, get_current_config,
                       connections, enable_greenlet_tracing)
 from .queue import Queue
+from .utils import MongoJSONEncoder
 
 
 class Worker(object):
@@ -275,6 +278,7 @@ class Worker(object):
             "datereported": datetime.datetime.utcnow(),
             "name": self.name,
             "io": io,
+            "_id": self.id,
             "process": {
                 "pid": self.process.pid,
                 "cpu": cpu,
@@ -315,25 +319,29 @@ class Worker(object):
                 "Admin server disabled because of multiple processes.")
             return
 
-        from flask import Flask
-        from mrq.dashboard.utils import jsonify
-        app = Flask("admin")
+        worker = self
 
-        @app.route('/')
-        def _():
-            report = self.get_worker_report()
-            report.update({
-                "_id": self.id
-            })
-            return jsonify(report)
+        class AdminRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+            def version_string(self):
+                return "MRQ"
 
-        self.log.debug("Starting admin server on port %s" %
-                       self.config["admin_port"])
+            def do_GET(self):
+                if self.path == "/":
+                    report = worker.get_worker_report()
+                    self.send_response(200)
+                    self.end_headers()
+                    self.wfile.write(json_stdlib.dumps(report, cls=MongoJSONEncoder))
+                    self.wfile.write("\n")
+                else:
+                    self.send_response(404)
+                    self.end_headers()
+
         try:
-            server = WSGIServer(
-                ("0.0.0.0", self.config["admin_port"]), app, log=open(os.devnull, "w")
-            )
-            server.serve_forever()
+            httpd = BaseHTTPServer.HTTPServer((self.config["admin_ip"], self.config["admin_port"]), AdminRequestHandler)
+
+            self.log.debug("Starting admin server on port %s" % self.config["admin_port"])
+            httpd.serve_forever()
+
         except Exception as e:  # pylint: disable=broad-except
             self.log.debug("Error in admin server : %s" % e)
 

@@ -5,16 +5,7 @@ from bson.objectid import ObjectId
 from functools import wraps
 from flask import request, Response
 from mrq.context import get_current_config
-
-
-class MongoJsonEncoder(json.JSONEncoder):
-
-    def default(self, obj):  # pylint: disable=E0202
-        if isinstance(obj, (datetime.datetime, datetime.date)):
-            return obj.isoformat()
-        elif isinstance(obj, ObjectId):
-            return unicode(obj)
-        return json.JSONEncoder.default(self, obj)
+from mrq.utils import MongoJSONEncoder
 
 
 def jsonify(*args, **kwargs):

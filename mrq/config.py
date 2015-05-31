@@ -304,6 +304,13 @@ def add_parser_args(parser, config_type):
             help='Start an admin server on this port, if provided. Incompatible with --processes')
 
         parser.add_argument(
+            '--admin_ip',
+            default="127.0.0.1",
+            action="store",
+            type=str,
+            help='IP for the admin server to listen on. Use "0.0.0.0" to allow access from outside')
+
+        parser.add_argument(
             '--local_ip',
             default=get_local_ip(),
             action="store",

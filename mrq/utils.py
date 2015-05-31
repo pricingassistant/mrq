@@ -2,6 +2,9 @@ import re
 import importlib
 import time
 import math
+import json
+import datetime
+from bson import ObjectId
 
 #
 # Utils are functions that should be independent from the rest of MRQ's codebase
@@ -165,3 +168,13 @@ class LazyObject(object):
         for attr in self._attributes_via_factories:
             del self.__dict__[attr]
         self._attributes_via_factories = []
+
+
+class MongoJSONEncoder(json.JSONEncoder):
+
+    def default(self, obj):  # pylint: disable=E0202
+        if isinstance(obj, (datetime.datetime, datetime.date)):
+            return obj.isoformat()
+        elif isinstance(obj, ObjectId):
+            return unicode(obj)
+        return json.JSONEncoder.default(self, obj)
