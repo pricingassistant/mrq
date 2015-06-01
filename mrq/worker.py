@@ -325,6 +325,9 @@ class Worker(object):
             def version_string(self):
                 return "MRQ"
 
+            def log_message(self, *args, **kwargs):
+                pass
+
             def do_GET(self):
                 if self.path == "/":
                     report = worker.get_worker_report()
