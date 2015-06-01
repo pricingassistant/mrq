@@ -1,6 +1,4 @@
 import json
-import datetime
-from bson.objectid import ObjectId
 # from werkzeug import Response
 from functools import wraps
 from flask import request, Response
@@ -16,7 +14,7 @@ def jsonify(*args, **kwargs):
             dict(
                 *args,
                 **kwargs),
-            cls=MongoJsonEncoder),
+            cls=MongoJSONEncoder),
         mimetype='application/json')
 
 
