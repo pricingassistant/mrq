@@ -278,7 +278,7 @@ class Worker(object):
             "datereported": datetime.datetime.utcnow(),
             "name": self.name,
             "io": io,
-            "_id": self.id,
+            "_id": str(self.id),
             "process": {
                 "pid": self.process.pid,
                 "cpu": cpu,
