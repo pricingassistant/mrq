@@ -12,7 +12,6 @@ import json as json_stdlib
 import ujson as json
 import BaseHTTPServer
 from bson import ObjectId
-from gevent.pywsgi import WSGIServer
 from collections import defaultdict
 
 from .job import Job
@@ -56,6 +55,9 @@ class Worker(object):
         self.process = psutil.Process(os.getpid())
         self.greenlet = gevent.getcurrent()
         self.graceful_stop = None
+
+        self.idle_event = gevent.event.Event()
+        self.idle_wait_count = 0
 
         self.id = ObjectId()
         if self.config.get("name"):
@@ -302,7 +304,11 @@ class Worker(object):
             with open(self.config["report_file"], "wb") as f:
                 f.write(json.dumps(report, ensure_ascii=False))  # pylint: disable=no-member
 
+        if "_id" in report:
+            del report["_id"]
+
         try:
+
             self.mongodb_jobs.mrq_workers.update({
                 "_id": ObjectId(self.id)
             }, {"$set": report}, upsert=True, w=w)
@@ -335,6 +341,13 @@ class Worker(object):
                     self.end_headers()
                     self.wfile.write(json_stdlib.dumps(report, cls=MongoJSONEncoder))
                     self.wfile.write("\n")
+                elif self.path == "/wait_for_idle":
+                    worker.idle_wait_count = 0
+                    worker.idle_event.clear()
+                    worker.idle_event.wait()
+                    self.send_response(200)
+                    self.end_headers()
+                    self.wfile.write("idle")
                 else:
                     self.send_response(404)
                     self.end_headers()
@@ -382,12 +395,11 @@ class Worker(object):
     def work_loop(self, max_jobs=None):
 
         self.done_jobs = 0
+        self.idle_wait_count = 0
 
         # has_raw = any(q.is_raw or q.is_sorted for q in [Queue(x) for x in self.queues])
 
         try:
-
-            wait_count = 0
 
             while True:
 
@@ -412,6 +424,9 @@ class Worker(object):
                         worker=self
                     )
 
+                    if len(jobs) > 0:
+                        self.idle_wait_count = 0
+
                     if len(jobs) >= free_pool_slots:
                         break
 
@@ -428,9 +443,18 @@ class Worker(object):
                 # We seem to have exhausted available jobs, we can sleep for a
                 # while.
                 if len(jobs) < free_pool_slots:
+
+                    if (
+                        not self.idle_event.is_set() and
+                        len(jobs) == 0 and
+                        free_pool_slots == self.pool_size and
+                        self.idle_wait_count > 0
+                    ):
+                        self.idle_event.set()
+
                     self.status = "wait"
-                    wait_count += 1
-                    gevent.sleep(min(self.config["max_latency"], 0.001 * wait_count))
+                    self.idle_wait_count += 1
+                    gevent.sleep(min(self.config["max_latency"], 0.001 * self.idle_wait_count))
 
         except StopRequested:
             pass

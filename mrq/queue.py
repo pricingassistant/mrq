@@ -390,6 +390,7 @@ class Queue(object):
 
             if worker:
                 worker.status = "spawn"
+                worker.idle_event.clear()
 
             jobs += [job_class(_job_id, queue=self.id, start=True)
                      for _job_id in self.unserialize_job_ids(job_ids) if _job_id]
