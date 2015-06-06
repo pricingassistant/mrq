@@ -202,7 +202,7 @@ class Worker(object):
         mem["total"] = mem["rss"] + mem["swap"]
         return mem
 
-    def get_worker_report(self):
+    def get_worker_report(self, with_memory=False):
         """ Returns a dict containing all the data we can about the current status of the worker and
             its jobs. """
 
@@ -236,7 +236,7 @@ class Worker(object):
 
         # When faking network latency, all sockets are affected, including OS ones, but
         # we still want reliable reports so this is disabled.
-        if self.config["add_network_latency"] != "0" and self.config["add_network_latency"]:
+        if (not with_memory) or (self.config["add_network_latency"] != "0" and self.config["add_network_latency"]):
             cpu = {
                 "user": 0,
                 "system": 0,
@@ -298,7 +298,7 @@ class Worker(object):
 
     def report_worker(self, w=0):
 
-        report = self.get_worker_report()
+        report = self.get_worker_report(with_memory=True)
 
         if self.config["report_file"]:
             with open(self.config["report_file"], "wb") as f:
@@ -325,39 +325,34 @@ class Worker(object):
                 "Admin server disabled because of multiple processes.")
             return
 
-        worker = self
-
-        class AdminRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
-            def version_string(self):
-                return "MRQ"
-
-            def log_message(self, *args, **kwargs):
+        class Devnull(object):
+            def write(self, *_):
                 pass
 
-            def do_GET(self):
-                if self.path == "/":
-                    report = worker.get_worker_report()
-                    self.send_response(200)
-                    self.end_headers()
-                    self.wfile.write(json_stdlib.dumps(report, cls=MongoJSONEncoder))
-                    self.wfile.write("\n")
-                elif self.path == "/wait_for_idle":
-                    worker.idle_wait_count = 0
-                    worker.idle_event.clear()
-                    worker.idle_event.wait()
-                    self.send_response(200)
-                    self.end_headers()
-                    self.wfile.write("idle")
-                else:
-                    self.send_response(404)
-                    self.end_headers()
+        from gevent import wsgi
+
+        def admin_routes(env, start_response):
+            path = env["PATH_INFO"]
+            status = "200 OK"
+            res = ""
+            if path in ["/", "/report", "/report_mem"]:
+                report = self.get_worker_report(with_memory=(path == "/report_mem"))
+                res = json_stdlib.dumps(report, cls=MongoJSONEncoder)
+            elif path == "/wait_for_idle":
+                self.idle_wait_count = 0
+                self.idle_event.clear()
+                self.idle_event.wait()
+                res = "idle"
+            else:
+                status = "404 Not Found"
+            start_response(status, [('Content-Type', 'application/json')])
+            return [res]
+
+        server = wsgi.WSGIServer((self.config["admin_ip"], self.config["admin_port"]), admin_routes, log=Devnull())
 
         try:
-            httpd = BaseHTTPServer.HTTPServer((self.config["admin_ip"], self.config["admin_port"]), AdminRequestHandler)
-
             self.log.debug("Starting admin server on port %s" % self.config["admin_port"])
-            httpd.serve_forever()
-
+            server.serve_forever()
         except Exception as e:  # pylint: disable=broad-except
             self.log.debug("Error in admin server : %s" % e)
 

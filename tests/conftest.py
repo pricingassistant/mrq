@@ -237,9 +237,9 @@ class WorkerFixture(ProcessFixture):
             return json.loads(out)
         return out
 
-    def get_report(self):
+    def get_report(self, with_memory=False):
         wait_for_net_service("127.0.0.1", 20020, poll_interval=0.01)
-        f = urllib2.urlopen("http://127.0.0.1:20020")
+        f = urllib2.urlopen("http://127.0.0.1:20020/report%s" % ("_mem" if with_memory else ""))
         data = json.load(f)
         f.close()
         return data
