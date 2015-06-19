@@ -300,6 +300,10 @@ class Worker(object):
 
         report = self.get_worker_report(with_memory=True)
 
+        if self.config["max_memory"] > 0:
+            if report["process"]["mem"]["total"] > (self.config["max_memory"] * 1024 * 1024):
+                self.shutdown_max_memory()
+
         if self.config["report_file"]:
             with open(self.config["report_file"], "wb") as f:
                 f.write(json.dumps(report, ensure_ascii=False))  # pylint: disable=no-member
@@ -397,6 +401,9 @@ class Worker(object):
         try:
 
             while True:
+
+                if self.graceful_stop:
+                    break
 
                 while True:
 
@@ -566,6 +573,14 @@ class Worker(object):
 
         self.log.info("Graceful shutdown...")
         raise StopRequested()  # pylint: disable=nonstandard-exception
+
+    def shutdown_max_memory(self):
+
+        # Not in the exitcodes list: we want it to be restarted.
+        self.exitcode = 4
+
+        self.log.info("Max memory reached, shutdown...")
+        self.graceful_stop = True
 
     def shutdown_now(self):
         """ Forced shutdown: interrupts all the jobs. """
