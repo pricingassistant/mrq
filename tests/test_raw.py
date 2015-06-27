@@ -49,8 +49,10 @@ def test_raw_sorted(worker, p_queue, p_pushback, p_timed, p_flags):
 
     if p_pushback:
         assert Queue(p_queue).size() == 3
+        assert set(Queue(p_queue).list_raw_jobs()) == set(["bbb", "ccc", "aaa"])
     else:
         assert Queue(p_queue).size() == 2
+        assert set(Queue(p_queue).list_raw_jobs()) == set(["bbb", "ccc"])
 
     # The second one should not yet even exist in mrq_jobs
     assert jobs_collection.count() == 1

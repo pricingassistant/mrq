@@ -117,23 +117,31 @@ class Queue(object):
         if self.is_raw:
             raise Exception("Can't list job ids from a raw queue")
 
-        # ZSET
+        return self.unserialize_job_ids(self._get_queue_content(skip, limit))
+
+    def list_raw_jobs(self, skip=0, limit=20):
+
+        if not self.is_raw:
+            raise Exception("Queue is not raw")
+
+        return self._get_queue_content(skip, limit)
+
+    def _get_queue_content(self, skip, limit):
         if self.is_sorted:
-            return self.unserialize_job_ids(context.connections.redis.zrange(
+            return context.connections.redis.zrange(
                 self.redis_key,
                 skip,
-                skip + limit - 1))
+                skip + limit - 1)
         # SET
         elif self.is_set:
-            return self.unserialize_job_ids(
-                context.connections.redis.srandmember(self.redis_key, limit)
-            )
+            return context.connections.redis.srandmember(self.redis_key, limit)
+
         # LIST
         else:
-            return self.unserialize_job_ids(context.connections.redis.lrange(
+            return context.connections.redis.lrange(
                 self.redis_key,
                 skip,
-                skip + limit - 1))
+                skip + limit - 1)
 
     def get_sorted_graph(
             self,
