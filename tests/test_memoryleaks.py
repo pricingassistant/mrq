@@ -1,6 +1,27 @@
 import time
 
 
+def test_max_memory_restart(worker):
+
+    N = 20
+
+    worker.start(
+        flags="--processes 1 --greenlets 1 --max_memory 50 --report_interval 1")
+
+    worker.send_tasks(
+        "tests.tasks.general.Leak",
+        [{"size": 1000000, "sleep": 1} for _ in range(N)],
+        queue="default",
+        block=True
+    )
+
+    assert worker.mongodb_jobs.mrq_jobs.find(
+        {"status": "success"}).count() == N
+
+    # We must have been restarted at least once.
+    assert worker.mongodb_jobs.mrq_workers.find().count() > 1
+
+
 def get_diff_after_jobs(worker, n_tasks, leak, sleep=0):
 
     time.sleep(3)
@@ -51,6 +72,8 @@ def test_memoryleaks_noleak(worker):
     assert diff100 < 10000
     assert diff200 < 10000
 
+    assert worker.mongodb_jobs.mrq_workers.find().count() == 1
+
 
 def test_memoryleaks_1mleak(worker):
 
@@ -70,3 +93,5 @@ def test_memoryleaks_1mleak(worker):
 
     assert worker.mongodb_jobs.mrq_jobs.find(
         {"memory_diff": {"$gte": 80000}}).count() == 10
+
+    assert worker.mongodb_jobs.mrq_workers.find().count() == 1
