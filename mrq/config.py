@@ -223,6 +223,20 @@ def add_parser_args(parser, config_type):
             action="store",
             help='Default queue for dashboard actions.')
 
+        parser.add_argument(
+            '--dashboard_port',
+            default=5555,
+            action="store",
+            type=int,
+            help='Use this port for mrq-dashboard. 5555 by default.')
+
+        parser.add_argument(
+            '--dashboard_ip',
+            default="0.0.0.0",
+            action="store",
+            type=str,
+            help='Bind the dashboard to this IP. Default is "0.0.0.0", use "127.0.0.1" to restrict access.')
+
     # Worker-specific args
 
     elif config_type == "worker":

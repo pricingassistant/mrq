@@ -324,7 +324,7 @@ def api_logs():
 
 def main():
     app.debug = True
-    run_simple('0.0.0.0', int(os.environ.get("PORT", 5555)), app)
+    run_simple(cfg["dashboard_ip"], int(cfg["dashboard_port"]), app)
 
 
 if __name__ == '__main__':
