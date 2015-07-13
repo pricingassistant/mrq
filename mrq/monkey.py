@@ -181,7 +181,7 @@ def patch_network_latency(seconds=0.01):
 
     from socket import socket as _socketmodule
     from gevent.socket import socket as _geventmodule
-    from gevent.ssl import SSLSocket as _sslmodule
+    from gevent.ssl import SSLSocket as _sslmodule   # pylint: disable=no-name-in-module
 
     for method in socket_methods:
         patch_method(_socketmodule, method, _patched_method)
