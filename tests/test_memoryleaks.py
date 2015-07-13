@@ -69,8 +69,8 @@ def test_memoryleaks_noleak(worker):
     assert worker.mongodb_jobs.mrq_jobs.find(
         {"memory_diff": 0}).count() > 310 * 0.95
 
-    assert diff100 < 10000
-    assert diff200 < 10000
+    assert diff100 < 15000
+    assert diff200 < 15000
 
     assert worker.mongodb_jobs.mrq_workers.find().count() == 1
 

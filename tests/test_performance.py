@@ -4,7 +4,7 @@ import pytest
 
 
 @pytest.mark.parametrize(["p_max_latency", "p_min_observed_latency", "p_max_observed_latency"], [
-    [1, 0.03, 1],
+    [1, 0.021, 1],
     [0.01, -1, 0.02]
 ])
 def test_job_max_latency(worker, p_max_latency, p_min_observed_latency, p_max_observed_latency):
