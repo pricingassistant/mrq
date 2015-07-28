@@ -23,7 +23,8 @@ class Job(object):
 
     timeout = None
     result_ttl = None
-    aborted_or_canceled_ttl = None
+    abort_ttl = None
+    cancel_ttl = None
     max_retries = None
     retry_delay = None
 
@@ -128,7 +129,8 @@ class Job(object):
 
             self.timeout = task_def.get("timeout", cfg["default_job_timeout"])
             self.result_ttl = task_def.get("result_ttl", cfg["default_job_result_ttl"])
-            self.aborted_or_canceled_ttl = task_def.get("aborted_or_canceled_ttl", cfg["default_job_aborted_or_canceled_ttl"])
+            self.abort_ttl = task_def.get("abort_ttl", cfg["default_job_abort_ttl"])
+            self.cancel_ttl = task_def.get("cancel_ttl", cfg["default_job_cancel_ttl"])
             self.max_retries = task_def.get("max_retries", cfg["default_job_max_retries"])
             self.retry_delay = task_def.get("retry_delay", cfg["default_job_retry_delay"])
 
@@ -342,7 +344,7 @@ class Job(object):
 
     def save_cancel(self):
 
-        dateexpires = datetime.datetime.utcnow() + datetime.timedelta(seconds=self.aborted_or_canceled_ttl)
+        dateexpires = datetime.datetime.utcnow() + datetime.timedelta(seconds=self.cancel_ttl)
         updates = {
             "dateexpires": dateexpires
         }
@@ -350,7 +352,7 @@ class Job(object):
         self._save_status("cancel", updates)
 
     def save_abort(self):
-        dateexpires = datetime.datetime.utcnow() + datetime.timedelta(seconds=self.aborted_or_canceled_ttl)
+        dateexpires = datetime.datetime.utcnow() + datetime.timedelta(seconds=self.abort_ttl)
         updates = {
             "dateexpires": dateexpires
         }

@@ -156,14 +156,21 @@ def add_parser_args(parser, config_type):
         default=7 * 24 * 3600,
         action='store',
         type=int,
-        help='Seconds the results are kept in MongoDB when status in (success)')
+        help='Seconds the results are kept in MongoDB when status is success')
 
     parser.add_argument(
-        '--default_job_aborted_or_canceled_ttl',
+        '--default_job_abort_ttl',
         default=24 * 3600,
         action='store',
         type=int,
-        help='Seconds the tasks are kept in MongoDB when status in (cancel, abort)')
+        help='Seconds the tasks are kept in MongoDB when status is abort')
+
+    parser.add_argument(
+        '--default_job_cancel_ttl',
+        default=24 * 3600,
+        action='store',
+        type=int,
+        help='Seconds the tasks are kept in MongoDB when status is cancel')
 
     parser.add_argument(
         '--default_job_timeout',
