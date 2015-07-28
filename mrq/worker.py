@@ -538,7 +538,7 @@ class Worker(object):
 
         except AbortInterrupt:
             self.log.error("Caught abort")
-            job._save_status("abort", exception=True)
+            job.save_abort()
 
         except TimeoutInterrupt:
             self.log.error("Job timeouted after %s seconds" % job.timeout)

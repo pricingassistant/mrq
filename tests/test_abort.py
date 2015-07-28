@@ -1,6 +1,7 @@
 from mrq.job import Job
 from mrq.queue import Queue
-import time
+from datetime import datetime
+from datetime import timedelta
 
 
 def test_abort(worker):
@@ -14,4 +15,7 @@ def test_abort(worker):
     db_jobs = list(worker.mongodb_jobs.mrq_jobs.find())
     assert len(db_jobs) == 1
 
-    assert db_jobs[0]["status"] == "abort"
+    job = db_jobs[0]
+    assert job["status"] == "abort"
+    assert job.get("dateexpires") is not None
+    assert job["dateexpires"] < datetime.utcnow() + timedelta(hours=24)
