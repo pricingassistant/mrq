@@ -5,7 +5,7 @@ import time
 
 def ratelimit(key, limit, per=1, redis=None):
     """ Returns an integer with the number of available actions for the
-    current period. If zero, rate was already reached. """
+    current period in seconds. If zero, rate was already reached. """
 
     if redis is None:
         redis = connections.redis
@@ -17,10 +17,10 @@ def ratelimit(key, limit, per=1, redis=None):
 
     with redis.pipeline(transaction=True) as pipeline:
         pipeline.incr(k, 1)
-        pipeline.expire(k, 10)
+        pipeline.expire(k, per + 10)
         value = pipeline.execute()
 
-    current = int(value[0])
+    current = int(value[0]) - 1
 
     if current >= limit:
         return 0
