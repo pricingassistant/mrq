@@ -2,7 +2,6 @@ from .logger import Logger
 import gevent
 import gevent.pool
 import urlparse
-import re
 import time
 import pymongo
 from .utils import LazyObject, load_class_by_path
@@ -145,45 +144,19 @@ def _connections_factory(attr):
             elif config_obj == "0":
                 return None
 
-            try:
-                # MongoKit's Connection object is just a wrapped MongoClient.
-                from mongokit import Connection as MongoClient   # pylint: disable=import-error
-                from mongokit import ReplicaSetConnection as MongoReplicaSetClient  # pylint: disable=import-error
-            except ImportError:
-                from pymongo import MongoClient
-                from pymongo import MongoReplicaSetClient
+            from pymongo import MongoClient
 
-            mongo_parsed = re.match(
-                r"mongodb://((\w+):(\w+)@)?([\w\.:,-]+)/([\w-]+)(\?.*)?",
-                config_obj
-            ).groups()
+            mongo_parsed = pymongo.uri_parser.parse_uri(config_obj)
 
-            mongo_hosts = mongo_parsed[3]
-            mongo_name = mongo_parsed[4]
-            mongo_options = mongo_parsed[5]
+            mongo_hosts = mongo_parsed["nodelist"]
+            mongo_name = mongo_parsed["database"]
 
             log.debug("%s: Connecting to MongoDB at %s/%s..." % (attr, mongo_hosts, mongo_name))
 
             kwargs = {}
-            options = {}
-            if mongo_options:
-                options = {
-                    k: v[0]
-                    for k, v in urlparse.parse_qs(mongo_options[1:]).iteritems()
-                }
 
-            # We automatically switch to MongoReplicaSetClient when getting a replicaSet option.
-            # This should cover most use-cases before pymongo 3.0.0 which switches automatically.
-            # http://api.mongodb.org/python/current/examples/high_availability.html#mongoreplicasetclient
-            if options.get("replicaSet") and versiontuple(pymongo.version) < versiontuple("3.0.0"):
-                try:
-                    from mongokit import ReplicaSetConnection as MongoReplicaSetClient  # pylint: disable=import-error
-                except ImportError:
-                    from pymongo import MongoReplicaSetClient
+            db = MongoClient(config_obj, **kwargs)[mongo_name]
 
-                db = MongoReplicaSetClient(config_obj, **kwargs)[mongo_name]
-            else:
-                db = MongoClient(config_obj, **kwargs)[mongo_name]
             log.debug("%s: ... connected." % (attr))
 
             return db

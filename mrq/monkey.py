@@ -104,17 +104,6 @@ def patch_pymongo(config):
         if hasattr(Collection, method) and getattr(Collection, method).__name__ != "mrq_monkey_patched":
             setattr(Collection, method, gen_monkey_patch(Collection, method))
 
-    # MongoKit completely replaces the code from PyMongo's find() function, so we
-    # need to monkey-patch that as well.
-    try:
-        from mongokit.collection import Collection as MongoKitCollection  # pylint: disable=import-error
-        for method in ["find"]:
-            if getattr(MongoKitCollection, method).__name__ != "mrq_monkey_patched":
-                setattr(MongoKitCollection, method, gen_monkey_patch(MongoKitCollection, method))
-
-    except ImportError:
-        pass
-
 
 # https://code.google.com/p/gevent/issues/detail?id=108
 def patch_import():
