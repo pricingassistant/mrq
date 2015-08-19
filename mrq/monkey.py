@@ -2,6 +2,7 @@ from .context import get_current_job
 import time
 import random
 import re
+import copy
 
 
 def patch_method(base_class, method_name, method):
@@ -43,15 +44,6 @@ def patch_pymongo(config):
         base_method = getattr(base_object, method)
 
         def mrq_monkey_patched(self, *args, **kwargs):
-            if config["print_mongodb"]:
-                if self.full_name in config.get(
-                        "print_mongodb_hidden_collections",
-                        []):
-                    cprint("[MONGO] %s.%s%s %s" % (
-                        self.full_name, method, "-hidden-", kwargs), "magenta")
-                else:
-                    cprint("[MONGO] %s.%s%s %s" %
-                           (self.full_name, method, args, kwargs), "magenta")
 
             if config["trace_io"]:
                 job = get_current_job()
@@ -62,8 +54,25 @@ def patch_pymongo(config):
                             "collection": self.full_name
                         }
                         # Perf issue? All MongoDB data will get jsonified!
-                        #"data": json.dumps(args)[0:300]
+                        # "data": json.dumps(args)[0:300]
                     })
+
+                    # Tag potentially expensive queries with their job id for easier debugging
+                    if method in ["find", "find_and_modify", "count", "update_many", "update", "delete_many"]:
+                        if len(args) > 0 and type(args[0]) == dict and "$comment" not in args[0]:
+                            query = copy.copy(args[0])
+                            query["$comment"] = {"job": job.id}
+                            args = (query, ) + args[1:]
+
+            if config["print_mongodb"]:
+                if self.full_name in config.get("print_mongodb_hidden_collections", []):
+                    cprint("[MONGO] %s.%s%s %s" % (
+                        self.full_name, method, "-hidden-", kwargs
+                    ), "magenta")
+                else:
+                    cprint("[MONGO] %s.%s%s %s" % (
+                        self.full_name, method, args, kwargs
+                    ), "magenta")
 
             try:
                 ret = base_method(self, *args, **kwargs)
