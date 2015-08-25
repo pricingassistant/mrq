@@ -12,7 +12,7 @@ def _hash_task(task):
 
     full = [str(task.get(x)) for x in ["path", "interval", "dailytime", "queue"]]
 
-    print full.extend([str(params)])
+    full.extend([str(params)])
     return " ".join(full)
 
 
