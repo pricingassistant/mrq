@@ -171,13 +171,13 @@ def test_performance_writeconcern(worker_mongodb_with_journal):
     n_processes = 0
     max_seconds = 35
 
-    result, total_time_journaled = benchmark_task(
+    result, total_time_acknowledged = benchmark_task(
         worker,
         "tests.tasks.general.LargeResult",
         [{
             "size": 100000,
             "status_success_update_w": 1,
-            "status_success_update_j": True,
+            "status_success_update_j": None,
             "sleep": 0
         } for i in range(n_tasks)],
         tasks=n_tasks,
@@ -186,7 +186,7 @@ def test_performance_writeconcern(worker_mongodb_with_journal):
         max_seconds=max_seconds
     )
 
-    print total_time_journaled
+    print total_time_acknowledged
 
     result, total_time_unacknowledged = benchmark_task(
         worker,
@@ -203,11 +203,11 @@ def test_performance_writeconcern(worker_mongodb_with_journal):
         max_seconds=max_seconds
     )
 
-    print "total_time_journaled: ", total_time_journaled
+    print "total_time_acknowledged: ", total_time_acknowledged
     print "total_time_unacknowledged: ", total_time_unacknowledged
 
     # Make sure it's way faster.
-    assert total_time_unacknowledged < total_time_journaled * 0.6
+    assert total_time_unacknowledged < total_time_acknowledged * 0.7
 
 
 # def test_performance_httpstatic_external(worker):
