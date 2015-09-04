@@ -166,7 +166,7 @@ def api_datatables(unit):
     if unit == "queues":
 
         queues = []
-        for name, jobs in Queue.all().items():
+        for name, jobs in Queue.all_known().items():
             queue = Queue(name)
             q = {
                 "name": name,

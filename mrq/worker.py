@@ -45,7 +45,7 @@ class Worker(object):
             enable_greenlet_tracing()
 
         self.datestarted = datetime.datetime.utcnow()
-        self.queues = [x for x in self.config["queues"] if x]
+
         self.done_jobs = 0
         self.max_jobs = self.config["max_jobs"]
 
@@ -71,6 +71,8 @@ class Worker(object):
         from .logger import LogHandler
         self.log_handler = LogHandler(quiet=self.config["quiet"])
         self.log = self.log_handler.get_logger(worker=self.id)
+
+        self.queues = [Queue(x) for x in self.config["queues"] if x]
 
         self.log.info(
             "Starting Gevent pool with %s worker greenlets (+ report, logs, adminhttp)" %
@@ -417,8 +419,7 @@ class Worker(object):
 
                 jobs = []
 
-                for queue_name in self.queues:
-                    queue = Queue(queue_name)
+                for queue in self.queues:
 
                     jobs += queue.dequeue_jobs(
                         max_jobs=free_pool_slots - len(jobs),

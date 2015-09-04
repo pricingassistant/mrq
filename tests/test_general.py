@@ -107,7 +107,7 @@ def test_general_simple_task_multiple(worker):
 
 def test_general_simple_task_reverse(worker):
 
-    worker.start(queues="default_reverse")
+    worker.start(queues="default_reverse xtest test_timed_set", flags="--config tests/fixtures/config-raw1.py")
 
     result = worker.send_tasks("tests.tasks.general.Add", [
         {"a": 41, "b": 1, "sleep": 1},
@@ -119,6 +119,15 @@ def test_general_simple_task_reverse(worker):
 
     assert [x["result"] for x in worker.mongodb_jobs.mrq_jobs.find().sort(
         [["dateupdated", 1]])] == [41, 42, 42]
+
+    # Test known queues
+    from mrq.queue import Queue, send_task
+    assert Queue.redis_known_queues() == set(["default", "xtest", "test_timed_set"])
+
+    # Try queueing a task
+    send_task("tests.tasks.general.Add", {"a": 41, "b": 1, "sleep": 1}, queue="x")
+    time.sleep(1)
+    assert Queue.redis_known_queues() == set(["x", "default", "xtest", "test_timed_set"])
 
 
 def test_general_exception_status(worker):

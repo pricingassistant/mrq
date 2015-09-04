@@ -3,10 +3,10 @@ from .redishelpers import redis_group_command
 import time
 from bson import ObjectId
 from . import context
+from . import job as jobmodule
 
 
 class Queue(object):
-
     """ A Queue for Jobs. """
 
     is_raw = False
@@ -16,6 +16,10 @@ class Queue(object):
     is_reverse = False
 
     use_large_ids = False
+
+    # This is a mutable type so it is shared by all instances
+    # of Queue in the current process
+    known_queues = set([])
 
     def __init__(self, queue_id):
         if isinstance(queue_id, Queue):
@@ -44,6 +48,13 @@ class Queue(object):
 
         self.use_large_ids = context.get_current_config()["use_large_job_ids"]
 
+        # If this is the first time this process sees this queue, try to add it
+        # on the shared redis set.
+        if self.id not in self.known_queues:
+            known_queues_key = "%s:known_queues" % context.get_current_config()["redis_prefix"]
+            context.connections.redis.sadd(known_queues_key, self.id)
+            self.known_queues.add(self.id)
+
     @property
     def redis_key(self):
         """ Returns the redis key used to store this queue. """
@@ -62,6 +73,12 @@ class Queue(object):
             return self.id
 
         return self.get_config().get("retry_queue") or "default"
+
+    @classmethod
+    def redis_known_queues(cls):
+        """ Returns the global known_queues as stored in redis. """
+        known_queues_key = "%s:known_queues" % context.get_current_config()["redis_prefix"]
+        return context.connections.redis.smembers(known_queues_key)
 
     def get_config(self):
         """ Returns the specific configuration for this queue """
@@ -184,8 +201,26 @@ class Queue(object):
         return queues
 
     @classmethod
+    def all_known(cls):
+        """ List all previously known queues and their lengths in MongoDB """
+
+        # Start with raw queues we know exist from the config
+        queues = {x: 0 for x in context.get_current_config().get("raw_queues", {})}
+
+        known_queues = cls.redis_known_queues()
+
+        for q in known_queues:
+            if q not in queues:
+                queues[q] = context.connections.mongodb_jobs.mrq_jobs.count({
+                    "queue": q,
+                    "status": "queued"
+                })
+
+        return queues
+
+    @classmethod
     def all(cls):
-        """ List all known queues (Raw + MongoDB)"""
+        """ List *all* queues in MongoDB via aggregation. Might be slow. """
 
         # Start with raw queues we know exist from the config
         queues = {x: 0 for x in context.get_current_config().get("raw_queues", {})}
@@ -419,7 +454,7 @@ class Queue(object):
 #
 
 def send_raw_tasks(*args, **kwargs):
-    return context.queue_raw_jobs(*args, **kwargs)
+    return jobmodule.queue_raw_jobs(*args, **kwargs)
 
 
 def send_task(path, params, **kwargs):
@@ -428,6 +463,6 @@ def send_task(path, params, **kwargs):
 
 def send_tasks(path, params_list, queue=None, sync=False, batch_size=1000):
     if sync:
-        return [context.run_task(path, params) for params in params_list]
+        return [jobmodule.run_task(path, params) for params in params_list]
 
-    return context.queue_jobs(path, params_list, queue=queue, batch_size=batch_size)
+    return jobmodule.queue_jobs(path, params_list, queue=queue, batch_size=batch_size)

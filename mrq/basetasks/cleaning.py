@@ -135,7 +135,7 @@ class RequeueLostJobs(Task):
             "requeued": 0
         }
 
-        all_queues = Queue.all()
+        all_queues = Queue.all_known()
 
         for queue_name in all_queues:
 
