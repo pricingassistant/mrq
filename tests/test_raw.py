@@ -313,10 +313,10 @@ def test_raw_no_storage(worker):
 
     time.sleep(2)
 
-    # No started inserted.
+    # Failed was inserted.
     assert jobs_collection.count({"status": "failed"}) == 1
 
-    # But if we requeue and don't raise, should be OK and inserted this time.
+    # If we requeue and don't raise, should be OK and inserted this time, even in success
     # no_storage depends on a raw queue, not a task path.
     _id = jobs_collection.find_one()["_id"]
     jobs_collection.update({"_id": _id}, {"$set": {"path": "tests.tasks.general.MongoInsert"}})
@@ -330,10 +330,12 @@ def test_raw_no_storage(worker):
 
     jobs_collection.remove({})
 
-    # Test with retry
+    # Test with retry: should be inserted
     worker.send_raw_tasks("testnostorage_raw", [
         "tests.tasks.general.Retry 0"
     ], block=False)
+
+    assert jobs_collection.count({"status": "started"}) == 0
 
     time.sleep(2)
 
