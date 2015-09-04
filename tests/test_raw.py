@@ -276,3 +276,65 @@ def test_raw_mixed(worker, p_queue, p_greenlets):
     assert jobs_collection.find({"status": "success"}).count() == 4
 
     assert list(jobs_collection.find({"status": "success"}))[0]["worker"]
+
+
+def test_raw_no_storage(worker):
+    """ Test tasks that don't store unless they go to error status like 'failed' """
+
+    worker.start(
+        flags="--config tests/fixtures/config-raw1.py",
+        queues="default testnostorage_raw"
+    )
+
+    jobs_collection = worker.mongodb_jobs.mrq_jobs
+    test_collection = worker.mongodb_logs.tests_inserts
+
+    worker.send_raw_tasks("testnostorage_raw", [
+        "tests.tasks.general.MongoInsert 3"
+    ], block=False)
+
+    time.sleep(2)
+
+    # No started inserted.
+    assert jobs_collection.count() == 0
+
+    time.sleep(2)
+
+    # No success either, but we did insert
+    assert test_collection.count() == 1
+    assert jobs_collection.count() == 0
+    test_collection.remove({})
+
+    # However failed tasks get stored.
+
+    worker.send_raw_tasks("testnostorage_raw", [
+        "tests.tasks.general.RaiseException 0"
+    ], block=False)
+
+    time.sleep(2)
+
+    # No started inserted.
+    assert jobs_collection.count({"status": "failed"}) == 1
+
+    # But if we requeue and don't raise, should be OK and inserted this time.
+    # no_storage depends on a raw queue, not a task path.
+    _id = jobs_collection.find_one()["_id"]
+    jobs_collection.update({"_id": _id}, {"$set": {"path": "tests.tasks.general.MongoInsert"}})
+    job = Job(_id).fetch(full_data=True)
+    job.requeue(queue="default")
+
+    time.sleep(1)
+    assert test_collection.count() == 1
+    assert jobs_collection.count() == 1
+    assert jobs_collection.count({"status": "success"}) == 1
+
+    jobs_collection.remove({})
+
+    # Test with retry
+    worker.send_raw_tasks("testnostorage_raw", [
+        "tests.tasks.general.Retry 0"
+    ], block=False)
+
+    time.sleep(2)
+
+    assert jobs_collection.count({"status": "retry"}) == 1

@@ -37,6 +37,13 @@ class Job(object):
 
     _current_io = None
 
+    # Has this job been inserted in MongoDB yet?
+    stored = None
+
+    # List of statuses that don't trigger a storage of this task in MongoDB on raw queues.
+    # In task config, use ("started", "success") to avoid storing successful raw tasks at all
+    statuses_no_storage = None
+
     def __init__(self, job_id, queue=None, start=False, fetch=False):
         self.worker = context.get_current_worker()
         self.queue = queue
@@ -114,7 +121,15 @@ class Job(object):
                 "Job %s not found in MongoDB or status was cancelled!" %
                 self.id)
 
+        self.stored = True
+
         return self
+
+    def get_task_config(self):
+        cfg = context.get_current_config()
+        return cfg.get("tasks", {}).get(
+            self.data["path"]
+        ) or {}
 
     def set_data(self, data):
         self.data = data
@@ -123,9 +138,7 @@ class Job(object):
 
         if "path" in self.data:
             cfg = context.get_current_config()
-            task_def = cfg.get("tasks", {}).get(
-                self.data["path"]
-            ) or {}
+            task_def = self.get_task_config()
 
             self.timeout = task_def.get("timeout", cfg["default_job_timeout"])
             self.result_ttl = task_def.get("result_ttl", cfg["default_job_result_ttl"])
@@ -153,7 +166,7 @@ class Job(object):
             self.saved = True
 
     @classmethod
-    def insert(cls, jobs_data, queue=None, return_jobs=True, w=None, j=None):
+    def insert(cls, jobs_data, queue=None, statuses_no_storage=None, return_jobs=True, w=None, j=None):
         """ Insert a job into MongoDB """
 
         now = datetime.datetime.utcnow()
@@ -161,18 +174,25 @@ class Job(object):
             if data["status"] == "started":
                 data["datestarted"] = now
 
-        inserted = context.connections.mongodb_jobs.mrq_jobs.insert(
-            jobs_data,
-            manipulate=True,
-            w=w,
-            j=j
-        )
+        no_storage = (statuses_no_storage is not None) and ("started" in statuses_no_storage)
+        if no_storage and return_jobs:
+            for data in jobs_data:
+                data["_id"] = ObjectId()  # Give the job a temporary ID
+        else:
+            inserted = context.connections.mongodb_jobs.mrq_jobs.insert(
+                jobs_data,
+                manipulate=True,
+                w=w,
+                j=j
+            )
 
         if return_jobs:
             jobs = []
             for data in jobs_data:
                 job = cls(data["_id"], queue=queue)
                 job.set_data(data)
+                job.statuses_no_storage = statuses_no_storage
+                job.stored = (not no_storage)
                 if data["status"] == "started":
                     job.datestarted = data["datestarted"]
                 jobs.append(job)
@@ -365,6 +385,9 @@ class Job(object):
         if self.id is None:
             return
 
+        if self.stored is False and self.statuses_no_storage is not None and status in self.statuses_no_storage:
+            return
+
         now = datetime.datetime.utcnow()
         db_updates = {
             "status": status,
@@ -397,9 +420,19 @@ class Job(object):
             if j is None:
                 j = getattr(self.task, "status_success_update_j", None)
 
-        self.collection.update({
-            "_id": self.id
-        }, {"$set": db_updates}, w=w, j=j, manipulate=False)
+        # This job wasn't inserted because "started" is in statuses_no_storage
+        # So we must insert it for the first time instead of updating it.
+        if self.stored is False:
+            db_updates["queue"] = self.data["queue"]
+            db_updates["params"] = self.data["params"]
+            self.collection.insert(db_updates, w=w, j=j, manipulate=True)
+            self.id = db_updates["_id"]  # Persistent ID assigned by the server
+            self.stored = True
+
+        else:
+            self.collection.update({
+                "_id": self.id
+            }, {"$set": db_updates}, w=w, j=j, manipulate=False)
 
         context.metric("jobs.status.%s" % status)
 

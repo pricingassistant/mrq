@@ -338,6 +338,7 @@ class Queue(object):
 
             queue_config = self.get_config()
 
+            statuses_no_storage = queue_config.get("statuses_no_storage")
             job_factory = queue_config.get("job_factory")
             if not job_factory:
                 raise Exception("No job_factory configured for raw queue %s" % self.id)
@@ -406,7 +407,7 @@ class Queue(object):
                 if worker:
                     j["worker"] = worker.id
 
-            jobs += job_class.insert(job_data)
+            jobs += job_class.insert(job_data, statuses_no_storage=statuses_no_storage)
 
         # Regular queue, in a LIST
         else:

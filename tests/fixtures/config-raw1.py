@@ -116,5 +116,15 @@ RAW_QUEUES = {
                 "flag": rawparam
             }
         }
+    },
+    "testnostorage_raw": {
+        "retry_queue": "testnostorage",
+        "statuses_no_storage": ("started", "success"),
+        "job_factory": lambda rawparam: {
+            "path": rawparam.split(" ")[0],
+            "params": {
+                "sleep": float(rawparam.split(" ")[1])
+            }
+        }
     }
 }
