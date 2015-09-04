@@ -393,9 +393,9 @@ class Job(object):
         # In the most common case, we allow an optimization on Mongo writes
         if status == "success":
             if w is None:
-                w = getattr(self.task, "status_success_update_w", 1)
+                w = getattr(self.task, "status_success_update_w", None)
             if j is None:
-                j = getattr(self.task, "status_success_update_j", True)
+                j = getattr(self.task, "status_success_update_j", None)
 
         self.collection.update({
             "_id": self.id
