@@ -153,7 +153,7 @@ class Job(object):
             self.saved = True
 
     @classmethod
-    def insert(cls, jobs_data, queue=None, return_jobs=True, w=1):
+    def insert(cls, jobs_data, queue=None, return_jobs=True, w=None, j=None):
         """ Insert a job into MongoDB """
 
         now = datetime.datetime.utcnow()
@@ -164,7 +164,8 @@ class Job(object):
         inserted = context.connections.mongodb_jobs.mrq_jobs.insert(
             jobs_data,
             manipulate=True,
-            w=w
+            w=w,
+            j=j
         )
 
         if return_jobs:
@@ -359,7 +360,7 @@ class Job(object):
 
         self._save_status("abort", updates)
 
-    def _save_status(self, status, updates=None, exception=False, w=1):
+    def _save_status(self, status, updates=None, exception=False, w=None, j=None):
 
         if self.id is None:
             return
@@ -389,9 +390,16 @@ class Job(object):
             db_updates["traceback"] = trace
             db_updates["exceptiontype"] = sys.exc_info()[0].__name__
 
+        # In the most common case, we allow an optimization on Mongo writes
+        if status == "success":
+            if w is None:
+                w = getattr(self.task, "status_success_update_w", 1)
+            if j is None:
+                j = getattr(self.task, "status_success_update_j", True)
+
         self.collection.update({
             "_id": self.id
-        }, {"$set": db_updates}, w=w, manipulate=False)
+        }, {"$set": db_updates}, w=w, j=j, manipulate=False)
 
         context.metric("jobs.status.%s" % status)
 

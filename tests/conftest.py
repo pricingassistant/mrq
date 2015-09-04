@@ -275,6 +275,14 @@ def mongodb(request):
 
 
 @pytest.fixture(scope="function")
+def mongodb_with_journal(request):
+    cmd = "mongod --smallfiles --noprealloc"
+    if os.environ.get("STACK_STARTED"):
+        cmd = "sleep 1h"
+    return MongoFixture(request, cmd, wait_port=27017, quiet=True)
+
+
+@pytest.fixture(scope="function")
 def redis(request):
     cmd = "redis-server"
     if os.environ.get("STACK_STARTED"):
@@ -286,3 +294,9 @@ def redis(request):
 def worker(request, mongodb, redis):
 
     return WorkerFixture(request, mongodb=mongodb, redis=redis)
+
+
+@pytest.fixture(scope="function")
+def worker_mongodb_with_journal(request, mongodb_with_journal, redis):
+
+    return WorkerFixture(request, mongodb=mongodb_with_journal, redis=redis)

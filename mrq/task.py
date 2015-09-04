@@ -4,6 +4,11 @@ class Task(object):
     # Are we the first task that a Job called?
     is_main_task = False
 
+    # Default write concern values when setting status=success
+    # http://docs.mongodb.org/manual/reference/write-concern/
+    status_success_update_w = None
+    status_success_update_j = None
+
     def __init__(self):
         pass
 

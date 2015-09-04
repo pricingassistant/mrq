@@ -135,6 +135,18 @@ class ReturnParams(Task):
         return params
 
 
+class LargeResult(Task):
+
+    def run(self, params):
+
+        self.status_success_update_w = params["status_success_update_w"]
+        self.status_success_update_j = params["status_success_update_j"]
+
+        time.sleep(params.get("sleep", 0))
+
+        return "x" * int(params.get("size", 10))
+
+
 class Progress(Task):
 
     def run(self, params):
