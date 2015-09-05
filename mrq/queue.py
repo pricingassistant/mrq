@@ -464,6 +464,6 @@ def send_task(path, params, **kwargs):
 
 def send_tasks(path, params_list, queue=None, sync=False, batch_size=1000):
     if sync:
-        return [jobmodule.run_task(path, params) for params in params_list]
+        return [context.run_task(path, params) for params in params_list]
 
     return jobmodule.queue_jobs(path, params_list, queue=queue, batch_size=batch_size)
