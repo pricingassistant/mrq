@@ -251,6 +251,7 @@ def test_interrupt_redis_flush(worker):
 
     # Then flush redis!
     worker.fixture_redis.flush()
+    Queue.known_queues = set([])
 
     # Assert the queues are empty.
     assert Queue("default").size() == 0

@@ -18,8 +18,8 @@ def test_progress(worker, p_save):
     assert worker.mongodb_jobs.mrq_jobs.find()[0]["progress"] > 0.2
     assert worker.mongodb_jobs.mrq_jobs.find()[0]["progress"] < 0.6
 
-    time.sleep(5)
-
-    worker.stop()
+    time.sleep(7)
 
     assert worker.mongodb_jobs.mrq_jobs.find()[0]["progress"] == 1
+
+    worker.stop()
