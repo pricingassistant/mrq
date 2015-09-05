@@ -1,6 +1,7 @@
 import time
 from mrq.queue import Queue
 import pytest
+import subprocess
 
 
 @pytest.mark.parametrize(["p_max_latency", "p_min_observed_latency", "p_max_observed_latency"], [
@@ -93,6 +94,10 @@ def benchmark_task(worker, taskpath, taskparams, tasks=1000, greenlets=50, proce
 
     assert total_time < max_seconds
 
+    worker.stop()
+
+    # print subprocess.check_output("ps -ef", shell=True)
+
     return result, total_time
 
 
@@ -166,7 +171,7 @@ def test_performance_writeconcern(worker_mongodb_with_journal):
 
     worker = worker_mongodb_with_journal
 
-    n_tasks = 1000
+    n_tasks = 500
     n_greenlets = 1
     n_processes = 0
     max_seconds = 35
@@ -177,7 +182,7 @@ def test_performance_writeconcern(worker_mongodb_with_journal):
         [{
             "size": 100000,
             "status_success_update_w": 1,
-            "status_success_update_j": None,
+            "status_success_update_j": True,
             "sleep": 0
         } for i in range(n_tasks)],
         tasks=n_tasks,
