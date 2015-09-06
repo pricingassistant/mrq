@@ -53,6 +53,8 @@ def test_interrupt_worker_gracefully(worker, p_flags):
     job = Job(job_id2).fetch().data
     assert job.get("status") == "queued"
 
+    worker.stop_deps()
+
 
 @pytest.mark.parametrize(["p_flags"], PROCESS_CONFIGS)
 def test_interrupt_worker_double_sigint(worker, p_flags):
@@ -143,6 +145,8 @@ def test_interrupt_worker_sigterm(worker, p_flags):
     assert job["status"] == "interrupt"
 
     assert time.time() - start_time < 6
+
+    worker.stop_deps()
 
 
 @pytest.mark.parametrize(["p_flags"], PROCESS_CONFIGS)

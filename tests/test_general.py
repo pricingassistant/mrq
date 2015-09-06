@@ -64,6 +64,8 @@ def test_general_simple_task_one(worker):
         worker.mongodb_logs.mrq_logs.find({"worker": db_workers[0]["_id"]}))
     assert len(db_logs) >= 1
 
+    worker.stop_deps()
+
 
 def test_general_nologs(worker):
 

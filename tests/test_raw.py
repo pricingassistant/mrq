@@ -153,6 +153,8 @@ def test_raw_remove(worker, p_queue):
 
     assert Queue(p_queue).size() == 1
 
+    worker.stop_deps()
+
 
 def test_raw_exception(worker):
 

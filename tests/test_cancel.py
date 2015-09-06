@@ -41,3 +41,5 @@ def test_cancel_by_path(worker):
     assert worker.mongodb_jobs.tests_inserts.count() == 1
 
     assert Queue("default").size() == 0
+
+    worker.stop_deps()

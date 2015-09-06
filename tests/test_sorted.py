@@ -28,6 +28,8 @@ def test_sorted_graph(worker):
     assert Queue(p_queue).get_sorted_graph(
         1, 4, slices=3, include_inf=False) == [2, 1, 0]
 
+    worker.stop_deps()
+
 
 # def test_sorted_graph_dashboardtest(worker):
 
@@ -47,3 +49,5 @@ def test_sorted_graph(worker):
 #     "ccc": now
 #   }, start=False)
 #   time.sleep(10000)
+
+#   worker.stop_deps()

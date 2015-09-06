@@ -31,3 +31,5 @@ def test_helpers_ratelimit(worker):
     # This is actually another counter.
     assert ratelimit("k", 10, per=10) == 10
     assert ratelimit("k", 10, per=10) == 9
+
+    worker.stop_deps()

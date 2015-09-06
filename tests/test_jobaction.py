@@ -79,7 +79,7 @@ def test_cancel_by_path(worker, p_query):
     }
     params.update(p_query[0])
 
-    worker.start(flags="--gevent 1", queues="default", flush=False)
+    worker.start(flags="--gevent 1", start_deps=False, queues="default", flush=False)
 
     ret = worker.send_task("mrq.basetasks.utils.JobAction", params, block=True)
 
@@ -92,3 +92,5 @@ def test_cancel_by_path(worker, p_query):
 
     assert Queue("default").size() + Queue("q1").size() + \
         Queue("q2").size() == expected_action_jobs
+
+    worker.stop_deps()

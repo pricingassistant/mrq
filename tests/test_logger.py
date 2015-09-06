@@ -41,3 +41,5 @@ def test_supports_string_and_unicode(worker, class_name, utf8_sys_stdout):
     #   assert u"caf\xe9" in db_logs
     # else:
     #   assert u"cafe" in db_logs
+
+    worker.stop_deps()
