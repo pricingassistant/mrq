@@ -448,7 +448,7 @@ class Job(object):
                 return
 
             t = time.time() - self._current_io["started"]
-            if self.worker:
+            if self.worker and self.data.get("path"):
                 self.worker._traced_io["types"][self._current_io["type"]] += t
                 self.worker._traced_io["tasks"][self.data["path"]] += t
                 self.worker._traced_io["total"] += t
