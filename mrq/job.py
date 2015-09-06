@@ -385,6 +385,8 @@ class Job(object):
         if self.id is None:
             return
 
+        context.metric("jobs.status.%s" % status)
+
         if self.stored is False and self.statuses_no_storage is not None and status in self.statuses_no_storage:
             return
 
@@ -433,8 +435,6 @@ class Job(object):
             self.collection.update({
                 "_id": self.id
             }, {"$set": db_updates}, w=w, j=j, manipulate=False)
-
-        context.metric("jobs.status.%s" % status)
 
         if self.data:
             self.data.update(db_updates)
