@@ -421,14 +421,16 @@ class Worker(object):
 
                 for queue in self.queues:
 
+                    max_jobs_per_queue = free_pool_slots - len(jobs)
+
+                    if self.config["dequeue_strategy"] == "parallel":
+                        max_jobs_per_queue = 1
+
                     jobs += queue.dequeue_jobs(
-                        max_jobs=free_pool_slots - len(jobs),
+                        max_jobs=max_jobs_per_queue,
                         job_class=self.job_class,
                         worker=self
                     )
-
-                    if len(jobs) > 0:
-                        self.idle_wait_count = 0
 
                     if len(jobs) >= free_pool_slots:
                         break
@@ -445,7 +447,7 @@ class Worker(object):
 
                 # We seem to have exhausted available jobs, we can sleep for a
                 # while.
-                if len(jobs) < free_pool_slots:
+                if len(jobs) == 0:
 
                     if (
                         not self.idle_event.is_set() and
@@ -458,6 +460,10 @@ class Worker(object):
                     self.status = "wait"
                     self.idle_wait_count += 1
                     gevent.sleep(min(self.config["max_latency"], 0.001 * self.idle_wait_count))
+
+                # We got some jobs, reset the idle counter.
+                else:
+                    self.idle_wait_count = 0
 
         except StopRequested:
             pass

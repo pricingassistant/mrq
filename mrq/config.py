@@ -358,8 +358,16 @@ def add_parser_args(parser, config_type):
             default=1.,
             type=float,
             action='store',
-            help='Max seconds while worker may sleep waiting for a new job. '
+            help='Max seconds while worker may sleep waiting for a new job. ' +
                  'Can be < 1.')
+
+        parser.add_argument(
+            '--dequeue_strategy',
+            default="sequential",
+            type=str,
+            action='store',
+            help='Strategy for dequeuing multiple queues. Default is \'sequential\',' +
+                 'to dequeue them in command-line order.')
 
 
 def get_config(
