@@ -449,6 +449,10 @@ class Worker(object):
                 # while.
                 if len(jobs) == 0:
 
+                    if self.config["dequeue_strategy"] == "burst":
+                        self.log.info("Burst mode: stopping now because queues were empty")
+                        break
+
                     if (
                         not self.idle_event.is_set() and
                         len(jobs) == 0 and

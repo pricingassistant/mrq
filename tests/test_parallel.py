@@ -31,17 +31,21 @@ def test_dequeue_strategy(worker):
     worker.start_deps()
 
     worker.send_task(
-        "tests.tasks.general.MongoInsert", {"a": 41, "sleep": 2}, queue="q1", block=False)
+        "tests.tasks.general.MongoInsert", {"a": 41, "sleep": 2}, queue="q1", block=False, start=False)
     worker.send_task(
-        "tests.tasks.general.MongoInsert", {"a": 42, "sleep": 2}, queue="q2", block=False)
+        "tests.tasks.general.MongoInsert", {"a": 42, "sleep": 2}, queue="q2", block=False, start=False)
     worker.send_task(
-        "tests.tasks.general.MongoInsert", {"a": 41, "sleep": 2}, queue="q1", block=False)
+        "tests.tasks.general.MongoInsert", {"a": 41, "sleep": 2}, queue="q1", block=False, start=False)
     worker.send_task(
-        "tests.tasks.general.MongoInsert", {"a": 42, "sleep": 2}, queue="q2", block=False)
+        "tests.tasks.general.MongoInsert", {"a": 42, "sleep": 2}, queue="q2", block=False, start=False)
+    worker.send_task(
+        "tests.tasks.general.MongoInsert", {"a": 43, "sleep": 2}, queue="q3", block=False, start=False)
+    worker.send_task(
+        "tests.tasks.general.MongoInsert", {"a": 43, "sleep": 2}, queue="q3", block=False, start=False)
 
     time.sleep(0.1)
 
-    worker.start(flags="--dequeue_strategy parallel --greenlets 2", queues="q1 q2", deps=False)
+    worker.start(flags="--dequeue_strategy parallel --greenlets 2", queues="q1 q2", deps=False, start=False)
 
     time.sleep(1)
 
@@ -49,3 +53,22 @@ def test_dequeue_strategy(worker):
     assert connections.mongodb_jobs.tests_inserts.count({"params.a": 41}) == 1
     assert connections.mongodb_jobs.tests_inserts.count({"params.a": 42}) == 1
     assert connections.mongodb_jobs.tests_inserts.count() == 2
+
+    worker.stop(deps=False, sig=9)
+    time.sleep(1)
+
+    worker.start(flags="--dequeue_strategy burst --greenlets 2", queues="q3", deps=False)
+
+    time.sleep(3)
+
+    assert connections.mongodb_jobs.tests_inserts.count({"params.a": 43}) == 2
+
+    # Worker should be stopped now so even if we queue nothing will happen.
+    worker.send_task(
+        "tests.tasks.general.MongoInsert", {"a": 43, "sleep": 2}, queue="q3", block=False, start=False)
+
+    time.sleep(2)
+
+    assert connections.mongodb_jobs.tests_inserts.count({"params.a": 43}) == 2
+
+    worker.stop()
