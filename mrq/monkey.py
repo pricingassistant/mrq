@@ -1,4 +1,4 @@
-from .context import get_current_job
+from .context import get_current_job, get_current_worker
 import time
 import random
 import re
@@ -46,6 +46,9 @@ def patch_pymongo(config):
         def mrq_monkey_patched(self, *args, **kwargs):
 
             if config["trace_io"]:
+                comment = "mrq"
+
+                worker = get_current_worker()
                 job = get_current_job()
                 if job:
                     job.set_current_io({
@@ -56,13 +59,16 @@ def patch_pymongo(config):
                         # Perf issue? All MongoDB data will get jsonified!
                         # "data": json.dumps(args)[0:300]
                     })
+                    comment = {"job": job.id}
+                elif worker:
+                    comment = {"worker": worker.id}
 
-                    # Tag potentially expensive queries with their job id for easier debugging
-                    if method in ["find", "find_and_modify", "count", "update_many", "update", "delete_many"]:
-                        if len(args) > 0 and type(args[0]) == dict and "$comment" not in args[0]:
-                            query = copy.copy(args[0])
-                            query["$comment"] = {"job": job.id}
-                            args = (query, ) + args[1:]
+                # Tag potentially expensive queries with their job id for easier debugging
+                if method in ["find", "find_and_modify", "count", "update_many", "update", "delete_many"]:
+                    if len(args) > 0 and isinstance(args[0], dict) and "$comment" not in args[0]:
+                        query = copy.copy(args[0])
+                        query["$comment"] = comment
+                        args = (query, ) + args[1:]
 
             if config["print_mongodb"]:
                 if self.full_name in config.get("print_mongodb_hidden_collections", []):
