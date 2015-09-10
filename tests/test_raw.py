@@ -316,7 +316,7 @@ def test_raw_no_storage(worker):
     time.sleep(2)
 
     # Failed was inserted.
-    assert jobs_collection.count({"status": "failed"}) == 1
+    assert jobs_collection.count({"status": "failed", "path": "tests.tasks.general.RaiseException"}) == 1
 
     # If we requeue and don't raise, should be OK and inserted this time, even in success
     # no_storage depends on a raw queue, not a task path.

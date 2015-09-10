@@ -427,6 +427,7 @@ class Job(object):
         if self.stored is False:
             db_updates["queue"] = self.data["queue"]
             db_updates["params"] = self.data["params"]
+            db_updates["path"] = self.data["path"]
             self.collection.insert(db_updates, w=w, j=j, manipulate=True)
             self.id = db_updates["_id"]  # Persistent ID assigned by the server
             self.stored = True
