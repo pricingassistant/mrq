@@ -107,27 +107,35 @@ define(["jquery", "underscore", "views/generic/page", "models", "moment", "circl
     refreshStats: function (poolSize, currentJobs, utilization, doneJobs) {
       var self = this;
       var values = self.addToCounter("overall-done-jobs", doneJobs, 50).join(",");
-      var refreshInterval = parseInt($(".js-autorefresh").val(), 10) * 1000;
 
       self.$(".inlinesparkline").attr("values", values);
       self.$(".inlinesparkline").sparkline("html", {"width": "250px", "height": "200px", "defaultPixelsPerValue": 1});
       self.refreshCircleStats(poolSize, currentJobs, utilization);
-
-      setTimeout(function () {
-        self.fetchStats(self.refreshStats);
-      }, refreshInterval);
+      self.autoUpdateStats();
     },
 
     render: function() {
       var self = this;
-      var refreshInterval = parseInt($(".js-autorefresh").val(), 10) * 1000;
 
       self.renderTemplate();
       self.fetchStats(self.renderStats);
+      self.autoUpdateStats();
+    },
 
-      setTimeout(function () {
-        self.fetchStats(self.refreshStats);
-      }, refreshInterval);
+    autoUpdateStats: function() {
+      var self = this;
+      var refreshInterval = parseInt($(".js-autorefresh").val(), 10) * 1000;
+
+      if(refreshInterval > 0) {
+        setTimeout(function () {
+          self.fetchStats(self.refreshStats);
+        }, refreshInterval);
+      } else {
+        // Check if the option has changed again in 2 seconds
+        setTimeout(function () {
+          self.autoUpdateStats();
+        }, 2000);
+      }
     }
 
   });
