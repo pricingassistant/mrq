@@ -201,22 +201,11 @@ class Queue(object):
         return queues
 
     @classmethod
-    def all_known(cls):
-        """ List all previously known queues and their lengths in MongoDB """
+    def all_known(cls, ):
+        """ List all previously known queues """
 
-        # Start with raw queues we know exist from the config
-        queues = {x: 0 for x in context.get_current_config().get("raw_queues", {})}
-
-        known_queues = cls.redis_known_queues()
-
-        for q in known_queues:
-            if q not in queues:
-                queues[q] = context.connections.mongodb_jobs.mrq_jobs.count({
-                    "queue": q,
-                    "status": "queued"
-                })
-
-        return queues
+        # raw queues we know exist from the config + known queues in redis
+        return set(context.get_current_config().get("raw_queues", {}).keys() + cls.redis_known_queues())
 
     @classmethod
     def all(cls):
