@@ -205,7 +205,7 @@ class Queue(object):
         """ List all previously known queues """
 
         # raw queues we know exist from the config + known queues in redis
-        return set(context.get_current_config().get("raw_queues", {}).keys() + cls.redis_known_queues())
+        return set(context.get_current_config().get("raw_queues", {}).keys() + list(cls.redis_known_queues()))
 
     @classmethod
     def all(cls):
