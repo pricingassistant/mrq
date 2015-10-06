@@ -157,7 +157,7 @@ def _connections_factory(attr):
 
             db = MongoClient(config_obj, **kwargs)[mongo_name]
 
-            log.debug("%s: ... connected." % (attr))
+            log.debug("%s: ... connected. (readPreference=%s)" % (attr, db.read_preference))
 
             return db
 
