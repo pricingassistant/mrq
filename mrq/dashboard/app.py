@@ -6,6 +6,7 @@ from flask import Flask, request, render_template
 import time
 import os
 import sys
+import re
 from bson import ObjectId
 import json
 import argparse
@@ -127,7 +128,11 @@ def build_api_datatables_query(req):
 
         for param in ["queue", "path", "exceptiontype"]:
             if req.args.get(param):
-                query[param] = req.args.get(param)
+                if "*" in req.args.get(param):
+                    query[param] = re.compile("^"+req.args.get(param)+"$")
+                else:
+                    query[param] = req.args.get(param)
+
         if req.args.get("status"):
             statuses = req.args["status"].split("-")
             if len(statuses) == 1:
