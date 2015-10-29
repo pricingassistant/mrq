@@ -50,13 +50,13 @@ DEFAULT_JOB_CANCEL_TTL = 86400 #Seconds the tasks are kept in MongoDB when statu
 DEFAULT_JOB_TIMEOUT = 3600 #In seconds, delay before interrupting the job.Defaults to 3600 seconds which is 1 hour.
 DEFAULT_JOB_MAX_RETRIES = 3 #Set the status to "maxretries" after retrying that many times.Defaults to 3 seconds.
 DEFAULT_JOB_RETRY_DELAY = 3 #Seconds before a job in retry status is requeued again.Defaults to 3 seconds.
-USE_LARGE_JOB_IDS = False #Do not use compacted job IDs in Redis. For compatibility with 0.1.x only. Defaults to 
+USE_LARGE_JOB_IDS = False #Do not use compacted job IDs in Redis. For compatibility with 0.1.x only. Defaults to
 
 """ mrq-worker settings
 """
-QUEUES = ("default",) # The queues to listen on.Defaults to default , which will listen on all queues. 
-MAX_JOBS = 0 #Gevent:max number of jobs to do before quitting. Temp workaround for memory leaks.Defaults to 0
-MAX_MEMORY = 1 #Max memory (in Mb) after which the process will be shut down. Use with PROCESS = [1-N] to have supervisord automatically respawn the worker when this happens.Defaults to 1 
+QUEUES = ("default",) # The queues to listen on.Defaults to default , which will listen on all queues.
+MAX_JOBS = 0 #Gevent:max number of jobs to do before quitting. Workaround for memory leaks in your tasks. Defaults to 0
+MAX_MEMORY = 1 #Max memory (in Mb) after which the process will be shut down. Use with PROCESS = [1-N] to have supervisord automatically respawn the worker when this happens.Defaults to 1
 GRENLETS = 1 #Max number of greenlets to use.Defaults to 1.
 PROCESSES = 0 #Number of processes to launch with supervisord.Defaults to 0.
 SUPERVISORD_TEMPLATE = "supervisord_templates/default.conf" #Path of supervisord template to use. Defaults to supervisord_templates/default.conf.

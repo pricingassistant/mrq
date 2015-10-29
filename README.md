@@ -4,8 +4,6 @@
 
 Full documentation is available on [readthedocs](http://mrq.readthedocs.org/en/latest/)
 
-/!\ MRQ is not yet ready for public use. Soon!
-
 # Why?
 
 MRQ is an opinionated task queue. It aims to be simple and beautiful like [RQ](http://python-rq.org) while having performances close to [Celery](http://celeryproject.org)

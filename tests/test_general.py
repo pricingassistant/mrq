@@ -143,3 +143,4 @@ def test_general_exception_status(worker):
     assert job1["status"] == "failed"
     assert "raise" in job1["traceback"]
     assert "xyz" in job1["traceback"]
+

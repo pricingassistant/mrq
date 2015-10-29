@@ -40,12 +40,12 @@ The following general flags can be passed as command-line arguments to either **
 
 `mrq-worker` starts a new worker and takes one argument list:
 
- - `queues`: The queues to listen on.Defaults to **default** , which will listen on all queues. 
+ - `queues`: The queues to listen on.Defaults to **default** , which will listen on all queues.
 
 You can pass additional configuration flags:
 
- - `--max_jobs`: Gevent:max number of jobs to do before quitting. Use as a temporary workaround for memory leaks in your tasks. Defaults to **0**
- - `--max_memory`: Max memory (in Mb) after which the process will be shut down. Use with `--processes [1-N]` 
+ - `--max_jobs`: Gevent:max number of jobs to do before quitting. Use as a workaround for memory leaks in your tasks. Defaults to **0**
+ - `--max_memory`: Max memory (in Mb) after which the process will be shut down. Use with `--processes [1-N]`
                   to have supervisord automatically respawn the worker when this happens. Defaults to **1**
  - `--grenlets, --gevent, --g`: Max number of greenlets to use. Defaults to **1**.
  - `--processes, --p`: Number of processes to launch with supervisord. Defaults to **0** (no supervisord).
@@ -87,11 +87,11 @@ To do this we added a ```--add_network_latency=0.1``` config option that will ad
 ## mrq-run
 
 `mrq-run` runs a one-off task. If you add the `--queue` option that will enqueue it to be later ran by a worker.
- 
+
  - `taskpath`: Task to run.
  - `taskargs`: JSON-encoded arguments, or "key value" pairs.
  - `--queue`: Queue the task on this queue instead of running it right away.
- 
+
 Typical usage is:
 
 ```

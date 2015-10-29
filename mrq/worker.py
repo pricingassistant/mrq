@@ -411,6 +411,12 @@ class Worker(object):
 
                     free_pool_slots = self.gevent_pool.free_count()
 
+                    if max_jobs:
+                        total_started = (self.pool_size - free_pool_slots) + self.done_jobs
+                        free_pool_slots = min(free_pool_slots, max_jobs - total_started)
+                        if free_pool_slots == 0:
+                            break
+
                     if free_pool_slots > 0:
                         self.status = "wait"
                         break
@@ -423,6 +429,9 @@ class Worker(object):
 
                     max_jobs_per_queue = free_pool_slots - len(jobs)
 
+                    if max_jobs_per_queue <= 0:
+                        break
+
                     if self.config["dequeue_strategy"] == "parallel":
                         max_jobs_per_queue = 1
 
@@ -431,9 +440,6 @@ class Worker(object):
                         job_class=self.job_class,
                         worker=self
                     )
-
-                    if len(jobs) >= free_pool_slots:
-                        break
 
                 for job in jobs:
 

@@ -304,3 +304,18 @@ def test_interrupt_redis_started_jobs(worker):
     assert Queue("xxx").size() == 2
     assert Queue("default").size() == 0
     assert connections.redis.zcard(Queue.redis_key_started()) == 0
+
+
+def test_interrupt_maxjobs(worker):
+
+    # The worker will stop after doing 5 jobs
+    worker.start(flags="--max_jobs 5 --greenlets 2", queues="test1 default")
+
+    worker.send_tasks("tests.tasks.general.Add", [
+        {"a": i, "b": 1, "sleep": 0}
+        for i in range(12)
+    ], block=False)
+
+    time.sleep(2)
+
+    assert Queue("default").size() == 7
