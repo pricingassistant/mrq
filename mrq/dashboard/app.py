@@ -180,7 +180,7 @@ def api_datatables(unit):
             if with_mongodb_size:
                 jobs = connections.mongodb_jobs.mrq_jobs.count({
                     "queue": name,
-                    "status": "queued"
+                    "status": request.args.get("status") or "queued"
                 })
 
             q = {
