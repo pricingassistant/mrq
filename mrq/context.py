@@ -211,6 +211,10 @@ def subpool_map(pool_size, func, iterable):
     current_job = get_current_job()
 
     def inner_func(*args):
+        """ As each call to 'func' will be done in a random greenlet of the subpool, we need to
+            register their IDs with set_current_job() to make get_current_job() calls work properly
+            inside 'func'.
+        """
         next(counter)
         if current_job:
             set_current_job(current_job)
@@ -219,9 +223,20 @@ def subpool_map(pool_size, func, iterable):
             set_current_job(None)
         return ret
 
+    def inner_iterable():
+        """ This will be called inside the pool's main greenlet, which ID also needs to be registered """
+        if current_job:
+            set_current_job(current_job)
+
+        for x in iterable:
+            yield x
+
+        if current_job:
+            set_current_job(None)
+
     start_time = time.time()
     pool = gevent.pool.Pool(size=pool_size)
-    ret = pool.map(inner_func, iterable)
+    ret = pool.map(inner_func, inner_iterable())
     pool.join(raise_error=True)
     total_time = time.time() - start_time
 
