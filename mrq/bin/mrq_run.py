@@ -14,6 +14,7 @@ monkey.patch_all()
 import sys
 import argparse
 import ujson as json
+import json as json_stdlib
 import datetime
 
 sys.path.insert(0, os.getcwd())
@@ -21,8 +22,7 @@ sys.path.insert(0, os.getcwd())
 from mrq import config, utils
 from mrq.context import set_current_config, set_current_job, connections
 from mrq.job import queue_job
-from mrq.utils import load_class_by_path
-
+from mrq.utils import load_class_by_path, MongoJSONEncoder
 
 def main():
 
@@ -58,7 +58,7 @@ def main():
         job.datestarted = datetime.datetime.utcnow()
         set_current_job(job)
         ret = job.perform()
-        print ret
+        print json_stdlib.dumps(ret, cls=MongoJSONEncoder)  # pylint: disable=no-member
 
     # This shouldn't be needed as the process will exit and close any remaining sockets
     # connections.redis.connection_pool.disconnect()
