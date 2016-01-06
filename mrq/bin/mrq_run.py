@@ -58,7 +58,7 @@ def main():
         job.datestarted = datetime.datetime.utcnow()
         set_current_job(job)
         ret = job.perform()
-        print json.dumps(ret)  # pylint: disable=no-member
+        print ret
 
     # This shouldn't be needed as the process will exit and close any remaining sockets
     # connections.redis.connection_pool.disconnect()
