@@ -67,3 +67,32 @@ def test_subpool_import(worker, p_size):
     worker.send_task("tests.tasks.general.SubPool", {
         "pool_size": p_size, "inner_params": ["import-large-file"] * p_size
     }, accept_statuses=["success"])
+
+
+def test_subpool_imap():
+
+    from mrq.context import subpool_imap
+
+    def iterator(n):
+        for i in range(0, n):
+            if i == 5:
+                raise Exception("Iterator exception!")
+            yield i
+
+    def inner_func(i):
+        time.sleep(1)
+        print "inner_func: %s" % i
+        if i == 4:
+            raise Exception("Inner exception!")
+        return i * 2
+
+    with pytest.raises(Exception):
+        for res in subpool_imap(10, inner_func, iterator(10)):
+            print "Got %s" % res
+
+    for res in subpool_imap(2, inner_func, iterator(1)):
+        print "Got %s" % res
+
+    with pytest.raises(Exception):
+        for res in subpool_imap(2, inner_func, iterator(5)):
+            print "Got %s" % res
