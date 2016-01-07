@@ -13,7 +13,7 @@ class _MrqInterrupt(BaseException):
     def __str__(self):
         s = self._get_exception_name()
         if self.original_exception is not None:
-            tb = "".join(traceback.format_exception(*self.original_exception))
+            tb = "".join(traceback.format_exception(*self.original_exception))  # pylint: disable=not-an-iterable
             s += "\n---- Original exception: -----\n%s" % tb
 
         return s

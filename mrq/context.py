@@ -19,7 +19,7 @@ _GLOBAL_CONTEXT = {
     "worker": None,
 
     # pointer to the current config
-    "config": None
+    "config": {}
 }
 
 # Global log object, usable from all jobs

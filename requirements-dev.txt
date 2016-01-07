@@ -1,5 +1,5 @@
 pytest==2.7.0
-pylint==1.2.0
+pylint==1.5.2
 pytest-cov==1.8.1
 pytest-html==1.0
 pytest-httpbin==0.0.6
