@@ -15,7 +15,9 @@ def test_general_simple_task_one(worker):
 
     db_workers = list(worker.mongodb_jobs.mrq_workers.find())
     assert len(db_workers) == 1
-    assert db_workers[0]["status"] in ["full", "wait"]
+    worker_report = worker.get_report()
+    assert worker_report["status"] in ["full", "wait"]
+    assert worker_report["done_jobs"] == 1
 
     # Test the HTTP admin API
     admin_worker = json.load(urllib2.urlopen("http://localhost:20020"))
@@ -38,7 +40,7 @@ def test_general_simple_task_one(worker):
     assert db_jobs[0]["_id"]
     assert db_jobs[0]["params"] == {"a": 41, "b": 1, "sleep": 1}
     assert db_jobs[0]["path"] == "tests.tasks.general.Add"
-    assert db_jobs[0]["time"] < 0.1
+    assert db_jobs[0]["time"] < 0.5
     assert db_jobs[0]["switches"] >= 1
 
     from mrq.job import get_job_result

@@ -211,8 +211,8 @@ def test_performance_writeconcern(worker_mongodb_with_journal):
     print "total_time_acknowledged: ", total_time_acknowledged
     print "total_time_unacknowledged: ", total_time_unacknowledged
 
-    # Make sure it's way faster.
-    assert total_time_unacknowledged < total_time_acknowledged * 0.7
+    # Make sure it's faster.
+    assert total_time_unacknowledged < total_time_acknowledged * 0.9
 
 
 # def test_performance_httpstatic_external(worker):

@@ -97,12 +97,14 @@ def add_parser_args(parser, config_type):
     parser.add_argument(
         '--redis_max_connections',
         action='store',
+        type=int,
         default=1000,
         help='Redis max connection pool size')
 
     parser.add_argument(
         '--redis_timeout',
         action='store',
+        type=float,
         default=30,
         help='Redis connection pool timeout to wait for an available connection')
 
@@ -155,28 +157,28 @@ def add_parser_args(parser, config_type):
         '--default_job_result_ttl',
         default=7 * 24 * 3600,
         action='store',
-        type=int,
+        type=float,
         help='Seconds the results are kept in MongoDB when status is success')
 
     parser.add_argument(
         '--default_job_abort_ttl',
         default=24 * 3600,
         action='store',
-        type=int,
+        type=float,
         help='Seconds the tasks are kept in MongoDB when status is abort')
 
     parser.add_argument(
         '--default_job_cancel_ttl',
         default=24 * 3600,
         action='store',
-        type=int,
+        type=float,
         help='Seconds the tasks are kept in MongoDB when status is cancel')
 
     parser.add_argument(
         '--default_job_timeout',
         default=3600,
         action='store',
-        type=int,
+        type=float,
         help='In seconds, delay before interrupting the job')
 
     parser.add_argument(
@@ -309,7 +311,7 @@ def add_parser_args(parser, config_type):
             '--scheduler_interval',
             default=60,
             action='store',
-            type=int,
+            type=float,
             help='Seconds between scheduler checks')
 
         parser.add_argument(
@@ -385,6 +387,7 @@ def get_config(
         parser = argparse.ArgumentParser()
 
     add_parser_args(parser, config_type)
+    parser_types = {action.dest: action.type for action in parser._actions if action.dest}
 
     if config_type in ["run"]:
         default_config = parser.parse_args(["notask"]).__dict__
@@ -437,6 +440,8 @@ def get_config(
                 if value:
                     if name == "queues":
                         value = re.split("\s+", value)
+                    if parser_types.get(name):
+                        value = parser_types[name](value)
                     merged_config[name] = value
             elif part == "args" and name in from_args:
                 merged_config[name] = from_args[name]
