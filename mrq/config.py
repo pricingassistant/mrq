@@ -144,7 +144,7 @@ def add_parser_args(parser, config_type):
         '--no_import_patch',
         default=False,
         action='store_true',
-        help='Skips patching __import__ to fix gevent bug #108')
+        help='(DEPRECATED) Skips patching __import__ to fix gevent bug #108')
 
     parser.add_argument(
         '--add_network_latency',
@@ -465,5 +465,8 @@ def get_config(
         print "MRQ version: %s" % VERSION
         print "Python version: %s" % sys.version
         sys.exit(1)
+
+    if "no_import_patch" in from_args:
+        print "WARNING: --no_import_patch will be deprecated in MRQ 1.0!"
 
     return merged_config
