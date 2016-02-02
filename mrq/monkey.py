@@ -17,12 +17,12 @@ def patch_method(base_class, method_name, method):
     setattr(base_class, method_name, _patched_factory(old_method))
 
 
-def patch_io_all():
+def patch_io_all(config):
     """ Patch higher-level modules to provide insights on what is performing IO for each job. """
 
-    patch_io_httplib()
-    patch_io_redis()
-    patch_io_pymongo_cursor()
+    patch_io_httplib(config)
+    patch_io_redis(config)
+    patch_io_pymongo_cursor(config)
 
     #patch_io_dns()
     #patch_io_subprocess()
@@ -80,13 +80,39 @@ def patch_pymongo(config):
                         self.full_name, method, args, kwargs
                     ), "magenta")
 
+            if config.get("mongodb_pre_hook"):
+                config.get("mongodb_pre_hook")({
+                    "collection": self.full_name,
+                    "method": method,
+                    "args": args,
+                    "kwargs": kwargs,
+                    "client": self.database.client,
+                    "job": job
+                })
+
+            start_time = time.time()
+            ret = False
             try:
                 ret = base_method(self, *args, **kwargs)
             finally:
+                stop_time = time.time()
+
                 if config["trace_io"]:
                     job = get_current_job()
                     if job:
                         job.set_current_io(None)
+
+                if config.get("mongodb_post_hook"):
+                    config.get("mongodb_post_hook")({
+                        "collection": self.full_name,
+                        "method": method,
+                        "args": args,
+                        "kwargs": kwargs,
+                        "client": self.database.client,
+                        "job": job,
+                        "result": ret,
+                        "time": stop_time - start_time
+                    })
 
             return ret
 
@@ -156,7 +182,7 @@ def patch_network_latency(seconds=0.01):
         patch_method(_sslmodule, method, _patched_method)
 
 
-def patch_io_redis():
+def patch_io_redis(config):
 
     def execute_command(old_method, self, *args, **options):
 
@@ -169,11 +195,35 @@ def patch_io_redis():
                 }
             })
 
+        if config.get("redis_pre_hook"):
+            config.get("redis_pre_hook")({
+                "command": args[0],
+                "args": args[1:],
+                "options": options,
+                "client": self,
+                "job": job
+            })
+
+        start_time = time.time()
+        ret = False
         try:
             ret = old_method(self, *args, **options)
         finally:
+            stop_time = time.time()
+
             if job:
                 job.set_current_io(None)
+
+            if config.get("redis_post_hook"):
+                config.get("redis_post_hook")({
+                    "command": args[0],
+                    "args": args[1:],
+                    "options": options,
+                    "time": stop_time - start_time,
+                    "result": ret,
+                    "job": job,
+                    "client": self
+                })
 
         return ret
 
@@ -182,7 +232,7 @@ def patch_io_redis():
     patch_method(StrictRedis, "execute_command", execute_command)
 
 
-def patch_io_httplib():
+def patch_io_httplib(config):
     """ Patch the base httplib.HTTPConnection class, which is used in most HTTP libraries
         like urllib2 or urllib3/requests. """
 
@@ -325,7 +375,7 @@ def patch_io_httplib():
         pass
 
 
-def patch_io_pymongo_cursor():
+def patch_io_pymongo_cursor(config):
 
     from pymongo.cursor import Cursor
 
@@ -346,16 +396,47 @@ def patch_io_pymongo_cursor():
                     if len(items) > 0:
                         subtype, collection = items[0]
 
+                full_name = "%s.%s" % (self._Cursor__collection.database.name, collection)  # pylint: disable=no-member
+
                 job.set_current_io({
                     "type": "mongodb.%s" % subtype,
                     "data": {
-                        "collection": "%s.%s" % (self._Cursor__collection.database.name, collection)  # pylint: disable=no-member
+                        "collection": full_name
                     }
                 })
-            ret = Cursor._Cursor__send_message(self, *args, **kwargs)  # pylint: disable=no-member
 
-            if job:
-                job.set_current_io(None)
+            if config.get("mongodb_pre_hook"):
+
+                config.get("mongodb_pre_hook")({
+                    "collection": full_name,
+                    "method": subtype,
+                    "args": (args[0].spec, ),
+                    "kwargs": kwargs,
+                    "client": self._Cursor__collection.database.client,
+                    "job": job
+                })
+
+            start_time = time.time()
+            ret = False
+            try:
+                ret = Cursor._Cursor__send_message(self, *args, **kwargs)  # pylint: disable=no-member
+            finally:
+                stop_time = time.time()
+                if job:
+                    job.set_current_io(None)
+
+                if config.get("mongodb_post_hook"):
+                    config.get("mongodb_post_hook")({
+                        "collection": full_name,
+                        "method": subtype,
+                        "args": (args[0].spec, ),
+                        "kwargs": kwargs,
+                        "client": self._Cursor__collection.database.client,
+                        "job": job,
+                        "result": ret,
+                        "time": stop_time - start_time
+                    })
+
             return ret
 
     import pymongo as pymongomodule

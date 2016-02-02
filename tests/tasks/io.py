@@ -28,6 +28,12 @@ class TestIo(Task):
 
             return connections.mongodb_jobs.tests_inserts.count()
 
+        elif params["test"] == "mongodb-full-getmore":
+
+            connections.mongodb_jobs.tests_inserts.insert_many([{"a": 1}, {"a": 2}])
+
+            return list(connections.mongodb_jobs.tests_inserts.find(batch_size=1))
+
         elif params["test"] == "redis-llen":
 
             return connections.redis.llen(params["params"]["key"])

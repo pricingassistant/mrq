@@ -5,6 +5,8 @@ from mrq.job import queue_job
 import urllib2
 import json
 import time
+import copy
+from mrq.utils import MongoJSONEncoder
 
 
 class Add(Task):
@@ -201,6 +203,28 @@ class GetMetrics(Task):
 
     def run(self, params):
         return json.dumps(get_current_config().get("test_global_metrics"))
+
+
+class GetIoHookEvents(Task):
+    def run(self, params):
+        events = get_current_config().get("io_events")
+
+        evts = []
+
+        # Remove non-serializable stuff
+        for evt in events:
+            evt.pop("client", None)
+            evt.pop("result", None)
+            if evt.get("job"):
+                evt["job"] = evt["job"].id
+            if evt["hook"].startswith("redis_"):
+                evt["key"] = evt["args"][0] if len(evt["args"]) else None
+                evt["args"] = repr(evt["args"])
+
+            # print evt
+            evts.append(evt)
+
+        return json.dumps(evts, cls=MongoJSONEncoder)
 
 
 class SendTask(Task):
