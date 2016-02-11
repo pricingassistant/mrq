@@ -410,7 +410,7 @@ def patch_io_pymongo_cursor(config):
                 config.get("mongodb_pre_hook")({
                     "collection": full_name,
                     "method": subtype,
-                    "args": (args[0].spec, ),
+                    "args": (getattr(args[0], "spec", None), ),
                     "kwargs": kwargs,
                     "client": self._Cursor__collection.database.client,
                     "job": job
@@ -429,7 +429,7 @@ def patch_io_pymongo_cursor(config):
                     config.get("mongodb_post_hook")({
                         "collection": full_name,
                         "method": subtype,
-                        "args": (args[0].spec, ),
+                        "args": (getattr(args[0], "spec", None), ),
                         "kwargs": kwargs,
                         "client": self._Cursor__collection.database.client,
                         "job": job,
