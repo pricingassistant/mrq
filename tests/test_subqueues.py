@@ -52,5 +52,4 @@ def test_custom_delimiters(worker, delimiter):
     worker.start(queues=queue, flags=" --subqueues_delimiter=%s" % delimiter)
     job_id = worker.send_task("tests.tasks.general.GetTime", {}, queue=subqueue, block=False)
     Job(job_id).wait(poll_interval=0.01)
-    print vars(Job(job_id))
     worker.stop()
