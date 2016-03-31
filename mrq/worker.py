@@ -426,6 +426,10 @@ class Worker(object):
                 queues = []
 
                 for queue in self.config["queues"]:
+
+                    if queue.endswith(get_current_config().get("subqueues_delimiter")):
+                        queues.append(Queue(queue[:-1]))
+
                     queues.append(Queue(queue))
                     queues += Queue.all_active_subqueues(queue)
 
