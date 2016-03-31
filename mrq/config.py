@@ -335,6 +335,11 @@ def add_parser_args(parser, config_type):
             help='The queues to listen on (default: \'default\')')
 
         parser.add_argument(
+            '--subqueues_delimiter',
+            default='/',
+            help='Delimiter to consume active subqueues')
+
+        parser.add_argument(
             '--admin_port',
             default=0,
             action="store",

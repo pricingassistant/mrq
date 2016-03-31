@@ -72,7 +72,7 @@ class Worker(object):
         self.log_handler = LogHandler(quiet=self.config["quiet"])
         self.log = self.log_handler.get_logger(worker=self.id)
 
-        self.queues = [Queue(x) for x in self.config["queues"] if x]
+        self.queues = []
 
         self.log.info(
             "Starting Gevent pool with %s worker greenlets (+ report, logs, adminhttp)" %
@@ -422,6 +422,14 @@ class Worker(object):
                         break
                     self.status = "full"
                     gevent.sleep(0.01)
+
+                queues = []
+
+                for queue in self.config["queues"]:
+                    queues.append(Queue(queue))
+                    queues += Queue.all_active_subqueues(queue)
+
+                self.queues = queues
 
                 jobs = []
 
