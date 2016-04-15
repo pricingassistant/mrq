@@ -1,14 +1,15 @@
 import time
 import pytest
 from mrq.job import Job
+from mrq.queue import Queue
 
 
-@pytest.mark.parametrize(["queue", "enqueue_on"], [
-    ["main/", ["main", "main/", "main/sub", "main/sub/nested"]],
-    ["prefix/main/", ["prefix/main", "prefix/main/", "prefix/main/sub", "prefix/main/sub/nested"]],
+@pytest.mark.parametrize(["queues", "enqueue_on"], [
+    [["main/", "second/"], ["main", "main/", "main/sub", "main/sub/nested", "second"]],
+    [["prefix/main/"], ["prefix/main", "prefix/main/", "prefix/main/sub", "prefix/main/sub/nested"]],
 ])
-def test_matchable_subqueues(worker, queue, enqueue_on):
-    worker.start(queues=queue)
+def test_matchable_subqueues(worker, queues, enqueue_on):
+    worker.start(queues=" ".join(queues))
 
     job_ids = []
 
