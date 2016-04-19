@@ -335,6 +335,13 @@ def add_parser_args(parser, config_type):
             help='The queues to listen on (default: \'default\')')
 
         parser.add_argument(
+            '--subqueues_refresh_interval',
+            default=3,
+            action='store',
+            type=float,
+            help="Seconds between worker refreshes his queues with ready subqueues")
+
+        parser.add_argument(
             '--subqueues_delimiter',
             default='/',
             help='Delimiter to consume active subqueues')

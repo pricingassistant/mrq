@@ -195,6 +195,26 @@ class Worker(object):
             finally:
                 time.sleep(self.config["report_interval"])
 
+    def greenlet_subqueues(self):
+        while True:
+            queues = []
+            try:
+                for queue in self.config["queues"]:
+
+                    if queue.endswith(get_current_config().get("subqueues_delimiter")):
+                        queues.append(Queue(queue[:-1]))
+
+                    queues.append(Queue(queue))
+                    queues += Queue.all_active_subqueues(queue)
+
+            except Exception as e:  # pylint: disable=broad-except
+                self.log.error("When refreshing subqueues: %s", e)
+            else:
+                self.queues = queues
+            finally:
+                time.sleep(self.config["subqueues_refresh_interval"])
+
+
     def get_memory(self):
         mmaps = self.process.get_memory_maps()
         mem = {
@@ -381,6 +401,8 @@ class Worker(object):
 
         self.status = "started"
 
+        self.greenlets["subqueues"] = gevent.spawn(self.greenlet_subqueues)
+
         self.greenlets["report"] = gevent.spawn(self.greenlet_report)
 
         self.greenlets["logs"] = gevent.spawn(self.greenlet_logs)
@@ -422,18 +444,6 @@ class Worker(object):
                         break
                     self.status = "full"
                     gevent.sleep(0.01)
-
-                queues = []
-
-                for queue in self.config["queues"]:
-
-                    if queue.endswith(get_current_config().get("subqueues_delimiter")):
-                        queues.append(Queue(queue[:-1]))
-
-                    queues.append(Queue(queue))
-                    queues += Queue.all_active_subqueues(queue)
-
-                self.queues = queues
 
                 jobs = []
 
