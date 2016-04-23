@@ -1,3 +1,10 @@
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
+from builtins import str
+from builtins import object
+from past.builtins import basestring
 import pytest
 import os
 try:
@@ -9,7 +16,7 @@ import psutil
 import time
 import re
 import json
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 
 sys.path.append(os.getcwd())
 
@@ -59,7 +66,7 @@ class ProcessFixture(object):
 
         self.cmdline = cmdline
         # print cmdline
-        self.process = subprocess.Popen(re.split(r"\s+", cmdline) if type(cmdline) in [str, unicode] else cmdline,
+        self.process = subprocess.Popen(re.split(r"\s+", cmdline) if isinstance(cmdline, basestring) else cmdline,
                                         shell=False, close_fds=True, env=env, cwd=os.getcwd(), stdout=stdout)
 
         if self.quiet:
@@ -151,7 +158,7 @@ class WorkerFixture(ProcessFixture):
         if processes > 0:
             processes += 1
 
-        print cmdline
+        print(cmdline)
         ProcessFixture.start(self, cmdline=cmdline, env=kwargs.get("env"), expected_children=processes)
 
     def start_deps(self, flush=True):
@@ -234,13 +241,13 @@ class WorkerFixture(ProcessFixture):
 
         out = subprocess.check_output(cli).strip()
         if not queue:
-            return json.loads(out)
+            return json.loads(out.decode('utf-8'))
         return out
 
     def get_report(self, with_memory=False):
         wait_for_net_service("127.0.0.1", 20020, poll_interval=0.01)
-        f = urllib2.urlopen("http://127.0.0.1:20020/report%s" % ("_mem" if with_memory else ""))
-        data = json.load(f)
+        f = urllib.request.urlopen("http://127.0.0.1:20020/report%s" % ("_mem" if with_memory else ""))
+        data = json.loads(f.read().decode('utf-8'))
         f.close()
         return data
 
