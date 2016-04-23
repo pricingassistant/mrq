@@ -1,7 +1,9 @@
+from future import standard_library
+standard_library.install_aliases()
 from mrq.task import Task
 from mrq.context import connections, log
-import urllib2
-
+import urllib.request, urllib.error, urllib.parse
+from future.moves.urllib.request import urlopen
 
 class TestIo(Task):
 
@@ -44,17 +46,14 @@ class TestIo(Task):
 
         elif params["test"] == "urllib2-get":
 
-            fp = urllib2.urlopen(params["params"]["url"])
+            fp = urlopen(params["params"]["url"])
             return fp.read()
 
         elif params["test"] == "urllib2-post":
 
-            return urllib2.urlopen(params["params"]["url"], data="x=x").read()
+            return urlopen(params["params"]["url"], data="x=x").read()
 
         elif params["test"] == "requests-get":
 
             import requests
             return requests.get(params["params"]["url"], verify=False).text
-
-
-

@@ -1,5 +1,8 @@
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
 from bson import ObjectId
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 import json
 import time
 
@@ -20,7 +23,7 @@ def test_general_simple_task_one(worker):
     assert worker_report["done_jobs"] == 1
 
     # Test the HTTP admin API
-    admin_worker = json.load(urllib2.urlopen("http://localhost:20020"))
+    admin_worker = json.loads(urllib.request.urlopen("http://localhost:20020").read().decode('utf-8'))
 
     assert admin_worker["_id"] == str(db_workers[0]["_id"])
     assert admin_worker["status"] == "wait"
@@ -145,4 +148,3 @@ def test_general_exception_status(worker):
     assert job1["status"] == "failed"
     assert "raise" in job1["traceback"]
     assert "xyz" in job1["traceback"]
-

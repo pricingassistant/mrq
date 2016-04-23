@@ -1,9 +1,21 @@
+from __future__ import division
+
+from builtins import range
+from builtins import object
+from past.utils import old_div
 from .redishelpers import redis_zaddbyscore, redis_zpopbyscore, redis_lpopsafe
 from .redishelpers import redis_group_command
 import time
 from bson import ObjectId
 from . import context
 from . import job as jobmodule
+import binascii
+
+import sys
+PY3 = sys.version_info > (3,)
+from builtins import bytes
+from future import standard_library
+standard_library.install_aliases()
 
 
 class Queue(object):
@@ -92,14 +104,14 @@ class Queue(object):
         elif isinstance(job_ids[0], ObjectId):
             return [x.binary for x in job_ids]
         else:
-            return [x.decode('hex') for x in job_ids]
+            return [bytes.fromhex(str(x)) for x in job_ids]
 
     def unserialize_job_ids(self, job_ids):
         """ Unserialize job_ids stored in Redis """
         if len(job_ids) == 0 or self.use_large_ids:
             return job_ids
         else:
-            return [x.encode('hex') for x in job_ids]
+            return [binascii.hexlify(x).decode('utf-8') for x in job_ids]
 
     def size(self):
         """ Returns the total number of jobs on the queue """
@@ -173,7 +185,7 @@ class Queue(object):
             raise Exception("Not a sorted queue")
 
         with context.connections.redis.pipeline(transaction=exact) as pipe:
-            interval = float(stop - start) / slices
+            interval = old_div(float(stop - start), slices)
             for i in range(0, slices):
                 pipe.zcount(self.redis_key,
                             (start + i * interval),
@@ -194,7 +206,7 @@ class Queue(object):
 
         prefix = context.get_current_config()["redis_prefix"]
         queues = []
-        for key in context.connections.redis.keys():
+        for key in list(context.connections.redis.keys()):
             if key.startswith(prefix):
                 queues.append(Queue(key[len(prefix) + 3:]))
 
@@ -205,7 +217,7 @@ class Queue(object):
         """ List all previously known queues """
 
         # raw queues we know exist from the config + known queues in redis
-        return set(context.get_current_config().get("raw_queues", {}).keys() + list(cls.redis_known_queues()))
+        return set(list(context.get_current_config().get("raw_queues", {}).keys()) + list(cls.redis_known_queues()))
 
     @classmethod
     def all(cls):
@@ -240,8 +252,8 @@ class Queue(object):
                 job_ids = {x: now for x in self.serialize_job_ids(job_ids)}
             else:
 
-                serialized_job_ids = self.serialize_job_ids(job_ids.keys())
-                values = job_ids.values()
+                serialized_job_ids = self.serialize_job_ids(list(job_ids.keys()))
+                values = list(job_ids.values())
                 job_ids = {k: values[i] for i, k in enumerate(serialized_job_ids)}
 
             context.connections.redis.zadd(self.redis_key, **job_ids)
