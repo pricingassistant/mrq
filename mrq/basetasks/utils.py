@@ -1,4 +1,5 @@
 from __future__ import print_function
+from future.utils import itervalues
 from mrq.task import Task
 from mrq.queue import Queue
 from bson import ObjectId
@@ -51,7 +52,7 @@ class JobAction(Task):
         if self.params.get("params"):
             params_dict = json.loads(self.params.get("params"))  # pylint: disable=no-member
 
-            for key in list(params_dict.keys()):
+            for key in params_dict:
                 query["params.%s" % key] = params_dict[key]
 
         return query
@@ -77,7 +78,7 @@ class JobAction(Task):
             else:
 
                 tasks_defs = get_current_config().get("tasks", {})
-                tasks_ttls = [cfg.get("result_ttl", 0) for cfg in list(tasks_defs.values())]
+                tasks_ttls = [cfg.get("result_ttl", 0) for cfg in itervalues(tasks_defs)]
 
                 result_ttl = max([default_job_timeout] + tasks_ttls)
 

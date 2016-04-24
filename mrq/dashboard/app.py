@@ -1,6 +1,7 @@
 from __future__ import print_function
 from future import standard_library
 standard_library.install_aliases()
+from future.utils import iteritems
 from gevent import monkey
 monkey.patch_all()
 
@@ -44,7 +45,7 @@ WHITELISTED_MRQ_CONFIG_KEYS = ["dashboard_autolink_repositories"]
 @requires_auth
 def root():
     return render_template("index.html", MRQ_CONFIG={
-        k: v for k, v in list(cfg.items()) if k in WHITELISTED_MRQ_CONFIG_KEYS
+        k: v for k, v in iteritems(cfg) if k in WHITELISTED_MRQ_CONFIG_KEYS
     })
 
 
@@ -152,7 +153,7 @@ def build_api_datatables_query(req):
             try:
                 params_dict = json.loads(req.args.get("params"))
 
-                for key in list(params_dict.keys()):
+                for key in params_dict:
                     query["params.%s" % key] = params_dict[key]
             except Exception as e:  # pylint: disable=broad-except
                 print("Error will converting form JSON: %s" % e)
@@ -304,7 +305,7 @@ def api_job_traceback(job_id):
 @app.route('/api/jobaction', methods=["POST"])
 @requires_auth
 def api_job_action():
-    params = {k: v for k, v in request.form.items()}
+    params = {k: v for k, v in iteritems(request.form)}
     if params.get("status") and "-" in params.get("status"):
         params["status"] = params.get("status").split("-")
     return jsonify({"job_id": queue_job("mrq.basetasks.utils.JobAction",

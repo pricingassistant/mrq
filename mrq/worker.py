@@ -2,7 +2,7 @@ from future import standard_library
 standard_library.install_aliases()
 from builtins import str
 from builtins import bytes
-from time import sleep
+from future.utils import iteritems
 import gevent
 import gevent.pool
 import os
@@ -304,7 +304,7 @@ class Worker(object):
         io = None
         if self._traced_io:
             io = {}
-            for k, v in list(self._traced_io.items()):
+            for k, v in iteritems(self._traced_io):
                 if k == "total":
                     io[k] = v
                 else:
@@ -314,7 +314,7 @@ class Worker(object):
 
         return {
             "status": self.status,
-            "config": {k: v for k, v in self.config.items() if k in whitelisted_config},
+            "config": {k: v for k, v in iteritems(self.config) if k in whitelisted_config},
             "done_jobs": self.done_jobs,
             "pool_usage_average": self.pool_usage_average.next(used_pool_slots),
             "datestarted": self.datestarted,

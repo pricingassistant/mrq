@@ -1,5 +1,6 @@
 from builtins import str
 from builtins import object
+from future.utils import iteritems
 from .context import log, queue_job
 import datetime
 import ujson as json
@@ -41,7 +42,7 @@ class Scheduler(object):
                 self.collection.remove({"_id": task["_id"]})
                 log.debug("Scheduler: deleted %s" % task["hash"])
 
-        for h, task in tasks_by_hash.items():
+        for h, task in iteritems(tasks_by_hash):
             task["hash"] = h
             task["datelastqueued"] = datetime.datetime.fromtimestamp(0)
             if task.get("dailytime"):
