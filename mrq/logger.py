@@ -1,5 +1,6 @@
 from __future__ import print_function
 from builtins import object
+from future.utils import iteritems
 
 from collections import defaultdict
 import datetime
@@ -99,10 +100,10 @@ class LogHandler(object):
         inserts = [{
             "worker": k,
             "logs": "\n".join(v) + "\n"
-        } for k, v in self.buffer["workers"].items()] + [{
+        } for k, v in iteritems(self.buffer["workers"])] + [{
             "job": k,
             "logs": "\n".join(v) + "\n"
-        } for k, v in self.buffer["jobs"].items()]
+        } for k, v in iteritems(self.buffer["jobs"])]
 
         if len(inserts) == 0:
             return

@@ -206,7 +206,7 @@ class Queue(object):
 
         prefix = context.get_current_config()["redis_prefix"]
         queues = []
-        for key in list(context.connections.redis.keys()):
+        for key in context.connections.redis:
             if key.startswith(prefix):
                 queues.append(Queue(key[len(prefix) + 3:]))
 
