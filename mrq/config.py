@@ -339,7 +339,7 @@ def add_parser_args(parser, config_type):
             default=3,
             action='store',
             type=float,
-            help="Seconds between worker refreshes his queues with ready subqueues")
+            help="Seconds between worker refreshes his subqueues with ready ones")
 
         parser.add_argument(
             '--subqueues_delimiter',
