@@ -1,5 +1,6 @@
 from __future__ import print_function
 from future.utils import itervalues
+from builtins import str
 from mrq.task import Task
 from mrq.queue import Queue
 from bson import ObjectId
