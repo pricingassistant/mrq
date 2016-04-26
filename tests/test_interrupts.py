@@ -1,5 +1,6 @@
 import time
 import datetime
+from builtins import str
 from mrq.job import Job
 from mrq.queue import Queue
 from bson import ObjectId

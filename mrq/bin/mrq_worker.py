@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import os
+from builtins import str
 
 # Needed to make getaddrinfo() work in pymongo on Mac OS X
 # Docs mention it's a better choice for Linux as well.

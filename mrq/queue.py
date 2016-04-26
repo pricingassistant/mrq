@@ -111,7 +111,7 @@ class Queue(object):
         if len(job_ids) == 0 or self.use_large_ids:
             return job_ids
         else:
-            return [binascii.hexlify(x).decode('utf-8') for x in job_ids]
+            return [binascii.hexlify(x).decode('ascii') for x in job_ids]
 
     def size(self):
         """ Returns the total number of jobs on the queue """

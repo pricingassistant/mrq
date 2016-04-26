@@ -1,3 +1,4 @@
+from builtins import str
 from mrq.queue import Queue
 from mrq.task import Task
 from mrq.job import Job

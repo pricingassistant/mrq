@@ -2,6 +2,7 @@ from future import standard_library
 standard_library.install_aliases()
 from builtins import next
 from builtins import map
+from past.builtins import basestring
 from .logger import Logger
 import gevent
 import gevent.pool
@@ -112,7 +113,7 @@ def _connections_factory(attr):
         return tuple(map(int, (v.split("."))))
 
     if attr.startswith("redis"):
-        if type(config_obj) in [str]:
+        if isinstance(config_obj, basestring):
 
             import redis as pyredis
 
@@ -139,7 +140,7 @@ def _connections_factory(attr):
 
     elif attr.startswith("mongodb"):
 
-        if type(config_obj) in [str]:
+        if isinstance(config_obj, basestring):
 
             if attr == "mongodb_logs" and config_obj == "1":
                 return connections.mongodb_jobs
