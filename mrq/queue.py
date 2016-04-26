@@ -80,6 +80,21 @@ class Queue(object):
         known_queues_key = "%s:known_queues" % context.get_current_config()["redis_prefix"]
         return context.connections.redis.smembers(known_queues_key)
 
+    @classmethod
+    def redis_known_subqueues(cls, queue):
+        """ Return the queue known_subqueues as a Queue objects. """
+        delimiter = context.get_current_config()["subqueues_delimiter"]
+        queues = []
+
+        if not queue.endswith(delimiter):
+            return queues
+
+        for key in cls.redis_known_queues():
+            if key.startswith(queue) and not key.endswith(delimiter):
+                queues.append(Queue(key))
+
+        return queues
+
     def get_config(self):
         """ Returns the specific configuration for this queue """
 
@@ -197,24 +212,6 @@ class Queue(object):
         for key in context.connections.redis.keys():
             if key.startswith(prefix):
                 queues.append(Queue(key[len(prefix) + 3:]))
-
-        return queues
-
-    @classmethod
-    def all_active_subqueues(cls, queue):
-        """ List all active subqueues, based on their lengths in Redis. """
-
-        prefix = context.get_current_config()["redis_prefix"]
-        delimiter = context.get_current_config()["subqueues_delimiter"]
-        queues = []
-
-        if not queue.endswith(delimiter):
-            return queues
-
-        for key in context.connections.redis.keys():
-            if key.startswith(prefix):
-                if key[len(prefix) + 3:].startswith(queue) and not key.endswith(delimiter):
-                    queues.append(Queue(key[len(prefix) + 3:]))
 
         return queues
 
