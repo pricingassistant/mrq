@@ -72,7 +72,7 @@ class Worker(object):
         self.log_handler = LogHandler(quiet=self.config["quiet"])
         self.log = self.log_handler.get_logger(worker=self.id)
 
-        self.queues = []
+        self.queues = [Queue(x) for x in self.config["queues"] if x]
 
         self.log.info(
             "Starting Gevent pool with %s worker greenlets (+ report, logs, adminhttp)" %
