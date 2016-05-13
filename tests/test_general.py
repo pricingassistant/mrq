@@ -124,14 +124,36 @@ def test_general_simple_task_reverse(worker):
     assert [x["result"] for x in worker.mongodb_jobs.mrq_jobs.find().sort(
         [["dateupdated", 1]])] == [41, 42, 42]
 
+
+def test_known_queues_lifecycle(worker):
+
+    worker.start(queues="default_reverse xtest test_timed_set", flags="--config tests/fixtures/config-raw1.py")
+    time.sleep(1)
     # Test known queues
     from mrq.queue import Queue, send_task
-    assert Queue.redis_known_queues() == set(["default", "xtest", "test_timed_set"])
+    assert set(Queue.redis_known_queues().keys()) == set(["default", "xtest", "test_timed_set"])
 
     # Try queueing a task
     send_task("tests.tasks.general.Add", {"a": 41, "b": 1, "sleep": 1}, queue="x")
     time.sleep(1)
-    assert Queue.redis_known_queues() == set(["x", "default", "xtest", "test_timed_set"])
+    assert set(Queue.redis_known_queues().keys()) == set(["x", "default", "xtest", "test_timed_set"])
+
+    Queue("x").add_to_known_queues(timestamp=time.time() - (8 * 86400))
+
+    worker.send_task("mrq.basetasks.cleaning.CleanKnownQueues", {}, block=True)
+
+    # Not removed - not empty yet.
+    assert set(Queue.redis_known_queues().keys()) == set(["x", "default", "xtest", "test_timed_set"])
+
+    Queue("x").empty()
+
+    # Still not removed.
+    assert set(Queue.redis_known_queues().keys()) == set(["x", "default", "xtest", "test_timed_set"])
+
+    worker.send_task("mrq.basetasks.cleaning.CleanKnownQueues", {}, block=True)
+
+    # Now we're good
+    assert set(Queue.redis_known_queues().keys()) == set(["default", "xtest", "test_timed_set"])
 
 
 def test_general_exception_status(worker):

@@ -197,22 +197,24 @@ class Worker(object):
 
     def greenlet_subqueues(self):
         while True:
+
+            # Update the process-local list of known queues
+            Queue.known_queues = Queue.redis_known_queues()
+
             queues = []
             try:
                 for queue in self.config["queues"]:
                     if queue.endswith(get_current_config().get("subqueues_delimiter")):
-                        queues.append(Queue(queue[:-1]))
-
-                    queues.append(Queue(queue))
-                    queues += Queue.redis_known_subqueues(queue)
+                        queues += Queue(queue).redis_known_subqueues()
+                    else:
+                        queues.append(Queue(queue))
 
             except Exception as e:  # pylint: disable=broad-except
                 self.log.error("When refreshing subqueues: %s", e)
             else:
                 self.queues = queues
-            finally:
-                time.sleep(self.config["subqueues_refresh_interval"])
 
+            time.sleep(self.config["subqueues_refresh_interval"])
 
     def get_memory(self):
         mmaps = self.process.get_memory_maps()

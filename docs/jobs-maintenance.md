@@ -36,6 +36,14 @@ SCHEDULER_TASKS = [
     "path": "mrq.basetasks.cleaning.RequeueLostJobs",
     "params": {},
     "interval": 24 * 3600
+  },
+
+  # This will clean the list of known queues in Redis. It will mostly remove empty queues
+  # so that they are not displayed in the dashboard anymore.
+  {
+    "path": "mrq.basetasks.cleaning.CleanKnownQueues",
+    "params": {},
+    "interval": 24 * 3600
   }
 ]
 ```

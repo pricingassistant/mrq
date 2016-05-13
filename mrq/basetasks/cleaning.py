@@ -1,7 +1,7 @@
 from mrq.queue import Queue
 from mrq.task import Task
 from mrq.job import Job
-from mrq.context import log, connections, run_task
+from mrq.context import log, connections, run_task, get_current_config
 import datetime
 import time
 
@@ -180,3 +180,38 @@ class RequeueLostJobs(Task):
                 job.requeue(queue=queue_name)
 
         return stats
+
+
+class MigrateKnownQueues(Task):
+    """
+        Migrate known_queues from old set format to new zset
+    """
+    def run(self, params):
+        key = "%s:known_queues" % get_current_config()["redis_prefix"]
+        for queue in connections.redis.smembers(key):
+            Queue(queue).add_to_known_queues()
+
+
+class CleanKnownQueues(Task):
+
+    """
+        Cleans the known queues in Redis.
+
+        To be deleted, a queue must:
+         - not have been used in the last 7 days
+         - be empty
+    """
+
+    def run(self, params):
+
+        max_age = int(params.get("max_age") or (7 * 86400))
+
+        known_queues = Queue.redis_known_queues()
+
+        # Only clean queues older than N days
+        time_threshold = time.time() - max_age
+        for queue, time_last_used in known_queues.iteritems():
+            if time_last_used < time_threshold:
+                q = Queue(queue, add_to_known_queues=False)
+                if q.size() == 0:
+                    q.remove_from_known_queues()

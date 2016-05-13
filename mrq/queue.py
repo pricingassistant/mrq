@@ -19,9 +19,10 @@ class Queue(object):
 
     # This is a mutable type so it is shared by all instances
     # of Queue in the current process
-    known_queues = set([])
+    known_queues = {}
 
-    def __init__(self, queue_id):
+    def __init__(self, queue_id, add_to_known_queues=True):
+
         if isinstance(queue_id, Queue):
             self.id = queue_id.id  # TODO use __new__?
             self.is_reverse = queue_id.is_reverse
@@ -50,10 +51,8 @@ class Queue(object):
 
         # If this is the first time this process sees this queue, try to add it
         # on the shared redis set.
-        if self.id not in self.known_queues:
-            known_queues_key = "%s:known_queues" % context.get_current_config()["redis_prefix"]
-            context.connections.redis.sadd(known_queues_key, self.id)
-            self.known_queues.add(self.id)
+        if add_to_known_queues and self.id not in self.known_queues:
+            self.add_to_known_queues()
 
     @property
     def redis_key(self):
@@ -65,6 +64,11 @@ class Queue(object):
         """ Returns the global redis key used to store started job ids """
         return "%s:s:started" % context.get_current_config()["redis_prefix"]
 
+    @classmethod
+    def redis_key_known_queues(cls):
+        """ Returns the global redis key used to store started job ids """
+        return "%s:known_queues_zset" % context.get_current_config()["redis_prefix"]
+
     def get_retry_queue(self):
         """ For raw queues, returns the name of the linked queue for job statuses
             other than "queued" """
@@ -74,23 +78,38 @@ class Queue(object):
 
         return self.get_config().get("retry_queue") or "default"
 
-    @classmethod
-    def redis_known_queues(cls):
-        """ Returns the global known_queues as stored in redis. """
-        known_queues_key = "%s:known_queues" % context.get_current_config()["redis_prefix"]
-        return context.connections.redis.smembers(known_queues_key)
+    def add_to_known_queues(self, timestamp=None):
+        """ Adds this queue to the shared list of known queues """
+        now = timestamp or time.time()
+        context.connections.redis.zadd(Queue.redis_key_known_queues(), now, self.id)
+        self.known_queues[self.id] = now
+
+    def remove_from_known_queues(self):
+        """ Removes this queue from the shared list of known queues """
+        context.connections.redis.zrem(Queue.redis_key_known_queues(), self.id)
+        self.known_queues.pop(self.id, None)
 
     @classmethod
-    def redis_known_subqueues(cls, queue):
-        """ Return the queue known_subqueues as a Queue objects. """
+    def redis_known_queues(cls):
+        """
+            Returns the global known_queues as stored in redis as a {name: time_last_used} dict
+            with an accuracy of ~1 day
+        """
+        return {
+            value: int(score)
+            for value, score in context.connections.redis.zrange(cls.redis_key_known_queues(), 0, -1, withscores=True)
+        }
+
+    def redis_known_subqueues(self):
+        """ Return the known subqueues of this queue as Queue objects. """
         delimiter = context.get_current_config()["subqueues_delimiter"]
         queues = []
 
-        if not queue.endswith(delimiter):
+        if not self.id.endswith(delimiter):
             return queues
 
-        for key in cls.redis_known_queues():
-            if key.startswith(queue) and not key.endswith(delimiter):
+        for key in Queue.known_queues:
+            if key.startswith(self.id) and not key.endswith(delimiter):
                 queues.append(Queue(key))
 
         return queues
@@ -220,7 +239,7 @@ class Queue(object):
         """ List all previously known queues """
 
         # raw queues we know exist from the config + known queues in redis
-        return set(context.get_current_config().get("raw_queues", {}).keys() + list(cls.redis_known_queues()))
+        return set(context.get_current_config().get("raw_queues", {}).keys() + cls.redis_known_queues().keys())
 
     @classmethod
     def all(cls):
@@ -268,6 +287,10 @@ class Queue(object):
         context.metric("queues.%s.enqueued" % self.id, len(job_ids))
         context.metric("queues.all.enqueued", len(job_ids))
 
+        # Update the timestamp of the queue in the known queues if it's older than 1 day
+        if self.id not in self.known_queues or self.known_queues[self.id] < time.time() - 86400:
+            self.add_to_known_queues()
+
     def enqueue_raw_jobs(self, params_list):
         """ Add Jobs to this queue with raw parameters. They are not yet in MongoDB. """
 
@@ -296,6 +319,10 @@ class Queue(object):
 
         context.metric("queues.%s.enqueued" % self.id, len(params_list))
         context.metric("queues.all.enqueued", len(params_list))
+
+        # Update the timestamp of the queue in the known queues if it's older than 1 day
+        if self.id not in self.known_queues or self.known_queues[self.id] < time.time() - 86400:
+            self.add_to_known_queues()
 
     def remove_raw_jobs(self, params_list):
         """ Remove jobs from a raw queue with their raw params. """

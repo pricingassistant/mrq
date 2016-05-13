@@ -2,6 +2,7 @@ import time
 from mrq.queue import Queue
 import pytest
 import subprocess
+import os
 
 
 @pytest.mark.parametrize(["p_max_latency", "p_min_observed_latency", "p_max_observed_latency"], [
@@ -168,6 +169,9 @@ def test_performance_httpstatic_fast(worker, httpstatic):
 
 
 def test_performance_writeconcern(worker_mongodb_with_journal):
+
+    if os.environ.get("STACK_STARTED"):
+        return pytest.skip()
 
     worker = worker_mongodb_with_journal
 

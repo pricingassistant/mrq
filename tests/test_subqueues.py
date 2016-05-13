@@ -5,8 +5,8 @@ from mrq.queue import Queue
 
 
 @pytest.mark.parametrize(["queues", "enqueue_on"], [
-    [["main/", "second/"], ["main", "main/", "main/sub", "main/sub/nested", "second"]],
-    [["prefix/main/"], ["prefix/main", "prefix/main/", "prefix/main/sub", "prefix/main/sub/nested"]],
+    [["main/", "second/"], ["main/", "main/sub", "main/sub/nested", "second/x"]],
+    [["prefix/main/"], ["prefix/main/", "prefix/main/sub", "prefix/main/sub/nested"]],
 ])
 def test_matchable_subqueues(worker, queues, enqueue_on):
     worker.start(queues=" ".join(queues), flags="--subqueues_refresh_interval=0.1")
@@ -17,13 +17,13 @@ def test_matchable_subqueues(worker, queues, enqueue_on):
         job_id = worker.send_task("tests.tasks.general.GetTime", {}, queue=subqueue, block=False)
         job_ids.append(job_id)
 
-    assert map(lambda j: Job(j).wait(poll_interval=0.01, timeout=3), job_ids)
+    assert all([Job(j).wait(poll_interval=0.01, timeout=3) for j in job_ids])
     worker.stop()
 
 
 @pytest.mark.parametrize(["queue", "enqueue_on"], [
-    ["main/", ["/main", "main_", "/"]],
-    ["prefix/main/", ["prefix", "prefix/other"]],
+    ["main/", ["/main", "main_", "/", "main", "other"]],
+    ["prefix/main/", ["prefix", "prefix/other", "prefix/main"]],
 ])
 def test_unmatchable_subqueues(worker, queue, enqueue_on):
     worker.start(queues=queue, flags="--subqueues_refresh_interval=0.1")
@@ -35,11 +35,10 @@ def test_unmatchable_subqueues(worker, queue, enqueue_on):
         job_ids.append(job_id)
 
     time.sleep(2)
-    results = map(lambda j: Job(j).fetch().data.get("status"), job_ids)
+    results = [Job(j).fetch().data.get("status") for j in job_ids]
 
     # ensure tasks are not consumed by a worker
-    assert results[0] == "queued"
-    assert all(results) == True
+    assert results == ["queued"] * len(results)
 
     worker.stop()
 

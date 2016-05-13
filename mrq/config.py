@@ -336,15 +336,15 @@ def add_parser_args(parser, config_type):
 
         parser.add_argument(
             '--subqueues_refresh_interval',
-            default=3,
+            default=60,
             action='store',
             type=float,
-            help="Seconds between worker refreshes his subqueues with ready ones")
+            help="Seconds between worker refreshes of the known subqueues")
 
         parser.add_argument(
             '--subqueues_delimiter',
             default='/',
-            help='Delimiter to consume active subqueues')
+            help='Delimiter between main queue and subqueue names')
 
         parser.add_argument(
             '--admin_port',
