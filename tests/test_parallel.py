@@ -26,9 +26,13 @@ def test_parallel_100sleeps(worker, p_flags):
     assert result == range(100)
 
 
-def test_dequeue_strategy(worker):
+@pytest.mark.parametrize(["p_greenlets"], [
+    [1],
+    [2]
+])
+def test_dequeue_strategy(worker, p_greenlets):
 
-    worker.start_deps()
+    worker.start_deps(flush=True)
 
     worker.send_task(
         "tests.tasks.general.MongoInsert", {"a": 41, "sleep": 2}, queue="q1", block=False, start=False)
@@ -45,9 +49,12 @@ def test_dequeue_strategy(worker):
 
     time.sleep(0.1)
 
-    worker.start(flags="--dequeue_strategy parallel --greenlets 2", queues="q1 q2", deps=False, start=False)
+    worker.start(flags="--dequeue_strategy parallel --greenlets %s" % p_greenlets, queues="q1 q2", deps=False, start=False)
 
-    time.sleep(1)
+    if p_greenlets == 1:
+        time.sleep(1 + 2)
+    else:
+        time.sleep(1)
 
     # Should be dequeued in parallel
     assert connections.mongodb_jobs.tests_inserts.count({"params.a": 41}) == 1

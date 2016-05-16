@@ -425,6 +425,8 @@ class Worker(object):
 
         try:
 
+            queue_offset = 0
+
             while True:
 
                 if self.graceful_stop:
@@ -448,21 +450,28 @@ class Worker(object):
 
                 jobs = []
 
-                for queue in self.queues:
+                for queue_i in xrange(len(self.queues)):
+
+                    queue = self.queues[(queue_i + queue_offset) % len(self.queues)]
 
                     max_jobs_per_queue = free_pool_slots - len(jobs)
 
                     if max_jobs_per_queue <= 0:
+                        queue_i -= 1
                         break
 
                     if self.config["dequeue_strategy"] == "parallel":
-                        max_jobs_per_queue = 1
+                        max_jobs_per_queue = max(1, int(max_jobs_per_queue / (len(self.queues) - queue_i)))
 
                     jobs += queue.dequeue_jobs(
                         max_jobs=max_jobs_per_queue,
                         job_class=self.job_class,
                         worker=self
                     )
+
+                # At the next pass, start at the next queue to avoid always dequeuing the same one
+                if self.config["dequeue_strategy"] == "parallel":
+                    queue_offset = queue_i + 1
 
                 for job in jobs:
 
