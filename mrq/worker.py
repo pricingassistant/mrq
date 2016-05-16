@@ -196,6 +196,12 @@ class Worker(object):
                 time.sleep(self.config["report_interval"])
 
     def greenlet_subqueues(self):
+
+        has_subqueues = any([
+            queue.endswith(get_current_config().get("subqueues_delimiter"))
+            for queue in self.config["queues"]
+        ])
+
         while True:
 
             # Update the process-local list of known queues
@@ -213,6 +219,10 @@ class Worker(object):
                 self.log.error("When refreshing subqueues: %s", e)
             else:
                 self.queues = queues
+
+            # No need for this greenlet if we don't have any subqueues
+            if not has_subqueues:
+                return
 
             time.sleep(self.config["subqueues_refresh_interval"])
 
