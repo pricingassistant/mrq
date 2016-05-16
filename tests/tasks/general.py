@@ -220,6 +220,7 @@ class GetIoHookEvents(Task):
             if evt["hook"].startswith("redis_"):
                 evt["key"] = evt["args"][0] if len(evt["args"]) else None
                 evt["args"] = repr(evt["args"])
+                evt.pop("options", None)
 
             # print evt
             evts.append(evt)
