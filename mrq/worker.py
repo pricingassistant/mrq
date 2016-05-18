@@ -481,7 +481,7 @@ class Worker(object):
 
                 # At the next pass, start at the next queue to avoid always dequeuing the same one
                 if self.config["dequeue_strategy"] == "parallel":
-                    queue_offset += queue_i + 1
+                    queue_offset = (queue_offset + queue_i + 1) % len(self.queues)
 
                 for job in jobs:
 
