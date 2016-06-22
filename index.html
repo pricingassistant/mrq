@@ -57,7 +57,6 @@
       <div class="row marketing"><h1>Intro</h1>
 <p><a href="http://pricingassistant.github.io/mrq">MRQ</a> is a distributed task queue for python built on top of mongo, redis and gevent.</p>
 <p>Full documentation is available on <a href="http://mrq.readthedocs.org/en/latest/">readthedocs</a></p>
-<p>/!\ MRQ is not yet ready for public use. Soon!</p>
 <h1>Why?</h1>
 <p>MRQ is an opinionated task queue. It aims to be simple and beautiful like <a href="http://python-rq.org">RQ</a> while having performances close to <a href="http://celeryproject.org">Celery</a></p>
 <p>MRQ was first developed at <a href="http://pricingassistant.com">Pricing Assistant</a> and its initial feature set matches the needs of worker queues with heterogenous jobs (IO-bound &amp; CPU-bound, lots of small tasks &amp; a few large ones).</p>
@@ -72,21 +71,23 @@
 <li><strong>Performance:</strong> Bulk job queueing, easy job profiling</li>
 <li><strong>Easy <a href="http://mrq.readthedocs.org/en/latest/configuration">configuration</a>:</strong> Every aspect of MRQ is configurable through command-line flags or a configuration file</li>
 <li><strong>Job routing:</strong> Like Celery, jobs can have default queues, timeout and ttl values.</li>
-<li><strong>Thorough <a href="http://mrq.readthedocs.org/en/latest/tests">testing</a>:</strong> Edge-cases like worker interrupts, Redis failures, ... are tested inside a Docker container.</li>
 <li><strong>Builtin scheduler:</strong> Schedule tasks by interval or by time of the day</li>
+<li><strong>Strategies:</strong> Sequential or parallel dequeue order, also a burst mode for one-time or periodic batch jobs.</li>
+<li><strong>Subqueues:</strong> Simple command-line pattern for dequeuing multiple sub queues, using auto discovery from worker side.</li>
+<li><strong>Thorough <a href="http://mrq.readthedocs.org/en/latest/tests">testing</a>:</strong> Edge-cases like worker interrupts, Redis failures, ... are tested inside a Docker container.</li>
 <li><strong>Greenlet tracing:</strong> See how much time was spent in each greenlet to debug CPU-intensive jobs.</li>
 <li><strong>Integrated memory leak debugger:</strong> Track down jobs leaking memory and find the leaks with objgraph.</li>
 </ul>
 <h1>Dashboard</h1>
-<p>A strong focus was put on the tools and particularly the dashboard. After all it is what you will work with most of the time!</p>
+<p>A strong focus was put on the tools and particularly the dashboard. After all, this will be your primary tool,which you will use most of the time!</p>
 <p><img src="http://i.imgur.com/H2nsgq2.png" alt="Queues view"></p>
 <p><img src="http://i.imgur.com/SNsYhuQ.png" alt="Jobs view"></p>
 <h4>How to run</h4>
-<p>To run the dashboard, make sur that mrq is properly installed. Then, use the
+<p>To run the dashboard, make sure that mrq is properly installed. Then, use the
 following command:</p>
 <pre><code class="lang-bash">mrq-dashboard
 </code></pre>
-<p>The Dashboard will be available on the <code>5555</code> port (<a href="http://localhost:5555">http://localhost:5555</a>).</p>
+<p>The Dashboard will be running on <code>localhost</code> using port <code>5555</code>(<a href="http://localhost:5555">http://localhost:5555</a>).</p>
 <h4>Main goal</h4>
 <p>There are too many features on the dashboard to list, but the goal is to have complete visibility and control over what your workers are doing!</p>
 <h1>Get started</h1>
