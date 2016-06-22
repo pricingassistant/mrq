@@ -1,9 +1,13 @@
+from __future__ import division
+from __future__ import print_function
+from builtins import str
+from builtins import range
+from past.utils import old_div
+import os
 import time
 from mrq.queue import Queue
 import pytest
-import subprocess
-import os
-
+#import subprocess
 
 @pytest.mark.parametrize(["p_max_latency", "p_min_observed_latency", "p_max_observed_latency"], [
     [1, 0.021, 1],
@@ -23,10 +27,10 @@ def test_job_max_latency(worker, p_max_latency, p_min_observed_latency, p_max_ob
     # This is the latency induced by our test system & general task work
     # We're on the same machine so even in different processes time.time() should be pretty reliable
     base_latency = get_latency()
-    print "Base latency: %ss" % base_latency
+    print("Base latency: %ss" % base_latency)
 
     min_latency = min([get_latency() for _ in range(0, 20)])
-    print "FYI, min latency = %ss" % min_latency
+    print("FYI, min latency = %ss" % min_latency)
 
     # Sleep a while with an idle worker to make the poll interval go up
     latencies = []
@@ -35,12 +39,12 @@ def test_job_max_latency(worker, p_max_latency, p_min_observed_latency, p_max_ob
 
         latency = get_latency() - min_latency
 
-        print "Observed latency (corrected): %ss" % latency
+        print("Observed latency (corrected): %ss" % latency)
 
         latencies.append(latency)
 
-    avg_latency = float(sum(latencies)) / len(latencies)
-    print "Average observed latency: %ss" % avg_latency
+    avg_latency = old_div(float(sum(latencies)), len(latencies))
+    print("Average observed latency: %ss" % avg_latency)
 
     assert p_min_observed_latency <= avg_latency < p_max_observed_latency
 
@@ -75,10 +79,10 @@ def benchmark_task(worker, taskpath, taskparams, tasks=1000, greenlets=50, proce
     ), queues=queues, trace=False)
 
     # Warm up the workers with one simple task.
-    print "Warming up workers..."
+    print("Warming up workers...")
     worker.send_tasks("tests.tasks.general.Add", [{"a": i, "b": 0, "sleep": 0} for i in range(greenlets * min(1, processes))])
 
-    print "Starting benchmark..."
+    print("Starting benchmark...")
     start_time = time.time()
 
     # result = worker.send_tasks("tests.tasks.general.Add",
@@ -91,7 +95,7 @@ def benchmark_task(worker, taskpath, taskparams, tasks=1000, greenlets=50, proce
 
     total_time = time.time() - start_time
 
-    print "%s tasks done with %s greenlets and %s processes in %0.3f seconds : %0.2f jobs/second!" % (tasks, greenlets, processes, total_time, tasks / total_time)
+    print("%s tasks done with %s greenlets and %s processes in %0.3f seconds : %0.2f jobs/second!" % (tasks, greenlets, processes, total_time, old_div(tasks, total_time)))
 
     assert total_time < max_seconds
 
@@ -120,7 +124,7 @@ def test_performance_simpleadds_regular(worker, p_processes):
                                         max_seconds=max_seconds)
 
     # ... and return correct results
-    assert result == range(n_tasks)
+    assert result == list(range(n_tasks))
 
 
 @pytest.mark.parametrize(["p_queue", "p_greenlets"], [x1 + x2 for x1 in [
@@ -195,7 +199,7 @@ def test_performance_writeconcern(worker_mongodb_with_journal):
         max_seconds=max_seconds
     )
 
-    print total_time_acknowledged
+    print(total_time_acknowledged)
 
     result, total_time_unacknowledged = benchmark_task(
         worker,
@@ -212,8 +216,8 @@ def test_performance_writeconcern(worker_mongodb_with_journal):
         max_seconds=max_seconds
     )
 
-    print "total_time_acknowledged: ", total_time_acknowledged
-    print "total_time_unacknowledged: ", total_time_unacknowledged
+    print("total_time_acknowledged: ", total_time_acknowledged)
+    print("total_time_unacknowledged: ", total_time_unacknowledged)
 
     # Make sure it's faster.
     assert total_time_unacknowledged < total_time_acknowledged * 0.9
@@ -254,7 +258,7 @@ def test_performance_queue_cancel_requeue(worker):
 
     queue_time = time.time() - start_time
 
-    print "Queued %s tasks in %s seconds (%s/s)" % (n_tasks, queue_time, float(n_tasks) / queue_time)
+    print("Queued %s tasks in %s seconds (%s/s)" % (n_tasks, queue_time, old_div(float(n_tasks), queue_time)))
     assert queue_time < 2
 
     assert Queue("noexec").size() == n_tasks
@@ -272,7 +276,7 @@ def test_performance_queue_cancel_requeue(worker):
     )
     assert res["cancelled"] == n_tasks
     queue_time = time.time() - start_time
-    print "Cancelled %s tasks in %s seconds (%s/s)" % (n_tasks, queue_time, float(n_tasks) / queue_time)
+    print("Cancelled %s tasks in %s seconds (%s/s)" % (n_tasks, queue_time, old_div(float(n_tasks), queue_time)))
     assert queue_time < 5
     assert worker.mongodb_jobs.mrq_jobs.find(
         {"status": "cancel"}).count() == n_tasks
@@ -291,7 +295,7 @@ def test_performance_queue_cancel_requeue(worker):
     )
 
     queue_time = time.time() - start_time
-    print "Requeued %s tasks in %s seconds (%s/s)" % (n_tasks, queue_time, float(n_tasks) / queue_time)
+    print("Requeued %s tasks in %s seconds (%s/s)" % (n_tasks, queue_time, old_div(float(n_tasks), queue_time)))
     assert queue_time < 2
     assert worker.mongodb_jobs.mrq_jobs.find(
         {"status": "queued"}).count() == n_tasks

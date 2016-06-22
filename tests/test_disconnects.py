@@ -1,3 +1,4 @@
+from builtins import range
 import time
 from mrq.job import Job
 import pytest

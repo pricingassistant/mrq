@@ -1,7 +1,12 @@
+from future import standard_library
+standard_library.install_aliases()
+from builtins import next
+from builtins import map
+from past.builtins import basestring
 from .logger import Logger
 import gevent
 import gevent.pool
-import urlparse
+import urllib.parse
 import time
 import pymongo
 import traceback
@@ -108,12 +113,12 @@ def _connections_factory(attr):
         return tuple(map(int, (v.split("."))))
 
     if attr.startswith("redis"):
-        if type(config_obj) in [str, unicode]:
+        if isinstance(config_obj, basestring):
 
             import redis as pyredis
 
-            urlparse.uses_netloc.append('redis')
-            redis_url = urlparse.urlparse(config_obj)
+            urllib.parse.uses_netloc.append('redis')
+            redis_url = urllib.parse.urlparse(config_obj)
 
             log.info("%s: Connecting to Redis at %s..." %
                      (attr, redis_url.hostname))
@@ -124,7 +129,8 @@ def _connections_factory(attr):
                 db=int((redis_url.path or "").replace("/", "") or "0"),
                 password=redis_url.password,
                 max_connections=int(config.get("redis_max_connections")),
-                timeout=int(config.get("redis_timeout"))
+                timeout=int(config.get("redis_timeout")),
+                decode_responses=True
             )
             return pyredis.StrictRedis(connection_pool=redis_pool)
 
@@ -134,7 +140,7 @@ def _connections_factory(attr):
 
     elif attr.startswith("mongodb"):
 
-        if type(config_obj) in [str, unicode]:
+        if isinstance(config_obj, basestring):
 
             if attr == "mongodb_logs" and config_obj == "1":
                 return connections.mongodb_jobs
@@ -218,7 +224,7 @@ def subpool_map(pool_size, func, iterable):
 
         try:
           ret = func(*args)
-        except Exception, exc:
+        except Exception as exc:
           trace = traceback.format_exc()
           log.error("Error in subpool: %s \n%s" % (exc, trace))
           raise
@@ -271,7 +277,7 @@ def subpool_imap(pool_size, func, iterable, flatten=False, unordered=False, buff
 
     try:
       ret = func(*args)
-    except Exception, exc:
+    except Exception as exc:
       trace = traceback.format_exc()
       log.error("Error in subpool: %s \n%s" % (exc, trace))
       raise

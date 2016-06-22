@@ -1,9 +1,17 @@
+from __future__ import print_function
+from builtins import object
+from future.utils import iteritems
 
 from collections import defaultdict
 import datetime
-
+import sys
+PY3 = sys.version_info > (3,)
 
 def _encode_if_unicode(string):
+
+    if PY3:
+        return string
+
     if isinstance(string, unicode):
         return string.encode("utf-8", "replace")
     else:
@@ -11,6 +19,10 @@ def _encode_if_unicode(string):
 
 
 def _decode_if_str(string):
+
+    if PY3:
+        return str(string)
+
     if isinstance(string, str):
         return string.decode("utf-8", "replace")
     else:
@@ -62,9 +74,9 @@ class LogHandler(object):
 
         if not self.quiet:
             try:
-                print _encode_if_unicode(formatted)
+                print(_encode_if_unicode(formatted))
             except UnicodeDecodeError:
-                print formatted
+                print(formatted)
 
         if self.collection is False:
             return
@@ -88,10 +100,10 @@ class LogHandler(object):
         inserts = [{
             "worker": k,
             "logs": "\n".join(v) + "\n"
-        } for k, v in self.buffer["workers"].iteritems()] + [{
+        } for k, v in iteritems(self.buffer["workers"])] + [{
             "job": k,
             "logs": "\n".join(v) + "\n"
-        } for k, v in self.buffer["jobs"].iteritems()]
+        } for k, v in iteritems(self.buffer["jobs"])]
 
         if len(inserts) == 0:
             return

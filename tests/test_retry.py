@@ -1,3 +1,4 @@
+from builtins import str
 from mrq.job import Job
 import datetime
 from mrq.queue import Queue
