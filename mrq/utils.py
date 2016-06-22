@@ -1,3 +1,8 @@
+from __future__ import division
+from builtins import str
+from builtins import range
+from builtins import object
+from past.utils import old_div
 import re
 import importlib
 import time
@@ -31,7 +36,7 @@ def group_iter(iterator, n=2):
     if isinstance(iterator, list):
 
         length = len(iterator)
-        for i in range(int(math.ceil(float(length) / n))):
+        for i in range(int(math.ceil(old_div(float(length), n)))):
             yield iterator[i * n: (i + 1) * n]
 
     else:
@@ -134,7 +139,7 @@ def wait_for_net_service(server, port, timeout=None, poll_interval=0.1):
         except Exception as err:
             # catch timeout exception from underlying network library
             # this one is different from socket.timeout
-            if not isinstance(err.args, tuple) or err[0] != errno.ETIMEDOUT:
+            if not isinstance(err.args, tuple) or err.args[0] != errno.ETIMEDOUT:
                 pass  # raise
         else:
             s.close()
@@ -176,5 +181,7 @@ class MongoJSONEncoder(json.JSONEncoder):
         if isinstance(obj, (datetime.datetime, datetime.date)):
             return obj.isoformat()
         elif isinstance(obj, ObjectId):
-            return unicode(obj)
+            return str(obj)
+        elif isinstance(obj, bytes):
+            return obj.decode('utf-8')
         return json.JSONEncoder.default(self, obj)

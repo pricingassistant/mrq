@@ -1,3 +1,4 @@
+from __future__ import print_function
 import json
 
 
@@ -14,7 +15,7 @@ def test_io_hooks_nothing(worker):
     job_events = [x for x in events if x.get("job")]
 
     for evt in job_events:
-        print evt
+        print(evt)
 
     # Only update should be the result in mongodb.
     assert len(job_events) == 1 * 2
@@ -44,7 +45,7 @@ def test_io_hooks_redis(worker):
     job_events = [x for x in events if x.get("job")]
 
     for evt in job_events:
-        print evt
+        print(evt)
 
     assert len(job_events) == 2 * 2
 
@@ -84,7 +85,7 @@ def test_io_hooks_mongodb(worker):
     job_events = [x for x in events if x.get("job")]
 
     for evt in job_events:
-        print evt
+        print(evt)
 
     assert len(job_events) == 4 * 2
 

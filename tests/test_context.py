@@ -94,5 +94,4 @@ def test_context_setup():
 
     out, err = process.communicate()
 
-    assert out.endswith("42\ntestname1\n")
-
+    assert out.endswith(b"42\ntestname1\n")
