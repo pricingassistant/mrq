@@ -54,10 +54,13 @@ You can pass additional configuration flags:
  - `--scheduler_interval`: Seconds between scheduler checks. Defaults to **60** seconds, only ints are acceptable.
  - `--report_interval`: Seconds between worker reports to MongoDB. Defaults to **10** seconds, floats are acceptable too.
  - `--report_file`: Filepath of a json dump of the worker status. Disabled if none.
+ - `--subqueues_refresh_interval`: Seconds between worker refreshes of the known subqueues.
+ - `--subqueues_delimiter`: Delimiter between main queue and subqueue names.
  - `--admin_port`: Start an admin server on this port, if provided. Incompatible with --processes. Defaults to **0**
  - `--admin_ip`: IP for the admin server to listen on. Use "0.0.0.0" to allow access from outside. Defaults to **127.0.0.1**.
  - `--local_ip`: Overwrite the local IP, to be displayed in the dashboard.
  - `--max_latency`: Max seconds while worker may sleep waiting for a new job. Can be < 1 and a float value.
+ - `--dequeue_strategy`: Strategy for dequeuing multiple queues. Default is **sequential**, to dequeue them in command-line order.
 
 ### Worker concurrency
 

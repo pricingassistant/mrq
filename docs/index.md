@@ -4,8 +4,6 @@
 
 Full documentation is available on [readthedocs](http://mrq.readthedocs.org/en/latest/)
 
-/!\ MRQ is not yet ready for public use. Soon!
-
 # Why?
 
 MRQ is an opinionated task queue. It aims to be simple and beautiful like [RQ](http://python-rq.org) while having performances close to [Celery](http://celeryproject.org)
@@ -23,7 +21,9 @@ MRQ was first developed at [Pricing Assistant](http://pricingassistant.com) and 
  * **Performance:** Bulk job queueing, easy job profiling
  * **Easy [configuration](http://mrq.readthedocs.org/en/latest/configuration):** Every aspect of MRQ is configurable through command-line flags or a configuration file
  * **Job routing:** Like Celery, jobs can have default queues, timeout and ttl values.
- * **Thorough [testing](http://mrq.readthedocs.org/en/latest/tests):** Edge-cases like worker interrupts, Redis failures, ... are tested inside a Docker container.
  * **Builtin scheduler:** Schedule tasks by interval or by time of the day
+ * **Strategies:** Sequential or parallel dequeue order, also a burst mode for one-time or periodic batch jobs.
+ * **Subqueues:** Simple command-line pattern for dequeuing multiple sub queues, using auto discovery from worker side.
+ * **Thorough [testing](http://mrq.readthedocs.org/en/latest/tests):** Edge-cases like worker interrupts, Redis failures, ... are tested inside a Docker container.
  * **Greenlet tracing:** See how much time was spent in each greenlet to debug CPU-intensive jobs.
  * **Integrated memory leak debugger:** Track down jobs leaking memory and find the leaks with objgraph.
