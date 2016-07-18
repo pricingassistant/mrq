@@ -318,6 +318,7 @@ class Worker(object):
             "status": self.status,
             "config": {k: v for k, v in self.config.iteritems() if k in whitelisted_config},
             "done_jobs": self.done_jobs,
+            "pool_usage_average": self.pool_usage_average,
             "datestarted": self.datestarted,
             "datereported": datetime.datetime.utcnow(),
             "name": self.name,
