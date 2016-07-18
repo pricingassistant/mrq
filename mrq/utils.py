@@ -4,6 +4,7 @@ import time
 import math
 import json
 import datetime
+from collections import deque
 from bson import ObjectId
 
 #
@@ -178,3 +179,18 @@ class MongoJSONEncoder(json.JSONEncoder):
         elif isinstance(obj, ObjectId):
             return unicode(obj)
         return json.JSONEncoder.default(self, obj)
+
+
+class MovingAverage(object):
+
+    def __init__(self, size):
+        self.__size = size
+        self.__sum = 0
+        self.__q = deque([])
+
+    def next(self, val):
+        if len(self.__q) == self.__size:
+            self.__sum -= self.__q.popleft()
+        self.__sum += val
+        self.__q.append(val)
+        return 1.0 * self.__sum / len(self.__q)

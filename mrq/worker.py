@@ -20,7 +20,7 @@ from .exceptions import (TimeoutInterrupt, StopRequested, JobInterrupt, AbortInt
 from .context import (set_current_worker, set_current_job, get_current_job, get_current_config,
                       connections, enable_greenlet_tracing)
 from .queue import Queue
-from .utils import MongoJSONEncoder
+from .utils import MongoJSONEncoder, MovingAverage
 
 
 class Worker(object):
@@ -67,6 +67,7 @@ class Worker(object):
             self.name = "%s.%s" % (socket.gethostname().split(".")[0], os.getpid())
 
         self.pool_size = self.config["greenlets"]
+        self.pool_usage_average = MovingAverage(6)
 
         from .logger import LogHandler
         self.log_handler = LogHandler(quiet=self.config["quiet"])
@@ -225,6 +226,14 @@ class Worker(object):
                 return
 
             time.sleep(self.config["subqueues_refresh_interval"])
+
+    def greenlet_pool_usage_average(self, interval=10):
+
+        while True:
+            free_pool_slots = self.gevent_pool.free_count()
+            total_started = (self.pool_size - free_pool_slots) + self.done_jobs
+            self.pool_usage_average.next(total_started)
+            time.sleep(interval)
 
     def get_memory(self):
         mmaps = self.process.get_memory_maps()
@@ -417,6 +426,8 @@ class Worker(object):
         self.greenlets["report"] = gevent.spawn(self.greenlet_report)
 
         self.greenlets["logs"] = gevent.spawn(self.greenlet_logs)
+
+        self.greenlets["pool_usage_average"] = gevent.spawn(self.greenlet_pool_usage_average)
 
         if self.config["scheduler"]:
             self.greenlets["scheduler"] = gevent.spawn(self.greenlet_scheduler)
