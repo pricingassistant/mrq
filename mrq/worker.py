@@ -456,6 +456,7 @@ class Worker(object):
 
                 # If the scheduler greenlet are crashed, fail loudly.
                 if self.config["scheduler"] and not self.greenlets["scheduler"]:
+                    self.exitcode = 6
                     break
 
                 while True:
