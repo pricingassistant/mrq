@@ -453,6 +453,10 @@ class Worker(object):
                 if self.graceful_stop:
                     break
 
+                # If the scheduler greenlet are crashed, fail loudly.
+                if self.config["scheduler"] and not self.greenlets["scheduler"]:
+                    break
+
                 while True:
 
                     free_pool_slots = self.gevent_pool.free_count()
