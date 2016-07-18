@@ -465,6 +465,7 @@ class Worker(object):
                         total_started = (self.pool_size - free_pool_slots) + self.done_jobs
                         free_pool_slots = min(free_pool_slots, max_jobs - total_started)
                         if free_pool_slots == 0:
+                            self.exitcode = 5
                             break
 
                     if free_pool_slots > 0:
