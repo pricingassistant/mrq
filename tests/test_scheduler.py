@@ -1,5 +1,6 @@
 import time
 import pytest
+import datetime
 
 
 # We want to test that launching the scheduler several times queues tasks
@@ -88,3 +89,57 @@ def test_scheduler_dailytime(worker, p_flags):
     time.sleep(4)
     assert collection.find().count() == 4
     assert collection.find({"params.b": "test"}).count() == 2
+
+
+def test_scheduler_weekday(worker):
+    # Task is scheduled in 3 seconds
+    worker.start(
+        flags="--scheduler --config tests/fixtures/config-scheduler4.py",
+        env={
+            # We need to pass this in the environment so that each worker has the
+            # exact same hash
+            "MRQ_TEST_SCHEDULER_TIME": str(time.time() + 5)
+        })
+
+    collection = worker.mongodb_jobs.tests_inserts
+    assert collection.find().count() == 0
+
+    # It should be done a first time immediately
+    time.sleep(3)
+    inserts = list(collection.find())
+    assert len(inserts) == 1
+    print inserts
+    assert collection.find({"params.weekday": datetime.datetime.utcnow().weekday()}).count() == 1
+
+
+def test_scheduler_weekday_dailytime(worker):
+    # Task is scheduled in 5 seconds
+    worker.start(
+        flags="--scheduler --config tests/fixtures/config-scheduler5.py",
+        env={
+            # We need to pass this in the environment so that each worker has the
+            # exact same hash
+            "MRQ_TEST_SCHEDULER_TIME": str(time.time() + 5)
+        })
+
+    collection = worker.mongodb_jobs.tests_inserts
+    assert collection.find().count() == 0
+
+    # Should be launched a first time
+    time.sleep(2)
+    assert len(list(collection.find())) == 2
+
+    # the dailytime passes
+    time.sleep(7)
+    inserts = list(collection.find())
+    assert len(inserts) == 3
+    print inserts
+    assert collection.find({"params.weekday": datetime.datetime.utcnow().weekday(), "params.later": False}).count() == 2
+
+    # more time passes and we do nothing
+    time.sleep(7)
+    inserts = list(collection.find())
+    assert len(inserts) == 3
+    print inserts
+    assert collection.find({"params.weekday": datetime.datetime.utcnow().weekday(), "params.later": False}).count() == 2
+
