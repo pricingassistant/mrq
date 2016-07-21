@@ -55,7 +55,6 @@ class Worker(object):
         self.process = psutil.Process(os.getpid())
         self.greenlet = gevent.getcurrent()
         self.graceful_stop = None
-        self.pool_usage_average = 0
 
         self.idle_event = gevent.event.Event()
         self.idle_wait_count = 0
@@ -68,6 +67,7 @@ class Worker(object):
             self.name = "%s.%s" % (socket.gethostname().split(".")[0], os.getpid())
 
         self.pool_size = self.config["greenlets"]
+        self.pool_usage_average = MovingAverage((60 / self.config["report_interval"] or 1))
 
         from .logger import LogHandler
         self.log_handler = LogHandler(quiet=self.config["quiet"])
@@ -227,16 +227,6 @@ class Worker(object):
 
             time.sleep(self.config["subqueues_refresh_interval"])
 
-    def greenlet_pool_usage_average(self, interval=10):
-
-        moving_average = MovingAverage(6)
-
-        while True:
-            free_pool_slots = self.gevent_pool.free_count()
-            total_started = (self.pool_size - free_pool_slots)
-            self.pool_usage_average = moving_average.next(total_started)
-            time.sleep(interval)
-
     def get_memory(self):
         mmaps = self.process.get_memory_maps()
         mem = {
@@ -316,11 +306,13 @@ class Worker(object):
                 else:
                     io[k] = sorted(v.items(), reverse=True, key=lambda x: x[1])
 
+        used_pool_slots = self.gevent_pool.free_count() - self.pool_size
+
         return {
             "status": self.status,
             "config": {k: v for k, v in self.config.iteritems() if k in whitelisted_config},
             "done_jobs": self.done_jobs,
-            "pool_usage_average": self.pool_usage_average,
+            "pool_usage_average": self.pool_usage_average.next(used_pool_slots),
             "datestarted": self.datestarted,
             "datereported": datetime.datetime.utcnow(),
             "name": self.name,
@@ -429,8 +421,6 @@ class Worker(object):
         self.greenlets["report"] = gevent.spawn(self.greenlet_report)
 
         self.greenlets["logs"] = gevent.spawn(self.greenlet_logs)
-
-        self.greenlets["pool_usage_average"] = gevent.spawn(self.greenlet_pool_usage_average)
 
         if self.config["scheduler"]:
             self.greenlets["scheduler"] = gevent.spawn(self.greenlet_scheduler)
