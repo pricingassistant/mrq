@@ -55,6 +55,7 @@ class Worker(object):
         self.process = psutil.Process(os.getpid())
         self.greenlet = gevent.getcurrent()
         self.graceful_stop = None
+        self.pool_usage_average = 0
 
         self.idle_event = gevent.event.Event()
         self.idle_wait_count = 0
@@ -67,7 +68,6 @@ class Worker(object):
             self.name = "%s.%s" % (socket.gethostname().split(".")[0], os.getpid())
 
         self.pool_size = self.config["greenlets"]
-        self.pool_usage_average = MovingAverage(6)
 
         from .logger import LogHandler
         self.log_handler = LogHandler(quiet=self.config["quiet"])
@@ -229,10 +229,12 @@ class Worker(object):
 
     def greenlet_pool_usage_average(self, interval=10):
 
+        moving_average = MovingAverage(6)
+
         while True:
             free_pool_slots = self.gevent_pool.free_count()
-            total_started = (self.pool_size - free_pool_slots) + self.done_jobs
-            self.pool_usage_average.next(total_started)
+            total_started = (self.pool_size - free_pool_slots)
+            self.pool_usage_average = moving_average.next(total_started)
             time.sleep(interval)
 
     def get_memory(self):
