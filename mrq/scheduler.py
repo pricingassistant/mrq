@@ -70,7 +70,7 @@ class Scheduler(object):
 
             last_time = now - interval
 
-            if task.get("weekday") != current_weekday:
+            if task.get("weekday", current_weekday) != current_weekday:
                 continue
 
             if task.get("dailytime"):
