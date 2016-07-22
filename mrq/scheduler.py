@@ -48,7 +48,6 @@ class Scheduler(object):
                 # The date part will be discarded in check()
                 task["dailytime"] = datetime.datetime.combine(
                     datetime.datetime.utcnow(), task["dailytime"])
-            if not task.get("interval"):
                 task["interval"] = 3600 * 24
 
             self.collection.find_one_and_update({"hash": task["hash"]}, {"$set": task}, upsert=True)
