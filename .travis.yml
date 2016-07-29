@@ -1,0 +1,19 @@
+sudo: required
+
+services:
+  - docker
+
+env:
+  - PYTHON_BIN=python
+  - PYTHON_BIN=python3
+
+before_install:
+  - docker ps
+  - docker info
+  - docker version
+  - make docker_build
+  - make linterrors
+
+# TODO: coveralls?
+script:
+    - docker run -i -t -v `pwd`:/app:rw -w /app mrq_local $PYTHON_BIN -m pytest tests/ -v --junitxml=pytest-report.xml --html=pytest-report.html --cov mrq --cov-report term
