@@ -439,8 +439,6 @@ def get_config(
             # We only keep variables starting with an uppercase character.
             if k[0].isupper():
                 default_config[k.lower()] = v
-                if k.lower() not in default_config:
-                    default_config[k.lower()] = v
 
     # Merge the config in the order given by the user
     merged_config = default_config
