@@ -11,7 +11,7 @@ before_install:
   - docker ps
   - docker info
   - docker version
-  - make docker_build
+  - make docker
   - make linterrors
 
 # TODO: coveralls?
