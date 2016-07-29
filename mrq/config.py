@@ -438,12 +438,15 @@ def get_config(
 
             # We only keep variables starting with an uppercase character.
             if k[0].isupper():
-                default_config[k.lower()] = v
+                from_file[k.lower()] = v
 
     # Merge the config in the order given by the user
     merged_config = default_config
+
+    config_keys = set(default_config.keys() + from_file.keys())
+
     for part in sources:
-        for name in merged_config:
+        for name in config_keys:
 
             if part == "env":
                 value = os.environ.get(env_prefix + name.upper())
