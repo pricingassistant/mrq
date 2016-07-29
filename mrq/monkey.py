@@ -96,7 +96,9 @@ def patch_pymongo(config):
                 ret = base_method(self, *args, **kwargs)
             finally:
                 stop_time = time.time()
-
+                
+                job = None
+                
                 if config["trace_io"]:
                     job = get_current_job()
                     if job:
