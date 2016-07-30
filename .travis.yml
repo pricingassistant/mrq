@@ -16,5 +16,5 @@ before_install:
 
 # TODO: coveralls?
 script:
-    - docker run -i -t -v `pwd`:/app:rw -w /app mrq_local $PYTHON_BIN -m pytest tests/ -v --junitxml=pytest-report.xml --html=pytest-report.html --cov mrq --cov-report term
+    - docker run -i -t -v `pwd`:/app:rw -w /app mrq_local $PYTHON_BIN -m pytest tests/ -v --junitxml=pytest-report.xml --cov mrq --cov-report term
 
