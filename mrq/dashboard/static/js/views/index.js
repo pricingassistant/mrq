@@ -21,7 +21,7 @@ define(["jquery", "underscore", "views/generic/page", "models", "moment", "circl
         var doneJobs = 0;
 
         for (var i in workers) {
-          poolSize += workers[i].config.gevent
+          poolSize += workers[i].config.greenlets
           currentJobs += workers[i].jobs.length
           doneJobs += workers[i].done_jobs
         }
