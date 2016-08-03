@@ -306,7 +306,7 @@ class Worker(object):
                 else:
                     io[k] = sorted(v.items(), reverse=True, key=lambda x: x[1])
 
-        used_pool_slots = self.gevent_pool.free_count() - self.pool_size
+        used_pool_slots = self.pool_size - self.gevent_pool.free_count()
 
         return {
             "status": self.status,
