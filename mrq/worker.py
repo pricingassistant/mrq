@@ -129,13 +129,13 @@ class Worker(object):
             [("datereported", 1)], background=False, expireAfterSeconds=3600)
 
         self.mongodb_jobs.mrq_jobs.ensure_index(
-            [("status", 1)], background=False)
+            [("status", 1)], background=True)
         self.mongodb_jobs.mrq_jobs.ensure_index(
-            [("path", 1), ("status", 1)], background=False)
+            [("path", 1)], background=True)
         self.mongodb_jobs.mrq_jobs.ensure_index(
-            [("worker", 1), ("status", 1)], background=False, sparse=True)
+            [("worker", 1)], background=True, sparse=True)
         self.mongodb_jobs.mrq_jobs.ensure_index(
-            [("queue", 1), ("status", 1)], background=False)
+            [("queue", 1)], background=True)
         self.mongodb_jobs.mrq_jobs.ensure_index(
             [("dateexpires", 1)], sparse=True, background=False, expireAfterSeconds=0)
         self.mongodb_jobs.mrq_jobs.ensure_index(
