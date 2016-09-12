@@ -445,7 +445,7 @@ def get_config(
     # Merge the config in the order given by the user
     merged_config = default_config
 
-    config_keys = set(default_config.keys() + from_file.keys())
+    config_keys = set(list(default_config.keys()) + list(from_file.keys()))
 
     for part in sources:
         for name in config_keys:
