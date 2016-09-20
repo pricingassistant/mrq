@@ -6,13 +6,14 @@ import urllib2
 import json
 import time
 import copy
+from config import get_config
 from mrq.utils import MongoJSONEncoder
 
 
 class Add(Task):
 
     def run(self, params):
-
+        print get_config()
         log.info("adding", params)
         res = params.get("a", 0) + params.get("b", 0)
 

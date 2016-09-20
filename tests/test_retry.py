@@ -159,3 +159,17 @@ def test_retry_max_retries_zero(worker):
 
     job = Job(job_id).fetch()
     assert job.data["status"] == "maxretries"
+
+
+def test_retry_traceback_history(worker):
+    print "hello, starting worker"
+    worker.start(flags="--config tests/fixtures/config-tracebackhistory.py")
+    # delay = 0 should requeue right away.
+    print "hello, started worker"
+    worker.send_task(
+        "tests.tasks.general.Retry", {"queue": "noexec", "delay": 60}, block=True, accept_statuses=["retry"])
+    print "task launched"
+    job = worker.mongodb_jobs.mrq_jobs.find()[0]
+    time.sleep(1)
+    print job["traceback_history"]
+

@@ -17,6 +17,7 @@ import fnmatch
 import encodings
 import copy_reg
 from . import context
+from config import get_config
 
 
 class Job(object):
@@ -203,7 +204,7 @@ class Job(object):
 
     def _attach_original_exception(self, exc):
         """ Often, a retry will be raised inside an "except" block.
-            This Keep track of the first exception for debugging purposes. """
+            This Keep track of the first exception for debugging purposes """
 
         original_exception = sys.exc_info()
         if original_exception[0] is not None:
@@ -350,6 +351,23 @@ class Job(object):
 
             self._save_status("retry", updates, exception=True)
 
+    def _save_traceback_history(self, status, trace, job_exc):
+        """ Create traceback history or add a new traceback to history. """
+        failure_date = datetime.datetime.utcnow()
+
+        new_history = {
+            "date": failure_date,
+            "status": status,
+            "traceback": trace,
+            "exceptiontype": job_exc
+        }
+
+        if self.original_exception:
+            new_history["original_traceback"] = new_history
+        self.collection.update({
+            "_id": self.id
+        }, {"$add": {"traceback_history": new_history}})
+
     def save_success(self, result=None):
 
         dateexpires = datetime.datetime.utcnow() + datetime.timedelta(seconds=self.result_ttl)
@@ -381,7 +399,7 @@ class Job(object):
         self._save_status("abort", updates)
 
     def _save_status(self, status, updates=None, exception=False, w=None, j=None):
-
+        print "saving status"
         if self.id is None:
             return
 
@@ -414,6 +432,11 @@ class Job(object):
             context.log.error(trace)
             db_updates["traceback"] = trace
             db_updates["exceptiontype"] = sys.exc_info()[0].__name__
+            print "hello"
+            print get_config()
+            if get_config().get("save_traceback_history"):
+                print "saving traceback history"
+                self._save_traceback_history(status, trace, db_updates["exceptiontype"])
 
         # In the most common case, we allow an optimization on Mongo writes
         if status == "success":
