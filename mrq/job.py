@@ -17,7 +17,7 @@ import fnmatch
 import encodings
 import copy_reg
 from . import context
-from config import get_config
+from mrq.context import get_current_config
 
 
 class Job(object):
@@ -358,15 +358,15 @@ class Job(object):
         new_history = {
             "date": failure_date,
             "status": status,
-            "traceback": trace,
-            "exceptiontype": job_exc
+            "exceptiontype": job_exc.__name__
         }
-
-        if self.original_exception:
-            new_history["original_traceback"] = new_history
+        traces = trace.split("---- Original exception: -----")
+        if len(traces) > 1:
+            new_history["original_traceback"] = traces[1]
+        new_history["traceback"] = traces[0]
         self.collection.update({
             "_id": self.id
-        }, {"$add": {"traceback_history": new_history}})
+        }, {"$push": {"traceback_history": new_history}})
 
     def save_success(self, result=None):
 
@@ -399,7 +399,7 @@ class Job(object):
         self._save_status("abort", updates)
 
     def _save_status(self, status, updates=None, exception=False, w=None, j=None):
-        print "saving status"
+
         if self.id is None:
             return
 
@@ -431,12 +431,12 @@ class Job(object):
             trace = traceback.format_exc()
             context.log.error(trace)
             db_updates["traceback"] = trace
-            db_updates["exceptiontype"] = sys.exc_info()[0].__name__
-            print "hello"
-            print get_config()
-            if get_config().get("save_traceback_history"):
-                print "saving traceback history"
-                self._save_traceback_history(status, trace, db_updates["exceptiontype"])
+            exc = sys.exc_info()[0]
+            db_updates["exceptiontype"] = exc.__name__
+
+            if get_current_config().get("save_traceback_history"):
+
+                self._save_traceback_history(status, trace, exc)
 
         # In the most common case, we allow an optimization on Mongo writes
         if status == "success":

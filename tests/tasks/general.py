@@ -87,6 +87,30 @@ class Retry(Task):
         raise Exception("Should not be reached")
 
 
+class InRetryException(BaseException):
+    pass
+
+
+class RetryOnFailed(Task):
+
+    def run(self, params):
+
+        log.info("Retrying in %s on %s" %
+                 (params.get("delay"), params.get("queue")))
+
+        connections.mongodb_jobs.tests_inserts.insert(params)
+        try:
+            raise InRetryException
+        except InRetryException:
+            retry_current_job(
+                queue=params.get("queue"),
+                delay=params.get("delay"),
+                max_retries=params.get("max_retries")
+            )
+
+        raise Exception("Should not be reached")
+
+
 class WaitForFlag(Task):
 
     def run(self, params):

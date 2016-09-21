@@ -162,14 +162,34 @@ def test_retry_max_retries_zero(worker):
 
 
 def test_retry_traceback_history(worker):
-    print "hello, starting worker"
+
     worker.start(flags="--config tests/fixtures/config-tracebackhistory.py")
     # delay = 0 should requeue right away.
-    print "hello, started worker"
+
     worker.send_task(
-        "tests.tasks.general.Retry", {"queue": "noexec", "delay": 60}, block=True, accept_statuses=["retry"])
-    print "task launched"
+        "tests.tasks.general.Retry", {"queue": "noexec", "delay": 60}, block=True, accept_statuses=["retry"]
+    )
+
     job = worker.mongodb_jobs.mrq_jobs.find()[0]
-    time.sleep(1)
+
+    assert len(job["traceback_history"]) == 1
+    assert not job["traceback_history"][0].get("original_traceback")
+
+    worker.send_task(
+        "tests.tasks.general.RetryOnFailed", {"queue": "default", "delay": 1}, block=True, accept_statuses=["retry"]
+    )
+
+    job = worker.mongodb_jobs.mrq_jobs.find({
+        "path": "tests.tasks.general.RetryOnFailed"})[0]
+
+    assert len(job["traceback_history"]) == 1
+    assert "InRetryException" in job["traceback_history"][0].get("original_traceback")
+    time.sleep(2)
+    worker.send_task("mrq.basetasks.cleaning.RequeueRetryJobs", {}, block=True)
+    time.sleep(2)
+    job = worker.mongodb_jobs.mrq_jobs.find({
+        "path": "tests.tasks.general.RetryOnFailed"})[0]
+
     print job["traceback_history"]
+    assert len(job["traceback_history"]) == 2
 
