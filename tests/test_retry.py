@@ -190,6 +190,5 @@ def test_retry_traceback_history(worker):
     job = worker.mongodb_jobs.mrq_jobs.find({
         "path": "tests.tasks.general.RetryOnFailed"})[0]
 
-    print job["traceback_history"]
     assert len(job["traceback_history"]) == 2
-
+    assert job["traceback_history"][0]["date"] < job["traceback_history"][1]["date"]
