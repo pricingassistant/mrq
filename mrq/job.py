@@ -17,7 +17,6 @@ import fnmatch
 import encodings
 import copy_reg
 from . import context
-from mrq.context import get_current_config
 
 
 class Job(object):
@@ -434,7 +433,7 @@ class Job(object):
             exc = sys.exc_info()[0]
             db_updates["exceptiontype"] = exc.__name__
 
-            if get_current_config().get("save_traceback_history"):
+            if context.get_current_config().get("save_traceback_history"):
 
                 self._save_traceback_history(status, trace, exc)
 
