@@ -359,9 +359,13 @@ class Job(object):
             "status": status,
             "exceptiontype": job_exc.__name__
         }
+
         traces = trace.split("---- Original exception: -----")
         if len(traces) > 1:
             new_history["original_traceback"] = traces[1]
+        worker = context.get_current_worker()
+        if worker:
+            new_history["worker"] = worker.id
         new_history["traceback"] = traces[0]
         self.collection.update({
             "_id": self.id
