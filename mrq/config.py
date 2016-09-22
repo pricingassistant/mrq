@@ -419,15 +419,11 @@ def get_config(
                 from_args[k] = v
 
     # If we were given another config file, use it
-    print "hello"
-    print file_path
-    print from_args.get("config")
 
     if file_path is not None:
         config_file = file_path
     elif from_args.get("config"):
         config_file = from_args.get("config")
-        print config_file
     # If a mrq-config.py file is in the current directory, use it!
     elif os.path.isfile(os.path.join(os.getcwd(), "mrq-config.py")):
         config_file = os.path.join(os.getcwd(), "mrq-config.py")
