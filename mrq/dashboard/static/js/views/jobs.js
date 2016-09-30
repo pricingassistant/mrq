@@ -56,8 +56,14 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
       $.ajax("/api/job/"+jobId+"/traceback", {
         "type": "GET",
         "success": function(data) {
-          var stack = self.format_traceback(data["traceback"]);
-          self.$(".js-jobs-modal .js-jobs-modal-content").html(stack);
+          if (data["traceback"]) {
+            var stack = self.format_traceback(data["traceback"]);
+            self.$(".js-jobs-modal .js-jobs-modal-content").html(stack);
+          }
+          else {
+            var stack = self.format_traceback_history(data["traceback_history"]);
+            self.$(".js-jobs-modal .js-jobs-modal-content").html(stack);
+          }
           self.$(".js-jobs-modal h4").html("Stack Trace");
           self.$(".js-jobs-modal").modal({});
         },
@@ -129,7 +135,21 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
 
       return stack;
     },
-
+    format_traceback_history: function(stacks) {
+      var self = this;
+      var full_history = "";
+      _.each(stacks, function(stack) {
+        full_history += "<br/><b>" + stack["date"] + "</b><br/>";
+        if (stack["original_traceback"]) {
+          full_history += "<b>Original trace</b>";
+          full_history += self.format_traceback(stack["original_traceback"] || "");
+        }
+        full_history += "<b>Trace</b>" + "<br/>";
+        full_history += self.format_traceback(stack["traceback"] || "");
+        full_history += "---------------------------------------------------------------------" + "<br/>";
+      });
+      return full_history;
+    },
     row_jobaction:function(evt) {
       evt.preventDefault();
       evt.stopPropagation();

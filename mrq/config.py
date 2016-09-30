@@ -419,6 +419,7 @@ def get_config(
                 from_args[k] = v
 
     # If we were given another config file, use it
+
     if file_path is not None:
         config_file = file_path
     elif from_args.get("config"):
