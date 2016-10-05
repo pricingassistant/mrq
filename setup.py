@@ -6,7 +6,7 @@ def get_requirements():
     reqs = []
     for filename in ["requirements-base.txt", "requirements-dashboard.txt", "requirements-setuptools.txt"]:
         with open(filename, "r") as f:
-            reqs += [x.strip() for x in f.readlines() if x.strip() and not (x.strip().startswith("#") or x.strip().startswith("git+git")]
+            reqs += [x.strip() for x in f.readlines() if x.strip() and not (x.strip().startswith("#") or x.strip().startswith("git+git"))]
     return reqs
 
 
