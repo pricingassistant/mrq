@@ -21,7 +21,7 @@ class Queue(object):
     # of Queue in the current process
     known_queues = {}
 
-    def __init__(self, queue_id, add_to_known_queues=True):
+    def __init__(self, queue_id, add_to_known_queues=False):
 
         if isinstance(queue_id, Queue):
             self.id = queue_id.id  # TODO use __new__?
@@ -110,7 +110,7 @@ class Queue(object):
 
         for key in Queue.known_queues:
             if key.startswith(self.id) and not key.endswith(delimiter):
-                queues.append(Queue(key))
+                queues.append(Queue(key, add_to_known_queues=True))
 
         return queues
 
@@ -235,11 +235,35 @@ class Queue(object):
         return queues
 
     @classmethod
-    def all_known(cls, ):
+    def all_known(cls):
         """ List all previously known queues """
 
-        # raw queues we know exist from the config + known queues in redis
-        return set(context.get_current_config().get("raw_queues", {}).keys() + cls.redis_known_queues().keys())
+        # queues we know exist from the config + known queues in redis
+        return cls.all_known_from_config().union(set(cls.redis_known_queues().keys()))
+
+    @classmethod
+    def all_known_from_config(cls):
+        """ List all known queues from config (raw and regular). Caution: this does not account for the
+            configuration of workers' queues (usually given via command line)
+        """
+
+        cfg = context.get_current_config()
+
+        queues_from_config = [
+          t.get("queue")
+          for t in (cfg.get("tasks") or {}).values()
+          if t.get("queue")
+        ]
+
+        queues_from_config += (cfg.get("raw_queues") or {}).keys()
+
+        queues_from_config += [
+          t.get("retry_queue")
+          for t in (cfg.get("raw_queues") or {}).values()
+          if t.get("retry_queue")
+        ]
+
+        return set(queues_from_config)
 
     @classmethod
     def all(cls):

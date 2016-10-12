@@ -73,7 +73,7 @@ class Worker(object):
         self.log_handler = LogHandler(quiet=self.config["quiet"])
         self.log = self.log_handler.get_logger(worker=self.id)
 
-        self.queues = [Queue(x) for x in self.config["queues"] if x]
+        self.queues = [Queue(x, add_to_known_queues=True) for x in self.config["queues"] if x]
 
         self.log.info(
             "Starting Gevent pool with %s worker greenlets (+ report, logs, adminhttp)" %
@@ -212,9 +212,9 @@ class Worker(object):
             try:
                 for queue in self.config["queues"]:
                     if queue.endswith(get_current_config().get("subqueues_delimiter")):
-                        queues += Queue(queue).redis_known_subqueues()
+                        queues += Queue(queue, add_to_known_queues=True).redis_known_subqueues()
                     else:
-                        queues.append(Queue(queue))
+                        queues.append(Queue(queue, add_to_known_queues=True))
 
             except Exception as e:  # pylint: disable=broad-except
                 self.log.error("When refreshing subqueues: %s", e)

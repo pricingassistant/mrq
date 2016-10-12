@@ -132,7 +132,7 @@ class JobAction(Task):
 
                     # Between these two lines, jobs can become "lost" too.
 
-                    Queue(destination_queue or queue).enqueue_job_ids(
+                    Queue(destination_queue or queue, add_to_known_queues=True).enqueue_job_ids(
                         [str(x) for x in jobs_by_queue[queue]])
 
         print stats
