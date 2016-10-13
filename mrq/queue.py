@@ -15,6 +15,11 @@ class Queue(object):
     is_set = False
     is_reverse = False
 
+    # root_id will contain the root queue id without any trailing subqueue delimiter
+    # e.g. if self.id is "some_queue/" then self.root_id will contain "some_queue"
+    # and if self.id is "some_queue/some_subqueue" then self.root_id will contain "some_queue"
+    root_id = None
+
     use_large_ids = False
 
     # This is a mutable type so it is shared by all instances
@@ -46,6 +51,13 @@ class Queue(object):
 
         if "_sorted" in self.id:
             self.is_sorted = True
+
+        self.root_id = self.id
+
+        delimiter = context.get_current_config().get("subqueues_delimiter")
+        if delimiter is not None and delimiter in self.id:
+            # Get the root queue id with no trailing delimiter
+            self.root_id = self.id.split(delimiter)[0]
 
         self.use_large_ids = context.get_current_config()["use_large_job_ids"]
 
@@ -117,7 +129,7 @@ class Queue(object):
     def get_config(self):
         """ Returns the specific configuration for this queue """
 
-        return context.get_current_config().get("raw_queues", {}).get(self.id) or {}
+        return context.get_current_config().get("raw_queues", {}).get(self.root_id) or {}
 
     def serialize_job_ids(self, job_ids):
         """ Returns job_ids serialized for storage in Redis """
