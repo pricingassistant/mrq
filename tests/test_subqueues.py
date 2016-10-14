@@ -43,7 +43,7 @@ def test_unmatchable_subqueues(worker, queue, enqueue_on):
     worker.stop()
 
 
-@pytest.mark.parametrize(["delimiter"], ["/", ".", "_"])
+@pytest.mark.parametrize(["delimiter"], ["/", ".", "-"])
 def test_custom_delimiters(worker, delimiter):
 
     queue = "main" + delimiter

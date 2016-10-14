@@ -3,7 +3,7 @@ import os
 import sys
 import re
 from .version import VERSION
-from .utils import get_local_ip
+from .utils import get_local_ip, DelimiterArgParser
 import atexit
 
 
@@ -344,7 +344,8 @@ def add_parser_args(parser, config_type):
         parser.add_argument(
             '--subqueues_delimiter',
             default='/',
-            help='Delimiter between main queue and subqueue names')
+            help='Delimiter between main queue and subqueue names',
+            action=DelimiterArgParser)
 
         parser.add_argument(
             '--admin_port',
