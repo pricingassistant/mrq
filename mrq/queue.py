@@ -387,6 +387,7 @@ class Queue(object):
 
     def empty(self):
         """ Empty a queue. """
+        self.remove_from_known_queues()
         return context.connections.redis.delete(self.redis_key)
 
     def dequeue_jobs(self, max_jobs=1, job_class=None, worker=None):
