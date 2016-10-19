@@ -207,6 +207,7 @@ class Worker(object):
 
             # Update the process-local list of known queues
             Queue.known_queues = Queue.redis_known_queues()
+            Queue.paused_queues = Queue.redis_paused_queues()
 
             queues = []
             try:
@@ -469,10 +470,12 @@ class Worker(object):
                     gevent.sleep(0.01)
 
                 jobs = []
+                paused_queues = Queue.redis_paused_queues()
+                available_queues = [queue for queue in self.queues if queue.id not in paused_queues]
 
-                for queue_i in xrange(len(self.queues)):
+                for queue_i in xrange(len(available_queues)):
 
-                    queue = self.queues[(queue_i + queue_offset) % len(self.queues)]
+                    queue = available_queues[(queue_i + queue_offset) % len(available_queues)]
 
                     max_jobs_per_queue = free_pool_slots - len(jobs)
 
@@ -481,7 +484,7 @@ class Worker(object):
                         break
 
                     if self.config["dequeue_strategy"] == "parallel":
-                        max_jobs_per_queue = max(1, int(max_jobs_per_queue / (len(self.queues) - queue_i)))
+                        max_jobs_per_queue = max(1, int(max_jobs_per_queue / (len(available_queues) - queue_i)))
 
                     jobs += queue.dequeue_jobs(
                         max_jobs=max_jobs_per_queue,

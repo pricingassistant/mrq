@@ -77,6 +77,11 @@ class Queue(object):
         return "%s:s:started" % context.get_current_config()["redis_prefix"]
 
     @classmethod
+    def redis_key_paused_queues(cls):
+        """ Returns the redis key used to store this queue. """
+        return "%s:s:paused" % (context.get_current_config()["redis_prefix"])
+
+    @classmethod
     def redis_key_known_queues(cls):
         """ Returns the global redis key used to store started job ids """
         return "%s:known_queues_zset" % context.get_current_config()["redis_prefix"]
@@ -112,6 +117,11 @@ class Queue(object):
             for value, score in context.connections.redis.zrange(cls.redis_key_known_queues(), 0, -1, withscores=True)
         }
 
+    @classmethod
+    def redis_paused_queues(cls):
+        """ Returns the set of currently paused queues """
+        return context.connections.redis.smembers(cls.redis_key_paused_queues())
+
     def redis_known_subqueues(self):
         """ Return the known subqueues of this queue as Queue objects. """
         delimiter = context.get_current_config()["subqueues_delimiter"]
@@ -146,6 +156,18 @@ class Queue(object):
             return job_ids
         else:
             return [x.encode('hex') for x in job_ids]
+
+    def pause(self):
+        """ Adds this queue to the set of paused queues """
+        context.connections.redis.sadd(Queue.redis_key_paused_queues(), self.id)
+
+    def is_paused(self):
+        """ Returns wether the queue is paused or not """
+        return context.connections.redis.sismember(Queue.redis_key_paused_queues(), self.id)
+
+    def resume(self):
+        """ Resumes a paused queue """
+        context.connections.redis.srem(Queue.redis_key_paused_queues(), self.id)
 
     def size(self):
         """ Returns the total number of jobs on the queue """
