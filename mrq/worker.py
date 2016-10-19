@@ -424,7 +424,9 @@ class Worker(object):
 
         self.status = "started"
 
-        self.greenlets["subqueues"] = gevent.spawn(self.greenlet_subqueues)
+        # An interval of 0 disables the refresh
+        if self.config["subqueues_refresh_interval"] > 0:
+            self.greenlets["subqueues"] = gevent.spawn(self.greenlet_subqueues)
 
         # An interval of 0 disables the refresh
         if self.config["paused_queues_refresh_interval"] > 0:
