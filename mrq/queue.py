@@ -25,6 +25,7 @@ class Queue(object):
     # This is a mutable type so it is shared by all instances
     # of Queue in the current process
     known_queues = {}
+    paused_queues = set()
 
     def __init__(self, queue_id, add_to_known_queues=False):
 
@@ -162,7 +163,11 @@ class Queue(object):
         context.connections.redis.sadd(Queue.redis_key_paused_queues(), self.id)
 
     def is_paused(self):
-        """ Returns wether the queue is paused or not """
+        """
+            Returns wether the queue is paused or not.
+            Warning: this does NOT ensure that the queue was effectively added to
+            the list of paused queues. See the 'paused_queues_refresh_interval' option.
+        """
         return context.connections.redis.sismember(Queue.redis_key_paused_queues(), self.id)
 
     def resume(self):

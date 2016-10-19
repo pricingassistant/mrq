@@ -207,7 +207,6 @@ class Worker(object):
 
             # Update the process-local list of known queues
             Queue.known_queues = Queue.redis_known_queues()
-            Queue.paused_queues = Queue.redis_paused_queues()
 
             queues = []
             try:
@@ -227,6 +226,14 @@ class Worker(object):
                 return
 
             time.sleep(self.config["subqueues_refresh_interval"])
+
+    def greenlet_paused_queues(self):
+
+      while True:
+
+          # Update the process-local list of known queues
+          Queue.paused_queues = Queue.redis_paused_queues()
+          time.sleep(self.config["paused_queues_refresh_interval"])
 
     def get_memory(self):
         mmaps = self.process.get_memory_maps()
@@ -419,6 +426,10 @@ class Worker(object):
 
         self.greenlets["subqueues"] = gevent.spawn(self.greenlet_subqueues)
 
+        # An interval of 0 disables the refresh
+        if self.config["paused_queues_refresh_interval"] > 0:
+            self.greenlets["paused_queues"] = gevent.spawn(self.greenlet_paused_queues)
+
         self.greenlets["report"] = gevent.spawn(self.greenlet_report)
 
         self.greenlets["logs"] = gevent.spawn(self.greenlet_logs)
@@ -470,8 +481,7 @@ class Worker(object):
                     gevent.sleep(0.01)
 
                 jobs = []
-                paused_queues = Queue.redis_paused_queues()
-                available_queues = [queue for queue in self.queues if queue.id not in paused_queues]
+                available_queues = [queue for queue in self.queues if queue.id not in Queue.paused_queues]
 
                 for queue_i in xrange(len(available_queues)):
 

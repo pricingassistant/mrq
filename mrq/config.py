@@ -342,6 +342,13 @@ def add_parser_args(parser, config_type):
             help="Seconds between worker refreshes of the known subqueues")
 
         parser.add_argument(
+            '--paused_queues_refresh_interval',
+            default=60,
+            action='store',
+            type=float,
+            help="Seconds between worker refreshes of the paused queues list")
+
+        parser.add_argument(
             '--subqueues_delimiter',
             default='/',
             help='Delimiter between main queue and subqueue names',
