@@ -499,6 +499,7 @@ class Queue(object):
             for j in job_data:
                 j["status"] = "started"
                 j["queue"] = retry_queue
+                j["raw_queue"] = self.id
                 if worker:
                     j["worker"] = worker.id
 
