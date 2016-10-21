@@ -231,7 +231,7 @@ class Worker(object):
 
       while True:
 
-          # Update the process-local list of known queues
+          # Update the process-local list of paused queues
           Queue.paused_queues = Queue.redis_paused_queues()
           time.sleep(self.config["paused_queues_refresh_interval"])
 
@@ -483,7 +483,12 @@ class Worker(object):
                     gevent.sleep(0.01)
 
                 jobs = []
-                available_queues = [queue for queue in self.queues if queue.id not in Queue.paused_queues]
+
+                available_queues = [
+                    queue for queue in self.queues
+                    if queue.root_id not in Queue.paused_queues and
+                    queue.id not in Queue.paused_queues
+                ]
 
                 for queue_i in xrange(len(available_queues)):
 
