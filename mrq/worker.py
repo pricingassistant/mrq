@@ -227,6 +227,14 @@ class Worker(object):
 
             time.sleep(self.config["subqueues_refresh_interval"])
 
+    def greenlet_paused_queues(self):
+
+      while True:
+
+          # Update the process-local list of paused queues
+          Queue.paused_queues = Queue.redis_paused_queues()
+          time.sleep(self.config["paused_queues_refresh_interval"])
+
     def get_memory(self):
         mmaps = self.process.get_memory_maps()
         mem = {
@@ -416,7 +424,13 @@ class Worker(object):
 
         self.status = "started"
 
-        self.greenlets["subqueues"] = gevent.spawn(self.greenlet_subqueues)
+        # An interval of 0 disables the refresh
+        if self.config["subqueues_refresh_interval"] > 0:
+            self.greenlets["subqueues"] = gevent.spawn(self.greenlet_subqueues)
+
+        # An interval of 0 disables the refresh
+        if self.config["paused_queues_refresh_interval"] > 0:
+            self.greenlets["paused_queues"] = gevent.spawn(self.greenlet_paused_queues)
 
         self.greenlets["report"] = gevent.spawn(self.greenlet_report)
 
@@ -470,9 +484,15 @@ class Worker(object):
 
                 jobs = []
 
-                for queue_i in xrange(len(self.queues)):
+                available_queues = [
+                    queue for queue in self.queues
+                    if queue.root_id not in Queue.paused_queues and
+                    queue.id not in Queue.paused_queues
+                ]
 
-                    queue = self.queues[(queue_i + queue_offset) % len(self.queues)]
+                for queue_i in xrange(len(available_queues)):
+
+                    queue = available_queues[(queue_i + queue_offset) % len(available_queues)]
 
                     max_jobs_per_queue = free_pool_slots - len(jobs)
 
@@ -481,7 +501,7 @@ class Worker(object):
                         break
 
                     if self.config["dequeue_strategy"] == "parallel":
-                        max_jobs_per_queue = max(1, int(max_jobs_per_queue / (len(self.queues) - queue_i)))
+                        max_jobs_per_queue = max(1, int(max_jobs_per_queue / (len(available_queues) - queue_i)))
 
                     jobs += queue.dequeue_jobs(
                         max_jobs=max_jobs_per_queue,

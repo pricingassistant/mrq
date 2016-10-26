@@ -56,6 +56,7 @@ You can pass additional configuration flags:
  - `--report_file`: Filepath of a json dump of the worker status. Disabled if none.
  - `--subqueues_refresh_interval`: Seconds between worker refreshes of the known subqueues.
  - `--subqueues_delimiter`: Delimiter between main queue and subqueue names.
+ - `--paused_queues_refresh_interval`: Seconds between worker refreshes of the paused queues list.
  - `--admin_port`: Start an admin server on this port, if provided. Incompatible with --processes. Defaults to **0**
  - `--admin_ip`: IP for the admin server to listen on. Use "0.0.0.0" to allow access from outside. Defaults to **127.0.0.1**.
  - `--local_ip`: Overwrite the local IP, to be displayed in the dashboard.
@@ -103,4 +104,3 @@ $ mrq-run tasks.mylib.myfile.MyTask '{"param1": 1, "param2": True}'
 # Shorter syntax which casts all values as strings (equivalent to '{"param1": "1", "param2": "ok"}')
 $ mrq-run tasks.mylib.myfile.MyTask param1 1 param2 ok
 ```
-
