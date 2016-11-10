@@ -65,9 +65,14 @@ class Scheduler(object):
 
             now = datetime.datetime.utcnow()
             current_weekday = now.weekday()
+            current_monthday = now.day
+
             interval = datetime.timedelta(seconds=task["interval"])
 
             last_time = now - interval
+
+            if task.get("monthday", current_monthday) != current_monthday:
+                continue
 
             if task.get("weekday", current_weekday) != current_weekday:
                 continue

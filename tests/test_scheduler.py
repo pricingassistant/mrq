@@ -144,3 +144,22 @@ def test_scheduler_weekday_dailytime(worker):
     print inserts
     assert collection.find({"params.weekday": datetime.datetime.utcnow().weekday(), "params.later": False}).count() == 2
 
+
+def test_scheduler_monthday(worker):
+    # Task is scheduled in 3 seconds
+    worker.start(
+        flags="--scheduler --config tests/fixtures/config-scheduler6.py",
+        env={
+            # We need to pass this in the environment so that each worker has the
+            # exact same hash
+            "MRQ_TEST_SCHEDULER_TIME": str(time.time() + 5)
+        })
+
+    collection = worker.mongodb_jobs.tests_inserts
+    assert collection.find().count() == 0
+
+    # It should be done a first time immediately
+    time.sleep(3)
+    inserts = list(collection.find())
+    assert len(inserts) == 1
+    assert collection.find({"params.monthday": datetime.datetime.utcnow().day}).count() == 1
