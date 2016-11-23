@@ -79,14 +79,23 @@ def test_raw_sorted(worker, p_queue, p_pushback, p_timed, p_flags):
     assert test_collection.count() == 3
 
 
+@pytest.mark.parametrize("has_subqueue", [False, True])
 @pytest.mark.parametrize(["p_queue", "p_set"], [
     ["test_raw", False],
     ["test_set", True]
 ])
-def test_raw_set(worker, p_queue, p_set):
+def test_raw_set(worker, has_subqueue, p_queue, p_set):
+    flags = "--greenlets 10 --config tests/fixtures/config-raw1.py"
+    if has_subqueue:
+      flags = "%s --subqueues_refresh_interval=0.1" % flags
+      # worker should dequeue all subqueues
+      p_queue = "%s/" % p_queue
 
-    worker.start(
-        flags="--greenlets 10 --config tests/fixtures/config-raw1.py", queues=p_queue)
+    worker.start(flags=flags, queues=p_queue)
+
+    if has_subqueue:
+      # queue tasks in p_queue/subqueue
+      p_queue = "%ssubqueue" % p_queue
 
     test_collection = worker.mongodb_logs.tests_inserts
     jobs_collection = worker.mongodb_jobs.mrq_jobs

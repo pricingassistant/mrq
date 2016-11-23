@@ -4,6 +4,7 @@ import time
 import math
 import json
 import datetime
+import argparse
 from collections import deque
 from bson import ObjectId
 
@@ -194,3 +195,11 @@ class MovingAverage(object):
         self.__sum += val
         self.__q.append(val)
         return 1.0 * self.__sum / len(self.__q)
+
+
+class DelimiterArgParser(argparse.Action):
+    def __call__(self, parser, namespace, value, option_string):
+        if value == '_':
+            parser.error("Cannot use '%s' as a subqueue delimiter" % value)
+
+        setattr(namespace, self.dest, value)

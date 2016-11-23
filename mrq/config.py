@@ -3,7 +3,7 @@ import os
 import sys
 import re
 from .version import VERSION
-from .utils import get_local_ip
+from .utils import get_local_ip, DelimiterArgParser
 import atexit
 
 
@@ -336,15 +336,23 @@ def add_parser_args(parser, config_type):
 
         parser.add_argument(
             '--subqueues_refresh_interval',
-            default=60,
+            default=10,
             action='store',
             type=float,
             help="Seconds between worker refreshes of the known subqueues")
 
         parser.add_argument(
+            '--paused_queues_refresh_interval',
+            default=10,
+            action='store',
+            type=float,
+            help="Seconds between worker refreshes of the paused queues list")
+
+        parser.add_argument(
             '--subqueues_delimiter',
             default='/',
-            help='Delimiter between main queue and subqueue names')
+            help='Delimiter between main queue and subqueue names',
+            action=DelimiterArgParser)
 
         parser.add_argument(
             '--admin_port',
@@ -419,6 +427,7 @@ def get_config(
                 from_args[k] = v
 
     # If we were given another config file, use it
+
     if file_path is not None:
         config_file = file_path
     elif from_args.get("config"):

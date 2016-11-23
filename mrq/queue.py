@@ -15,13 +15,19 @@ class Queue(object):
     is_set = False
     is_reverse = False
 
+    # root_id will contain the root queue id without any trailing subqueue delimiter
+    # e.g. if self.id is "some_queue/" then self.root_id will contain "some_queue"
+    # and if self.id is "some_queue/some_subqueue" then self.root_id will contain "some_queue"
+    root_id = None
+
     use_large_ids = False
 
     # This is a mutable type so it is shared by all instances
     # of Queue in the current process
     known_queues = {}
+    paused_queues = set()
 
-    def __init__(self, queue_id, add_to_known_queues=True):
+    def __init__(self, queue_id, add_to_known_queues=False):
 
         if isinstance(queue_id, Queue):
             self.id = queue_id.id  # TODO use __new__?
@@ -47,6 +53,13 @@ class Queue(object):
         if "_sorted" in self.id:
             self.is_sorted = True
 
+        self.root_id = self.id
+
+        delimiter = context.get_current_config().get("subqueues_delimiter")
+        if delimiter is not None and delimiter in self.id:
+            # Get the root queue id with no trailing delimiter
+            self.root_id = self.id.split(delimiter)[0]
+
         self.use_large_ids = context.get_current_config()["use_large_job_ids"]
 
         # If this is the first time this process sees this queue, try to add it
@@ -63,6 +76,11 @@ class Queue(object):
     def redis_key_started(cls):
         """ Returns the global redis key used to store started job ids """
         return "%s:s:started" % context.get_current_config()["redis_prefix"]
+
+    @classmethod
+    def redis_key_paused_queues(cls):
+        """ Returns the redis key used to store this queue. """
+        return "%s:s:paused" % (context.get_current_config()["redis_prefix"])
 
     @classmethod
     def redis_key_known_queues(cls):
@@ -100,6 +118,11 @@ class Queue(object):
             for value, score in context.connections.redis.zrange(cls.redis_key_known_queues(), 0, -1, withscores=True)
         }
 
+    @classmethod
+    def redis_paused_queues(cls):
+        """ Returns the set of currently paused queues """
+        return context.connections.redis.smembers(cls.redis_key_paused_queues())
+
     def redis_known_subqueues(self):
         """ Return the known subqueues of this queue as Queue objects. """
         delimiter = context.get_current_config()["subqueues_delimiter"]
@@ -110,14 +133,14 @@ class Queue(object):
 
         for key in Queue.known_queues:
             if key.startswith(self.id) and not key.endswith(delimiter):
-                queues.append(Queue(key))
+                queues.append(Queue(key, add_to_known_queues=True))
 
         return queues
 
     def get_config(self):
         """ Returns the specific configuration for this queue """
 
-        return context.get_current_config().get("raw_queues", {}).get(self.id) or {}
+        return context.get_current_config().get("raw_queues", {}).get(self.root_id) or {}
 
     def serialize_job_ids(self, job_ids):
         """ Returns job_ids serialized for storage in Redis """
@@ -134,6 +157,37 @@ class Queue(object):
             return job_ids
         else:
             return [x.encode('hex') for x in job_ids]
+
+    def _get_pausable_id(self):
+      """
+          Get the queue id (either id or root_id) that should be used to pause/unpause the current queue
+          TODO: handle subqueues with more than one level, e.g. "queue/subqueue/"
+      """
+      queue = self.id
+      delimiter = context.get_current_config().get("subqueues_delimiter")
+      if delimiter is not None and self.id.endswith(delimiter):
+          queue = self.root_id
+      return queue
+
+    def pause(self):
+        """ Adds this queue to the set of paused queues """
+        context.connections.redis.sadd(Queue.redis_key_paused_queues(), self._get_pausable_id())
+
+    def is_paused(self):
+        """
+            Returns wether the queue is paused or not.
+            Warning: this does NOT ensure that the queue was effectively added to
+            the set of paused queues. See the 'paused_queues_refresh_interval' option.
+        """
+        root_is_paused = False
+        if self.root_id != self.id:
+            root_is_paused = context.connections.redis.sismember(Queue.redis_key_paused_queues(), self.root_id)
+
+        return root_is_paused or context.connections.redis.sismember(Queue.redis_key_paused_queues(), self.id)
+
+    def resume(self):
+        """ Resumes a paused queue """
+        context.connections.redis.srem(Queue.redis_key_paused_queues(), self._get_pausable_id())
 
     def size(self):
         """ Returns the total number of jobs on the queue """
@@ -235,11 +289,35 @@ class Queue(object):
         return queues
 
     @classmethod
-    def all_known(cls, ):
+    def all_known(cls):
         """ List all previously known queues """
 
-        # raw queues we know exist from the config + known queues in redis
-        return set(context.get_current_config().get("raw_queues", {}).keys() + cls.redis_known_queues().keys())
+        # queues we know exist from the config + known queues in redis
+        return cls.all_known_from_config().union(set(cls.redis_known_queues().keys()))
+
+    @classmethod
+    def all_known_from_config(cls):
+        """ List all known queues from config (raw and regular). Caution: this does not account for the
+            configuration of workers' queues (usually given via command line)
+        """
+
+        cfg = context.get_current_config()
+
+        queues_from_config = [
+          t.get("queue")
+          for t in (cfg.get("tasks") or {}).values()
+          if t.get("queue")
+        ]
+
+        queues_from_config += (cfg.get("raw_queues") or {}).keys()
+
+        queues_from_config += [
+          t.get("retry_queue")
+          for t in (cfg.get("raw_queues") or {}).values()
+          if t.get("retry_queue")
+        ]
+
+        return set(queues_from_config)
 
     @classmethod
     def all(cls):
@@ -351,6 +429,7 @@ class Queue(object):
 
     def empty(self):
         """ Empty a queue. """
+        self.remove_from_known_queues()
         return context.connections.redis.delete(self.redis_key)
 
     def dequeue_jobs(self, max_jobs=1, job_class=None, worker=None):
@@ -435,6 +514,7 @@ class Queue(object):
             for j in job_data:
                 j["status"] = "started"
                 j["queue"] = retry_queue
+                j["raw_queue"] = self.id
                 if worker:
                     j["worker"] = worker.id
 

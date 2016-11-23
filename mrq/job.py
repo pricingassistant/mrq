@@ -203,7 +203,7 @@ class Job(object):
 
     def _attach_original_exception(self, exc):
         """ Often, a retry will be raised inside an "except" block.
-            This Keep track of the first exception for debugging purposes. """
+            This Keep track of the first exception for debugging purposes """
 
         original_exception = sys.exc_info()
         if original_exception[0] is not None:
@@ -250,7 +250,7 @@ class Job(object):
             queue = self.data["queue"]
 
         from .queue import Queue
-        queue_obj = Queue(queue)
+        queue_obj = Queue(queue, add_to_known_queues=True)
 
         self._save_status("queued", updates={
             "queue": queue,
@@ -350,6 +350,27 @@ class Job(object):
 
             self._save_status("retry", updates, exception=True)
 
+    def _save_traceback_history(self, status, trace, job_exc):
+        """ Create traceback history or add a new traceback to history. """
+        failure_date = datetime.datetime.utcnow()
+
+        new_history = {
+            "date": failure_date,
+            "status": status,
+            "exceptiontype": job_exc.__name__
+        }
+
+        traces = trace.split("---- Original exception: -----")
+        if len(traces) > 1:
+            new_history["original_traceback"] = traces[1]
+        worker = context.get_current_worker()
+        if worker:
+            new_history["worker"] = worker.id
+        new_history["traceback"] = traces[0]
+        self.collection.update({
+            "_id": self.id
+        }, {"$push": {"traceback_history": new_history}})
+
     def save_success(self, result=None):
 
         dateexpires = datetime.datetime.utcnow() + datetime.timedelta(seconds=self.result_ttl)
@@ -413,7 +434,12 @@ class Job(object):
             trace = traceback.format_exc()
             context.log.error(trace)
             db_updates["traceback"] = trace
-            db_updates["exceptiontype"] = sys.exc_info()[0].__name__
+            exc = sys.exc_info()[0]
+            db_updates["exceptiontype"] = exc.__name__
+
+            if context.get_current_config().get("save_traceback_history"):
+
+                self._save_traceback_history(status, trace, exc)
 
         # In the most common case, we allow an optimization on Mongo writes
         if status == "success":
@@ -541,7 +567,7 @@ def queue_raw_jobs(queue, params_list, **kwargs):
     """ Queue some jobs on a raw queue """
 
     from .queue import Queue
-    queue_obj = Queue(queue)
+    queue_obj = Queue(queue, add_to_known_queues=True)
     queue_obj.enqueue_raw_jobs(params_list, **kwargs)
 
 
@@ -562,7 +588,7 @@ def queue_jobs(main_task_path, params_list, queue=None, batch_size=1000):
         queue = task_def.get("queue", "default")
 
     from .queue import Queue
-    queue_obj = Queue(queue)
+    queue_obj = Queue(queue, add_to_known_queues=True)
 
     if queue_obj.is_raw:
         raise Exception("Can't queue regular jobs on a raw queue")

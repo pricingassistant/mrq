@@ -286,15 +286,27 @@ def api_job_result(job_id):
 @app.route('/api/job/<job_id>/traceback')
 @requires_auth
 def api_job_traceback(job_id):
-    collection = connections.mongodb_jobs.mrq_jobs
+    collection = connections.mongodb_jobs.mrq_jobss
+    if get_current_config().get("save_traceback_history"):
+
+        field_sent = "traceback_history"
+    else:
+        field_sent = "traceback"
+
     job_data = collection.find_one(
-        {"_id": ObjectId(job_id)}, projection=["traceback"])
+        {"_id": ObjectId(job_id)}, projection=[field_sent])
 
     if not job_data:
-        job_data = {}
+        # If a job has no traceback history, we fallback onto traceback
+        if field_sent == "traceback_history":
+            field_sent = "traceback"
+            job_data = collection.find_one(
+                {"_id": ObjectId(job_id)}, projection=[field_sent])
+        if not job_data:
+            job_data = {}
 
     return jsonify({
-        "traceback": job_data.get("traceback", "No exception raised")
+        field_sent: job_data.get(field_sent, "No exception raised")
     })
 
 

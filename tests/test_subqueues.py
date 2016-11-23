@@ -43,7 +43,7 @@ def test_unmatchable_subqueues(worker, queue, enqueue_on):
     worker.stop()
 
 
-@pytest.mark.parametrize(["delimiter"], ["/", ".", "_"])
+@pytest.mark.parametrize(["delimiter"], ["/", ".", "-"])
 def test_custom_delimiters(worker, delimiter):
 
     queue = "main" + delimiter
@@ -52,4 +52,25 @@ def test_custom_delimiters(worker, delimiter):
     worker.start(queues=queue, flags="--subqueues_refresh_interval=0.1 --subqueues_delimiter=%s" % delimiter)
     job_id = worker.send_task("tests.tasks.general.GetTime", {}, queue=subqueue, block=False)
     Job(job_id).wait(poll_interval=0.01)
+    worker.stop()
+
+
+def test_refresh_interval(worker):
+
+    """ Tests that a refresh interval of 0 disables the subqueue detection """
+
+    worker.start(queues="test/", flags="--subqueues_refresh_interval=0")
+
+    time.sleep(2)
+
+    job_id1 = worker.send_task(
+        "tests.tasks.general.GetTime", {"a": 41},
+        queue="test/subqueue", block=False)
+
+    time.sleep(5)
+
+    job1 = Job(job_id1).fetch().data
+
+    assert job1["status"] == "queued"
+
     worker.stop()

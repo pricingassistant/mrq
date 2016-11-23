@@ -205,13 +205,33 @@ class CleanKnownQueues(Task):
     def run(self, params):
 
         max_age = int(params.get("max_age") or (7 * 86400))
+        pretend = bool(params.get("pretend"))
+        check_mongo = bool(params.get("check_mongo"))
 
         known_queues = Queue.redis_known_queues()
+
+        removed_queues = []
+
+        queues_from_config = Queue.all_known_from_config()
+
+        print "Found %s known queues & %s from config" % (len(known_queues), len(queues_from_config))
 
         # Only clean queues older than N days
         time_threshold = time.time() - max_age
         for queue, time_last_used in known_queues.iteritems():
+            if queue in queues_from_config:
+                continue
             if time_last_used < time_threshold:
                 q = Queue(queue, add_to_known_queues=False)
-                if q.size() == 0:
-                    q.remove_from_known_queues()
+                size = q.size()
+                if check_mongo:
+                    size += connections.mongodb_jobs.mrq_jobs.count({"queue": queue})
+                if size == 0:
+                    removed_queues.append(queue)
+                    print "Removing empty queue '%s' from known queues ..." % queue
+                    if not pretend:
+                        q.remove_from_known_queues()
+
+        print "Cleaned %s queues" % len(removed_queues)
+
+        return removed_queues
