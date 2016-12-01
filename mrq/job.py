@@ -1,7 +1,7 @@
 import datetime
 from bson import ObjectId
 import time
-from .exceptions import RetryInterrupt, MaxRetriesInterrupt, AbortInterrupt
+from .exceptions import RetryInterrupt, MaxRetriesInterrupt, AbortInterrupt, LockExpiredInterrupt
 from .utils import load_class_by_path, group_iter
 import gevent
 import objgraph
@@ -17,6 +17,8 @@ import fnmatch
 import encodings
 import copy_reg
 from . import context
+
+import redis.lock
 
 
 class Job(object):
@@ -274,7 +276,22 @@ class Job(object):
 
         self.task.is_main_task = True
 
-        result = self.task.run_wrapped(self.data["params"])
+        lock = None
+
+        if self.task.locked_job:
+            lock_key = "mrq:l:%s" % self.data["path"]
+            context.log.debug("Trying to acquire lock '%s'" % lock_key)
+            lock = context.connections.redis.lock(lock_key, timeout=self.timeout)
+            if not lock.acquire(blocking=True, blocking_timeout=1):
+                raise LockExpiredInterrupt()
+
+            context.log.debug("Lock '%s' acquired." % lock_key)
+
+        try:
+            result = self.task.run_wrapped(self.data["params"])
+        finally:
+            if lock:
+                lock.release()
 
         self.save_success(result)
 

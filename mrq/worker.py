@@ -16,7 +16,7 @@ from collections import defaultdict
 
 from .job import Job
 from .exceptions import (TimeoutInterrupt, StopRequested, JobInterrupt, AbortInterrupt,
-                         RetryInterrupt, MaxRetriesInterrupt)
+                         RetryInterrupt, MaxRetriesInterrupt, LockExpiredInterrupt)
 from .context import (set_current_worker, set_current_job, get_current_job, get_current_config,
                       connections, enable_greenlet_tracing)
 from .queue import Queue
@@ -616,6 +616,10 @@ class Worker(object):
 
         try:
             job.perform()
+
+        except LockExpiredInterrupt:
+            self.log.error("Lock expired")
+            job._save_status("expired")
 
         except RetryInterrupt:
             self.log.error("Caught retry")

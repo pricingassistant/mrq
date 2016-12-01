@@ -3,6 +3,7 @@ class Task(object):
 
     # Are we the first task that a Job called?
     is_main_task = False
+    locked_job = False
 
     # Default write concern values when setting status=success
     # http://docs.mongodb.org/manual/reference/write-concern/
