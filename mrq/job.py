@@ -72,6 +72,11 @@ class Job(object):
         elif fetch:
             self.fetch(start=False, full_data=False)
 
+    @property
+    def redis_key_lock(self):
+        """ Returns the global redis key used to store started job ids """
+        return "%s:l:%s" % (context.get_current_config()["redis_prefix"], self.data["path"])
+
     def exists(self):
         """ Returns True if a job with the current _id exists in MongoDB. """
         return bool(self.collection.find_one({"_id": self.id}, projection={"_id": 1}))
@@ -279,13 +284,12 @@ class Job(object):
         lock = None
 
         if self.task.locked_job:
-            lock_key = "mrq:l:%s" % self.data["path"]
-            context.log.debug("Trying to acquire lock '%s'" % lock_key)
-            lock = context.connections.redis.lock(lock_key, timeout=self.timeout)
+            context.log.debug("Trying to acquire lock '%s'" % self.redis_key_lock)
+            lock = context.connections.redis.lock(self.redis_key_lock, timeout=self.timeout)
             if not lock.acquire(blocking=True, blocking_timeout=1):
                 raise LockExpiredInterrupt()
 
-            context.log.debug("Lock '%s' acquired." % lock_key)
+            context.log.debug("Lock '%s' acquired." % self.redis_key_lock)
 
         try:
             result = self.task.run_wrapped(self.data["params"])
