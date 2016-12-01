@@ -391,6 +391,13 @@ def add_parser_args(parser, config_type):
             help='Strategy for dequeuing multiple queues. Default is \'sequential\',' +
                  'to dequeue them in command-line order.')
 
+        parser.add_argument(
+            '--lock_timeout',
+            default=1.,
+            type=float,
+            action='store',
+            help='Max seconds to wait for a lock before changing the job status to expired.')
+
 
 def get_config(
         sources=(

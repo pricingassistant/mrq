@@ -286,7 +286,9 @@ class Job(object):
         if self.task.locked_job:
             context.log.debug("Trying to acquire lock '%s'" % self.redis_key_lock)
             lock = context.connections.redis.lock(self.redis_key_lock, timeout=self.timeout)
-            if not lock.acquire(blocking=True, blocking_timeout=1):
+            acquire_timeout = context.get_current_config()["lock_timeout"]
+
+            if not lock.acquire(blocking=True, blocking_timeout=acquire_timeout):
                 raise LockExpiredInterrupt()
 
             context.log.debug("Lock '%s' acquired." % self.redis_key_lock)
