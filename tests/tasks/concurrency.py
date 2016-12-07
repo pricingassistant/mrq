@@ -1,6 +1,6 @@
 import time
 from mrq.task import Task
-from mrq.context import log, get_current_job, get_current_worker, get_current_config
+from mrq.context import log
 from .general import Add
 
 class LockedAdd(Add):
