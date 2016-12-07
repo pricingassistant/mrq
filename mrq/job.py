@@ -70,10 +70,10 @@ class Job(object):
         elif fetch:
             self.fetch(start=False, full_data=False)
 
-    @property
-    def redis_concurrency_key(self):
+    def redis_max_concurrency_key(self, time):
         """ Returns the global redis key used to store started job ids """
-        return "%s:c:%s" % (context.get_current_config()["redis_prefix"], self.data["path"])
+        return "%s:c:%s:%s" % (context.get_current_config()["redis_prefix"],
+            self.data["path"], time // self.timeout)
 
     def exists(self):
         """ Returns True if a job with the current _id exists in MongoDB. """
@@ -281,9 +281,12 @@ class Job(object):
 
         try:
             if self.task.max_concurrency:
+                now = int(time.time())
+                key = self.redis_max_concurrency_key(now)
+
                 pipeline = context.connections.redis.pipeline()
-                pipeline.incr(self.redis_concurrency_key)
-                pipeline.expireat(self.redis_concurrency_key, int(time.time()) + self.timeout)
+                pipeline.incr(key)
+                pipeline.expireat(key, now + self.timeout)
                 current = pipeline.execute()[0]
 
                 if current > self.task.max_concurrency:
@@ -293,7 +296,7 @@ class Job(object):
 
         finally:
             if self.task.max_concurrency:
-                pipeline.decr(self.redis_concurrency_key)
+                pipeline.decr(key)
                 pipeline.execute()
 
         self.save_success(result)
