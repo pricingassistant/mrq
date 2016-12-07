@@ -52,5 +52,5 @@ class JobInterrupt(GreenletExit):
     pass
 
 
-class LockExpiredInterrupt(_MrqInterrupt):
+class MaxConcurrencyInterrupt(_MrqInterrupt):
     pass
