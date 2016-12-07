@@ -319,3 +319,25 @@ def test_interrupt_maxjobs(worker):
     time.sleep(2)
 
     assert Queue("default").size() == 7
+
+
+def test_interrupt_maxconcurrency(worker):
+
+    # The worker will raise a maxconcurrency on the second job
+    worker.start(flags="--greenlets=2")
+
+    job_ids = worker.send_tasks("tests.tasks.concurrency.LockedAdd", [
+        {"a": i, "b": 1, "sleep": 2}
+        for i in range(2)
+    ], block=False)
+
+    worker.wait_for_tasks_results(job_ids, accept_statuses=["success", "failed", "maxconcurrency"])
+    job_statuses = [Job(job_id).fetch().data["status"] for job_id in job_ids]
+    assert job_statuses == ["success", "maxconcurrency"]
+
+    # the job concurrency key must be equal to 0
+    last_job_id = worker.send_task("tests.tasks.concurrency.LockedAdd",
+        {"a": 1, "b": 1, "sleep": 2}, block=False
+    )
+    last_job = Job(last_job_id).wait(poll_interval=0.01)
+    assert last_job.get("status") == "success"
