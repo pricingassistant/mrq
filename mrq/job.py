@@ -1,7 +1,7 @@
 import datetime
 from bson import ObjectId
 import time
-from .exceptions import RetryInterrupt, MaxRetriesInterrupt, AbortInterrupt, LockExpiredInterrupt
+from .exceptions import RetryInterrupt, MaxRetriesInterrupt, AbortInterrupt, MaxConcurrencyInterrupt
 from .utils import load_class_by_path, group_iter
 import gevent
 import objgraph
@@ -17,8 +17,6 @@ import fnmatch
 import encodings
 import copy_reg
 from . import context
-
-import redis.lock
 
 
 class Job(object):
@@ -73,9 +71,9 @@ class Job(object):
             self.fetch(start=False, full_data=False)
 
     @property
-    def redis_key_lock(self):
+    def redis_concurrency_key(self):
         """ Returns the global redis key used to store started job ids """
-        return "%s:l:%s" % (context.get_current_config()["redis_prefix"], self.data["path"])
+        return "%s:c:%s" % (context.get_current_config()["redis_prefix"], self.data["path"])
 
     def exists(self):
         """ Returns True if a job with the current _id exists in MongoDB. """
@@ -281,23 +279,22 @@ class Job(object):
 
         self.task.is_main_task = True
 
-        lock = None
-
-        if self.task.locked_job:
-            context.log.debug("Trying to acquire lock '%s'" % self.redis_key_lock)
-            lock = context.connections.redis.lock(self.redis_key_lock, timeout=self.timeout)
-            acquire_timeout = context.get_current_config()["lock_timeout"]
-
-            if not lock.acquire(blocking=True, blocking_timeout=acquire_timeout):
-                raise LockExpiredInterrupt()
-
-            context.log.debug("Lock '%s' acquired." % self.redis_key_lock)
-
         try:
+            if self.task.max_concurrency:
+                pipeline = context.connections.redis.pipeline()
+                pipeline.incr(self.redis_concurrency_key)
+                pipeline.expireat(self.redis_concurrency_key, int(time.time()) + self.timeout)
+                current = pipeline.execute()[0]
+
+                if current > self.task.max_concurrency:
+                    raise MaxConcurrencyInterrupt()
+
             result = self.task.run_wrapped(self.data["params"])
+
         finally:
-            if lock:
-                lock.release()
+            if self.task.max_concurrency:
+                pipeline.decr(self.redis_concurrency_key)
+                pipeline.execute()
 
         self.save_success(result)
 
