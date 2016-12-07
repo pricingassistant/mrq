@@ -619,7 +619,7 @@ class Worker(object):
 
         except MaxConcurrencyInterrupt:
             self.log.error("Max concurrency reached")
-            job._save_status("maxconcurrency")
+            job._save_status("maxconcurrency", exception=True)
 
         except RetryInterrupt:
             self.log.error("Caught retry")
