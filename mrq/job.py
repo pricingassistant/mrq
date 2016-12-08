@@ -70,10 +70,11 @@ class Job(object):
         elif fetch:
             self.fetch(start=False, full_data=False)
 
-    def redis_max_concurrency_key(self, time):
+    @property
+    def redis_max_concurrency_key(self):
         """ Returns the global redis key used to store started job ids """
-        return "%s:c:%s:%s" % (context.get_current_config()["redis_prefix"],
-            self.data["path"], time // self.timeout)
+        return "%s:c:%s" % (context.get_current_config()["redis_prefix"],
+            self.data["path"])
 
     def exists(self):
         """ Returns True if a job with the current _id exists in MongoDB. """
@@ -281,23 +282,26 @@ class Job(object):
 
         try:
             if self.task.max_concurrency:
-                now = int(time.time())
-                key = self.redis_max_concurrency_key(now)
 
-                pipeline = context.connections.redis.pipeline()
-                pipeline.incr(key)
-                pipeline.expireat(key, now + self.timeout)
-                current = pipeline.execute()[0]
+                if self.task.max_concurrency > 1:
+                    raise NotImplementedError()
 
-                if current > self.task.max_concurrency:
+                lock_acquired = False
+
+                # TODO: implement a semaphore
+                lock = context.connections.redis.lock(self.redis_max_concurrency_key, timeout=self.timeout + 5)
+                if not lock.acquire(blocking=True, blocking_timeout=0):
                     raise MaxConcurrencyInterrupt()
 
+                lock_acquired = True
             result = self.task.run_wrapped(self.data["params"])
 
         finally:
-            if self.task.max_concurrency:
-                pipeline.decr(key)
-                pipeline.execute()
+            if lock_acquired:
+                try:
+                    lock.release()
+                except Exception:
+                    pass
 
         self.save_success(result)
 
