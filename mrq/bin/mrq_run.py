@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+from __future__ import print_function
+
 import os
 
 # Needed to make getaddrinfo() work in pymongo on Mac OS X
@@ -40,13 +42,13 @@ def main():
         # mrq-run taskpath a 1 b 2 => {"a": "1", "b": "2"}
         for group in utils.group_iter(cfg["taskargs"], n=2):
             if len(group) != 2:
-                print "Number of arguments wasn't even"
+                print("Number of arguments wasn't even")
                 sys.exit(1)
             params[group[0]] = group[1]
 
     if cfg["queue"]:
         ret = queue_job(cfg["taskpath"], params, queue=cfg["queue"])
-        print ret
+        print(ret)
     else:
         worker_class = load_class_by_path(cfg["worker_class"])
         job = worker_class.job_class(None)
@@ -58,7 +60,7 @@ def main():
         job.datestarted = datetime.datetime.utcnow()
         set_current_job(job)
         ret = job.perform()
-        print json_stdlib.dumps(ret, cls=MongoJSONEncoder)  # pylint: disable=no-member
+        print(json_stdlib.dumps(ret, cls=MongoJSONEncoder))  # pylint: disable=no-member
 
     # This shouldn't be needed as the process will exit and close any remaining sockets
     # connections.redis.connection_pool.disconnect()

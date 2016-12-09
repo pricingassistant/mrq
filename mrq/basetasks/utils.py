@@ -1,3 +1,6 @@
+from __future__ import print_function
+from future.utils import itervalues
+from builtins import str
 from mrq.task import Task
 from mrq.queue import Queue
 from bson import ObjectId
@@ -50,7 +53,7 @@ class JobAction(Task):
         if self.params.get("params"):
             params_dict = json.loads(self.params.get("params"))  # pylint: disable=no-member
 
-            for key in params_dict.keys():
+            for key in params_dict:
                 query["params.%s" % key] = params_dict[key]
 
         return query
@@ -76,7 +79,7 @@ class JobAction(Task):
             else:
 
                 tasks_defs = get_current_config().get("tasks", {})
-                tasks_ttls = [cfg.get("result_ttl", 0) for cfg in tasks_defs.values()]
+                tasks_ttls = [cfg.get("result_ttl", 0) for cfg in itervalues(tasks_defs)]
 
                 result_ttl = max([default_job_timeout] + tasks_ttls)
 
@@ -92,7 +95,7 @@ class JobAction(Task):
             # In this case we could also loose some jobs that were queued after
             # the MongoDB update. They will be "lost" and requeued later like the other case
             # after the Redis BLPOP
-            if query.keys() == ["queue"]:
+            if list(query.keys()) == ["queue"]:
                 Queue(query["queue"]).empty()
 
         elif action in ("requeue", "requeue_retry"):
@@ -135,6 +138,6 @@ class JobAction(Task):
                     Queue(destination_queue or queue, add_to_known_queues=True).enqueue_job_ids(
                         [str(x) for x in jobs_by_queue[queue]])
 
-        print stats
+        print(stats)
 
         return stats

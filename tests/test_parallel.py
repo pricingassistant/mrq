@@ -1,3 +1,4 @@
+from builtins import range
 import time
 import pytest
 from mrq.context import connections
@@ -23,7 +24,7 @@ def test_parallel_100sleeps(worker, p_flags):
     assert total_time < 15
 
     # ... and return correct results
-    assert result == range(100)
+    assert result == list(range(100))
 
 
 @pytest.mark.parametrize(["p_greenlets"], [

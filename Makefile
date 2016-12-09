@@ -4,6 +4,9 @@ docker:
 test: docker
 	sh -c "docker run --rm -i -t -p 27017:27017 -p 6379:6379 -p 5555:5555 -p 20020:20020 -v `pwd`:/app:rw -w /app mrq_local python -m pytest tests/ -v --instafail"
 
+test3: docker
+	sh -c "docker run --rm -i -t -p 27017:27017 -p 6379:6379 -p 5555:5555 -p 20020:20020 -v `pwd`:/app:rw -w /app mrq_local python3 -m pytest tests/ -v --instafail"
+
 shell:
 	sh -c "docker run --rm -i -t -p 27017:27017 -p 6379:6379 -p 5555:5555 -p 20020:20020 -p 8000:8000 -v `pwd`:/app:rw -w /app mrq_local bash"
 

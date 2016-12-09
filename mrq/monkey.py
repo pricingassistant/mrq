@@ -1,3 +1,6 @@
+from future import standard_library
+standard_library.install_aliases()
+from past.builtins import basestring
 from .context import get_current_job, get_current_worker
 import time
 import random
@@ -341,7 +344,7 @@ def patch_io_httplib(config):
 
         return ret
 
-    from httplib import HTTPConnection, HTTPSConnection
+    from http.client import HTTPConnection, HTTPSConnection
 
     patch_method(HTTPConnection, "request", request)
     patch_method(HTTPConnection, "connect", connect)
@@ -394,7 +397,7 @@ def patch_io_pymongo_cursor(config):
                 collection = self._Cursor__collection.name  # pylint: disable=no-member
 
                 if collection == "$cmd":
-                    items = self._Cursor__spec.items()  # pylint: disable=no-member
+                    items = list(self._Cursor__spec.items())  # pylint: disable=no-member
                     if len(items) > 0:
                         subtype, collection = items[0]
 

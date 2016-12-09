@@ -1,6 +1,11 @@
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import range
 import time
 import ujson as json
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 import os
 import pytest
 
@@ -15,7 +20,7 @@ def test_current_job_inspect(worker):
     time.sleep(1)
 
     # Test the HTTP admin API
-    admin_worker = json.load(urllib2.urlopen("http://localhost:20020"))
+    admin_worker = json.loads(urllib.request.urlopen("http://localhost:20020").read().decode('utf-8'))
 
     assert admin_worker["status"] == "full"
     assert len(admin_worker["jobs"]) == 1
@@ -30,7 +35,7 @@ def test_current_job_inspect(worker):
 
     time.sleep(3)
 
-    admin_worker = json.load(urllib2.urlopen("http://localhost:20020"))
+    admin_worker = json.loads(urllib.request.urlopen("http://localhost:20020").read().decode('utf-8'))
 
     assert admin_worker["status"] == "wait"
     assert len(admin_worker["jobs"]) == 0
@@ -91,13 +96,12 @@ def test_current_job_trace_io(worker, p_testtype, p_testparams, p_type, p_data, 
         if os.path.isfile(report_file):
             with open(report_file, "rb") as f:
                 try:
-                    read = f.read()
+                    read = f.read().decode('utf-8')
                     admin_worker = json.loads(read)
                 except:
                     admin_worker = {}
                 if len(admin_worker.get("jobs", [])) > 0:
                     io = admin_worker["jobs"][0].get("io")
-                    print io
                     # Don't take MRQ's IOs as regular IO
                     if io:
                         if io["type"] == "mongodb" and io["data"]["collection"] in ["mrq.mrq_jobs", "mrq.mrq_logs"]:
@@ -107,7 +111,7 @@ def test_current_job_trace_io(worker, p_testtype, p_testparams, p_type, p_data, 
 
         time.sleep(0.05)
 
-    print io
+    print(io)
     assert io
     assert io["type"] == p_type
     assert io["data"] == p_data

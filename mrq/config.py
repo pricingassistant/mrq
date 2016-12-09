@@ -1,3 +1,5 @@
+from __future__ import print_function
+from builtins import str
 import argparse
 import os
 import sys
@@ -325,7 +327,7 @@ def add_parser_args(parser, config_type):
             '--report_file',
             default="",
             action='store',
-            type=unicode,
+            type=str,
             help='Filepath of a json dump of the worker status. Disabled if none')
 
         parser.add_argument(
@@ -422,7 +424,7 @@ def get_config(
     # line
     from_args = {}
     if "args" in sources:
-        for k, v in parser.parse_args().__dict__.iteritems():
+        for k, v in parser.parse_args().__dict__.items():
             if default_config[k] != v:
                 from_args[k] = v
 
@@ -443,7 +445,7 @@ def get_config(
         sys.path.insert(0, os.path.dirname(config_file))
         config_module = __import__(os.path.basename(config_file.replace(".py", "")))
         sys.path.pop(0)
-        for k, v in config_module.__dict__.iteritems():
+        for k, v in config_module.__dict__.items():
 
             # We only keep variables starting with an uppercase character.
             if k[0].isupper():
@@ -452,7 +454,7 @@ def get_config(
     # Merge the config in the order given by the user
     merged_config = default_config
 
-    config_keys = set(default_config.keys() + from_file.keys())
+    config_keys = set(list(default_config.keys()) + list(from_file.keys()))
 
     for part in sources:
         for name in config_keys:
@@ -484,11 +486,11 @@ def get_config(
         atexit.register(print_profiling)
 
     if merged_config["version"]:
-        print "MRQ version: %s" % VERSION
-        print "Python version: %s" % sys.version
+        print("MRQ version: %s" % VERSION)
+        print("Python version: %s" % sys.version)
         sys.exit(1)
 
     if "no_import_patch" in from_args:
-        print "WARNING: --no_import_patch will be deprecated in MRQ 1.0!"
+        print("WARNING: --no_import_patch will be deprecated in MRQ 1.0!")
 
     return merged_config

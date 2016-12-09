@@ -1,3 +1,8 @@
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import bytes
+from future.utils import iteritems
 import gevent
 import gevent.pool
 import os
@@ -10,7 +15,7 @@ import psutil
 import sys
 import json as json_stdlib
 import ujson as json
-import BaseHTTPServer
+import http.server
 from bson import ObjectId
 from collections import defaultdict
 
@@ -250,7 +255,6 @@ class Worker(object):
             its jobs. """
 
         greenlets = []
-
         for greenlet in self.gevent_pool:
             g = {}
             short_stack = []
@@ -309,17 +313,17 @@ class Worker(object):
         io = None
         if self._traced_io:
             io = {}
-            for k, v in self._traced_io.items():
+            for k, v in iteritems(self._traced_io):
                 if k == "total":
                     io[k] = v
                 else:
-                    io[k] = sorted(v.items(), reverse=True, key=lambda x: x[1])
+                    io[k] = sorted(list(v.items()), reverse=True, key=lambda x: x[1])
 
         used_pool_slots = self.pool_size - self.gevent_pool.free_count()
 
         return {
             "status": self.status,
-            "config": {k: v for k, v in self.config.iteritems() if k in whitelisted_config},
+            "config": {k: v for k, v in iteritems(self.config) if k in whitelisted_config},
             "done_jobs": self.done_jobs,
             "pool_usage_average": self.pool_usage_average.next(used_pool_slots),
             "datestarted": self.datestarted,
@@ -352,7 +356,7 @@ class Worker(object):
 
         if self.config["report_file"]:
             with open(self.config["report_file"], "wb") as f:
-                f.write(json.dumps(report, ensure_ascii=False))  # pylint: disable=no-member
+                f.write(bytes(json.dumps(report, ensure_ascii=False), 'utf-8'))  # pylint: disable=no-member
 
         if "_id" in report:
             del report["_id"]
@@ -387,7 +391,7 @@ class Worker(object):
             res = ""
             if path in ["/", "/report", "/report_mem"]:
                 report = self.get_worker_report(with_memory=(path == "/report_mem"))
-                res = json_stdlib.dumps(report, cls=MongoJSONEncoder)
+                res = bytes(json_stdlib.dumps(report, cls=MongoJSONEncoder), 'utf-8')
             elif path == "/wait_for_idle":
                 self.idle_wait_count = 0
                 self.idle_event.clear()
