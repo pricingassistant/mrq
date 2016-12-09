@@ -333,11 +333,12 @@ def test_interrupt_maxconcurrency(worker):
 
     worker.wait_for_tasks_results(job_ids, accept_statuses=["success", "failed", "maxconcurrency"])
     job_statuses = [Job(job_id).fetch().data["status"] for job_id in job_ids]
-    assert job_statuses == ["success", "maxconcurrency"]
+    assert set(job_statuses) == set(["success", "maxconcurrency"])
 
     # the job concurrency key must be equal to 0
     last_job_id = worker.send_task("tests.tasks.concurrency.LockedAdd",
         {"a": 1, "b": 1, "sleep": 2}, block=False
     )
+
     last_job = Job(last_job_id).wait(poll_interval=0.01)
     assert last_job.get("status") == "success"
