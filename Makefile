@@ -19,6 +19,9 @@ lint: docker
 linterrors: docker
 	docker run -i -t -v `pwd`:/app:rw -w /app mrq_local pylint --errors-only --init-hook="import sys; sys.path.append('.')" -d E1103 --rcfile .pylintrc mrq
 
+linterrors3: docker
+	docker run -i -t -v `pwd`:/app:rw -w /app mrq_local python3 -m pylint --errors-only --init-hook="import sys; sys.path.append('.')" -d E1103 --rcfile .pylintrc mrq
+
 virtualenv:
 	virtualenv venv --distribute
 
