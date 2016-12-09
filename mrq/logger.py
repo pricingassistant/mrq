@@ -7,12 +7,13 @@ import datetime
 import sys
 PY3 = sys.version_info > (3,)
 
+
 def _encode_if_unicode(string):
 
     if PY3:
         return string
 
-    if isinstance(string, unicode):
+    if isinstance(string, unicode):  # pylint: disable=undefined-variable
         return string.encode("utf-8", "replace")
     else:
         return string
@@ -26,7 +27,7 @@ def _decode_if_str(string):
     if isinstance(string, str):
         return string.decode("utf-8", "replace")
     else:
-        return unicode(string)
+        return unicode(string)  # pylint: disable=undefined-variable
 
 
 class LogHandler(object):

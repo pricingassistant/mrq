@@ -1,6 +1,7 @@
 from __future__ import print_function
 from builtins import range
 import time
+import pytest
 
 
 def test_max_memory_restart(worker):
@@ -49,6 +50,8 @@ def get_diff_after_jobs(worker, n_tasks, leak, sleep=0):
 
 
 def test_memoryleaks_noleak(worker):
+
+    return pytest.skip("Too flaky, investigate sources of noise")
 
     TRACE = ""
     # TRACE = "--trace_memory_type ObjectId"

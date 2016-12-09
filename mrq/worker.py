@@ -495,7 +495,7 @@ class Worker(object):
                     queue.id not in Queue.paused_queues
                 ]
 
-                for queue_i in xrange(len(available_queues)):
+                for queue_i in range(len(available_queues)):
 
                     queue = available_queues[(queue_i + queue_offset) % len(available_queues)]
 
