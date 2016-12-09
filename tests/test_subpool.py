@@ -1,5 +1,9 @@
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
 from bson import ObjectId
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 import json
 import time
 import os
@@ -81,18 +85,18 @@ def test_subpool_imap():
 
     def inner_func(i):
         time.sleep(1)
-        print "inner_func: %s" % i
+        print("inner_func: %s" % i)
         if i == 4:
             raise Exception("Inner exception!")
         return i * 2
 
     with pytest.raises(Exception):
         for res in subpool_imap(10, inner_func, iterator(10)):
-            print "Got %s" % res
+            print("Got %s" % res)
 
     for res in subpool_imap(2, inner_func, iterator(1)):
-        print "Got %s" % res
+        print("Got %s" % res)
 
     with pytest.raises(Exception):
         for res in subpool_imap(2, inner_func, iterator(5)):
-            print "Got %s" % res
+            print("Got %s" % res)

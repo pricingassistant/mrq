@@ -1,3 +1,5 @@
+from __future__ import print_function
+from builtins import range
 import time
 
 
@@ -41,7 +43,7 @@ def get_diff_after_jobs(worker, n_tasks, leak, sleep=0):
 
     diff = mem_stop - mem_start
 
-    print "Memory diff for %s tasks was %s" % (n_tasks, diff)
+    print("Memory diff for %s tasks was %s" % (n_tasks, diff))
 
     return diff
 

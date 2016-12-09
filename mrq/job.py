@@ -1,3 +1,7 @@
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import object
 import datetime
 from bson import ObjectId
 from redis.exceptions import LockError
@@ -11,12 +15,12 @@ import gc
 from collections import defaultdict
 import traceback
 import sys
-import urlparse
+import urllib.parse
 import re
 import linecache
 import fnmatch
 import encodings
-import copy_reg
+import copyreg
 from . import context
 
 
@@ -55,7 +59,10 @@ class Job(object):
         if job_id is None:
             self.id = None
         else:
-            self.id = ObjectId(job_id)
+            if isinstance(job_id, bytes):
+                self.id = ObjectId(job_id.decode('utf-8'))
+            else:
+                self.id = ObjectId(job_id)
 
         self.data = None
         self.saved = True
@@ -516,10 +523,10 @@ class Job(object):
     def trace_memory_clean_caches(self):
         """ Avoid polluting results with some builtin python caches """
 
-        urlparse.clear_cache()
+        urllib.parse.clear_cache()
         re.purge()
         linecache.clearcache()
-        copy_reg.clear_extension_cache()
+        copyreg.clear_extension_cache()
 
         if hasattr(fnmatch, "purge"):
             fnmatch.purge()  # pylint: disable=no-member

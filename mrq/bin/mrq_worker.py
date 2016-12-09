@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import os
+from builtins import str
 
 # Needed to make getaddrinfo() work in pymongo on Mac OS X
 # Docs mention it's a better choice for Linux as well.
@@ -8,14 +9,18 @@ if "GEVENT_RESOLVER" not in os.environ:
     os.environ["GEVENT_RESOLVER"] = "ares"
 
 from gevent import monkey
-monkey.patch_all()
+monkey.patch_all(subprocess=False)
 
 import sys
 import tempfile
 import signal
-import subprocess32 as subprocess
 import psutil
 import argparse
+
+try:
+    import subprocess32 as subprocess
+except:
+    import subprocess
 
 sys.path.insert(0, os.getcwd())
 

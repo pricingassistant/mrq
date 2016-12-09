@@ -1,3 +1,4 @@
+from builtins import range
 from mrq.helpers import ratelimit
 import time
 
