@@ -172,6 +172,7 @@ class Worker(object):
             Should we do this in a thread instead?
          """
 
+        self.report_worker(w=1)
         while True:
             try:
                 self.report_worker()
