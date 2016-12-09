@@ -10,6 +10,8 @@ class RequeueInterruptedJobs(Task):
 
     """ Requeue jobs that were marked as status=interrupt when a worker got a SIGTERM. """
 
+    max_concurrency = 1
+
     def run(self, params):
         return run_task("mrq.basetasks.utils.JobAction", {
             "status": "interrupt",
@@ -20,6 +22,8 @@ class RequeueInterruptedJobs(Task):
 class RequeueRetryJobs(Task):
 
     """ Requeue jobs that were marked as retry. """
+
+    max_concurrency = 1
 
     def run(self, params):
         return run_task("mrq.basetasks.utils.JobAction", {
@@ -36,6 +40,8 @@ class RequeueStartedJobs(Task):
         That may be because the worker got a SIGKILL or was terminated abruptly.
         The timeout parameter of this task is in addition to the task's own timeout.
     """
+
+    max_concurrency = 1
 
     def run(self, params):
 
@@ -75,6 +81,8 @@ class RequeueRedisStartedJobs(Task):
         They could have been lost by a worker interrupt between
         redis.lpop and mongodb.update
     """
+
+    max_concurrency = 1
 
     def run(self, params):
 
@@ -123,6 +131,8 @@ class RequeueLostJobs(Task):
 
         They could have been lost by a Redis flush or another severe issue
     """
+
+    max_concurrency = 1
 
     def run(self, params):
 
@@ -193,6 +203,9 @@ class MigrateKnownQueues(Task):
     """
         Migrate known_queues from old set format to new zset
     """
+
+    max_concurrency = 1
+
     def run(self, params):
         key = "%s:known_queues" % get_current_config()["redis_prefix"]
         for queue in connections.redis.smembers(key):
@@ -208,6 +221,8 @@ class CleanKnownQueues(Task):
          - not have been used in the last 7 days
          - be empty
     """
+
+    max_concurrency = 1
 
     def run(self, params):
 

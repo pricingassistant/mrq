@@ -50,3 +50,7 @@ class StopRequested(GreenletExit):
 class JobInterrupt(GreenletExit):
     """ Interrupts that stop a job in its execution, e.g. when responding to a SIGTERM. """
     pass
+
+
+class MaxConcurrencyInterrupt(_MrqInterrupt):
+    pass
