@@ -432,11 +432,11 @@ class Worker(object):
         if self.config["paused_queues_refresh_interval"] > 0:
             self.greenlets["paused_queues"] = gevent.spawn(self.greenlet_paused_queues)
 
-        self.greenlets["report"] = gevent.spawn(self.greenlet_report)
+        if self.config["report_interval"] > 0:
+            self.greenlets["report"] = gevent.spawn(self.greenlet_report)
+            self.greenlets["logs"] = gevent.spawn(self.greenlet_logs)
 
-        self.greenlets["logs"] = gevent.spawn(self.greenlet_logs)
-
-        if self.config["scheduler"]:
+        if self.config["scheduler"] and self.config["scheduler_interval"] > 0:
             self.greenlets["scheduler"] = gevent.spawn(self.greenlet_scheduler)
 
         if self.config["admin_port"]:

@@ -52,7 +52,7 @@ def test_memoryleaks_noleak(worker):
     # TRACE = "--trace_memory_type ObjectId"
 
     worker.start(
-        flags="--trace_memory --greenlets 1 --mongodb_logs 0 --report_interval 10000 %s" % TRACE)
+        flags="--trace_memory --greenlets 1 --mongodb_logs 0 --scheduler_interval 0 --subqueues_refresh_interval 0 --paused_queues_refresh_interval 0 --report_interval 10000 %s" % TRACE)
 
     # Send it once to add to imports
     get_diff_after_jobs(worker, 10, 0)
