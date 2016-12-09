@@ -59,14 +59,15 @@ def test_redis_disconnections(gevent_count, subpool_size, iterations, expected_c
 
     gevent_count = gevent_count if gevent_count is not None else 1
 
-    get_clients = lambda: [c for c in connections.redis.client_list() if c.get("cmd") != "client"]
+    def get_clients():
+        return [c for c in connections.redis.client_list() if c.get("cmd") != "client"]
 
     assert len(get_clients()) == 0
 
     # 1. start the worker and asserts that there is a redis client connected
     kwargs = {"flags": "--redis_max_connections 100", "deps": False}
     if gevent_count:
-        kwargs["flags"] += " --gevent %s" % gevent_count
+        kwargs["flags"] += " --greenlets %s" % gevent_count
 
     worker.start(**kwargs)
 
@@ -74,7 +75,12 @@ def test_redis_disconnections(gevent_count, subpool_size, iterations, expected_c
         # sending tasks has the good side effect to wait for the worker to connect to redis
         worker.send_tasks("tests.tasks.redis.Disconnections", [{"subpool_size": subpool_size}] * gevent_count)
 
-    assert len(get_clients()) == expected_clients
+    clients = get_clients()
+
+    cmd_get_clients = [x for x in clients if x.get("cmd") == "get"]
+
+    # These can be 2 background greenlets doing redis ops (known queues, paused queues)
+    assert len(cmd_get_clients) <= expected_clients + 2
 
     # 2. kill the worker and make sure that the connection was closed
     worker.stop(deps=False)  # so that we still have access to redis

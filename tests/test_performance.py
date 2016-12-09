@@ -169,6 +169,7 @@ def test_performance_httpstatic_fast(worker, httpstatic):
 
 
 def test_performance_writeconcern(worker_mongodb_with_journal):
+    return pytest.skip("Journaled MongoDB not stable enough")
 
     if os.environ.get("STACK_STARTED"):
         return pytest.skip()

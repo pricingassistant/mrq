@@ -1,6 +1,7 @@
 from mrq.task import Task
 from mrq.context import connections, subpool_map
 import gevent
+import time
 
 
 class MultiRedis(Task):
@@ -20,7 +21,8 @@ class Disconnections(Task):
 
     def run(self, params):
 
-        get_clients = lambda: [c for c in connections.redis.client_list() if c.get("cmd") != "client"]
+        def get_clients():
+            return [c for c in connections.redis.client_list() if c.get("cmd") != "client"]
 
         def inner(i):
             print "Greenlet #%s, %s clients so far" % (id(gevent.getcurrent()), len(get_clients()))

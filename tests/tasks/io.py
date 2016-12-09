@@ -1,3 +1,10 @@
+
+# Evil workaround to disable SSL verification
+import ssl
+ctx = ssl.create_default_context()
+ctx.check_hostname = False
+ctx.verify_mode = ssl.CERT_NONE
+
 from mrq.task import Task
 from mrq.context import connections, log
 import urllib2
@@ -44,12 +51,12 @@ class TestIo(Task):
 
         elif params["test"] == "urllib2-get":
 
-            fp = urllib2.urlopen(params["params"]["url"])
+            fp = urllib2.urlopen(params["params"]["url"], context=ctx)
             return fp.read()
 
         elif params["test"] == "urllib2-post":
 
-            return urllib2.urlopen(params["params"]["url"], data="x=x").read()
+            return urllib2.urlopen(params["params"]["url"], data="x=x", context=ctx).read()
 
         elif params["test"] == "requests-get":
 

@@ -147,12 +147,12 @@ def test_known_queues_lifecycle(worker):
 
     Queue("x").empty()
 
-    # Still not removed.
-    assert set(Queue.redis_known_queues().keys()) == set(["x", "default", "xtest", "test_timed_set"])
+    # Will be removed immediately by the empty() method call.
+    assert set(Queue.redis_known_queues().keys()) == set(["default", "xtest", "test_timed_set"])
 
     worker.send_task("mrq.basetasks.cleaning.CleanKnownQueues", {}, block=True)
 
-    # Now we're good
+    # Still not there.
     assert set(Queue.redis_known_queues().keys()) == set(["default", "xtest", "test_timed_set"])
 
 

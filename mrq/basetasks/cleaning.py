@@ -135,13 +135,20 @@ class RequeueLostJobs(Task):
             "requeued": 0
         }
 
-        all_queues = Queue.all_known()
+        # This was only checking in Redis and wasn't resistant to a redis-wide flush.
+        # Doing Queue.all() is slower but covers more edge cases.
+        # all_queues = Queue.all_known()
+
+        all_queues = Queue.all()
+
+        log.info("Checking %s queues" % len(all_queues))
 
         for queue_name in all_queues:
 
             queue = Queue(queue_name)
             queue_size = queue.size()
 
+            # If the queue is raw, the jobs were only stored in redis so they are lost for good.
             if queue.is_raw:
                 continue
 
