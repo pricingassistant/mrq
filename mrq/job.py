@@ -1,5 +1,6 @@
 import datetime
 from bson import ObjectId
+from redis.exceptions import LockError
 import time
 from .exceptions import RetryInterrupt, MaxRetriesInterrupt, AbortInterrupt, MaxConcurrencyInterrupt
 from .utils import load_class_by_path, group_iter
@@ -281,26 +282,25 @@ class Job(object):
         self.task.is_main_task = True
 
         try:
+            lock = None
+
             if self.task.max_concurrency:
 
                 if self.task.max_concurrency > 1:
                     raise NotImplementedError()
-
-                lock_acquired = False
 
                 # TODO: implement a semaphore
                 lock = context.connections.redis.lock(self.redis_max_concurrency_key, timeout=self.timeout + 5)
                 if not lock.acquire(blocking=True, blocking_timeout=0):
                     raise MaxConcurrencyInterrupt()
 
-                lock_acquired = True
             result = self.task.run_wrapped(self.data["params"])
 
         finally:
-            if lock_acquired:
+            if lock:
                 try:
                     lock.release()
-                except Exception:
+                except LockError:
                     pass
 
         self.save_success(result)
