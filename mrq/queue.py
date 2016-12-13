@@ -168,7 +168,7 @@ class Queue(object):
         if len(job_ids) == 0 or self.use_large_ids:
             return job_ids
         else:
-            return [binascii.hexlify(x).decode('ascii') for x in job_ids]
+            return [binascii.hexlify(x.encode('utf-8') if isinstance(x, str) else x).decode('ascii') for x in job_ids]
 
     def _get_pausable_id(self):
       """
