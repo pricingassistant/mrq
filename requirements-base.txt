@@ -1,7 +1,7 @@
 argparse>=1.1
 redis>=2.10.5
 pymongo>=3.0.1
-gevent==1.1.1
+gevent>=1.1.1
 ujson==1.33
 hiredis>=0.1.5
 psutil==1.2.1
