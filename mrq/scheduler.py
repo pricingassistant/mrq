@@ -13,7 +13,7 @@ def _hash_task(task):
     if params:
         params = json.dumps(sorted(list(task["params"].items()), key=lambda x: x[0]))  # pylint: disable=no-member
 
-    full = [str(task.get(x)) for x in ["path", "interval", "dailytime", "queue"]]
+    full = [str(task.get(x)) for x in ["path", "interval", "dailytime", "weekday", "monthday", "queue"]]
 
     full.extend([str(params)])
     return " ".join(full)
@@ -130,7 +130,7 @@ class Scheduler(object):
             if task_data:
                 queue_job(
                     task_data["path"],
-                    task_data["params"],
+                    task_data.get("params") or {},
                     queue=task.get("queue"))
                 log.debug("Scheduler: queued %s" % task_data)
 

@@ -165,3 +165,18 @@ def test_scheduler_monthday(worker):
     inserts = list(collection.find())
     assert len(inserts) == 1
     assert collection.find({"params.monthday": datetime.datetime.utcnow().day}).count() == 1
+
+
+def test_scheduler_noparams(worker):
+    # Task is scheduled in 3 seconds
+    worker.start(
+        flags="--scheduler --config tests/fixtures/config-scheduler7.py"
+    )
+
+    time.sleep(2)
+
+    scheduled_jobs = worker.mongodb_jobs.mrq_scheduled_jobs
+    jobs = worker.mongodb_jobs.mrq_jobs
+
+    assert len(list(scheduled_jobs.find())) == 3
+    assert len(list(jobs.find())) == 3
