@@ -1,3 +1,6 @@
+from builtins import str
+from builtins import object
+from future.utils import iteritems
 from .context import log, queue_job
 import datetime
 import ujson as json
@@ -8,9 +11,9 @@ def _hash_task(task):
 
     params = task.get("params")
     if params:
-        params = json.dumps(sorted(task["params"].items(), key=lambda x: x[0]))  # pylint: disable=no-member
+        params = json.dumps(sorted(list(task["params"].items()), key=lambda x: x[0]))  # pylint: disable=no-member
 
-    full = [str(task.get(x)) for x in ["path", "interval", "dailytime", "queue"]]
+    full = [str(task.get(x)) for x in ["path", "interval", "dailytime", "weekday", "monthday", "queue"]]
 
     full.extend([str(params)])
     return " ".join(full)
@@ -39,7 +42,7 @@ class Scheduler(object):
                 self.collection.remove({"_id": task["_id"]})
                 log.debug("Scheduler: deleted %s" % task["hash"])
 
-        for h, task in tasks_by_hash.iteritems():
+        for h, task in iteritems(tasks_by_hash):
             task["hash"] = h
             task["datelastqueued"] = datetime.datetime.fromtimestamp(0)
             if task.get("dailytime"):
@@ -127,7 +130,7 @@ class Scheduler(object):
             if task_data:
                 queue_job(
                     task_data["path"],
-                    task_data["params"],
+                    task_data.get("params") or {},
                     queue=task.get("queue"))
                 log.debug("Scheduler: queued %s" % task_data)
 

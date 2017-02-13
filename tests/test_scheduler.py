@@ -1,3 +1,5 @@
+from __future__ import print_function
+from builtins import str
 import time
 import pytest
 import datetime
@@ -54,7 +56,7 @@ def test_scheduler_simple(worker, p_flags):
     # Only 3 should have been replaced and ran immediately again because they
     # have different config.
     inserts = list(collection.find())
-    print inserts
+    print(inserts)
     assert len(inserts) == 3, inserts
 
 
@@ -77,7 +79,7 @@ def test_scheduler_dailytime(worker, p_flags):
     time.sleep(3)
     inserts = list(collection.find())
     assert len(inserts) == 2
-    print inserts
+    print(inserts)
     assert collection.find({"params.b": "test"}).count() == 1
 
     # Then a second time once the dailytime passes
@@ -109,7 +111,7 @@ def test_scheduler_weekday(worker):
     time.sleep(3)
     inserts = list(collection.find())
     assert len(inserts) == 1
-    print inserts
+    print(inserts)
     assert collection.find({"params.weekday": datetime.datetime.utcnow().weekday()}).count() == 1
 
 
@@ -134,14 +136,14 @@ def test_scheduler_weekday_dailytime(worker):
     time.sleep(7)
     inserts = list(collection.find())
     assert len(inserts) == 3
-    print inserts
+    print(inserts)
     assert collection.find({"params.weekday": datetime.datetime.utcnow().weekday(), "params.later": False}).count() == 2
 
     # more time passes and we do nothing
     time.sleep(7)
     inserts = list(collection.find())
     assert len(inserts) == 3
-    print inserts
+    print(inserts)
     assert collection.find({"params.weekday": datetime.datetime.utcnow().weekday(), "params.later": False}).count() == 2
 
 
@@ -163,3 +165,18 @@ def test_scheduler_monthday(worker):
     inserts = list(collection.find())
     assert len(inserts) == 1
     assert collection.find({"params.monthday": datetime.datetime.utcnow().day}).count() == 1
+
+
+def test_scheduler_noparams(worker):
+    # Task is scheduled in 3 seconds
+    worker.start(
+        flags="--scheduler --config tests/fixtures/config-scheduler7.py"
+    )
+
+    time.sleep(2)
+
+    scheduled_jobs = worker.mongodb_jobs.mrq_scheduled_jobs
+    jobs = worker.mongodb_jobs.mrq_jobs
+
+    assert len(list(scheduled_jobs.find())) == 3
+    assert len(list(jobs.find())) == 3

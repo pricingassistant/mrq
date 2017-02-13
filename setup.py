@@ -1,12 +1,26 @@
 from setuptools import setup  # , find_packages
 import os
+import sys
+
+
+def use_package(package):
+    if not package:
+        return False
+    if package.startswith(('#', 'git+')):
+        return False
+    if sys.version_info.major > 2 and 'python_version <' in package:
+        return False
+    if sys.version_info.major == 2 and 'python_version >' in package:
+        return False
+
+    return True
 
 
 def get_requirements():
     reqs = []
     for filename in ["requirements-base.txt", "requirements-dashboard.txt", "requirements-setuptools.txt"]:
         with open(filename, "r") as f:
-            reqs += [x.strip().split(";")[0] for x in f.readlines() if x.strip() and not (x.strip().startswith("#") or x.strip().startswith("git+git"))]
+            reqs += [x.strip().split(";")[0] for x in f.readlines() if use_package(x.strip())]
     return reqs
 
 
@@ -46,6 +60,8 @@ setup(
     classifiers=[
         "Programming Language :: Python",
         "Programming Language :: Python :: 2.7",
+        "Programming Language :: Python :: 3.4",
+        "Programming Language :: Python :: 3.5",
         #'Development Status :: 1 - Planning',
         #'Development Status :: 2 - Pre-Alpha',
         #'Development Status :: 3 - Alpha',

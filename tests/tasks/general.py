@@ -1,8 +1,11 @@
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
 from mrq.task import Task
 from mrq.context import (log, retry_current_job, connections, get_current_config, get_current_job,
                          subpool_map, abort_current_job, set_current_job_progress)
 from mrq.job import queue_job
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 import json
 import time
 import copy
@@ -37,7 +40,7 @@ class Fetch(Task):
 
     def run(self, params):
 
-        f = urllib2.urlopen(params.get("url"))
+        f = urllib.request.urlopen(params.get("url"))
         t = f.read()
         f.close()
 

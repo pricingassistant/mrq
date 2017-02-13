@@ -1,6 +1,16 @@
+from future import standard_library
+standard_library.install_aliases()
+
+# Evil workaround to disable SSL verification
+import ssl
+ctx = ssl.create_default_context()
+ctx.check_hostname = False
+ctx.verify_mode = ssl.CERT_NONE
+
 from mrq.task import Task
 from mrq.context import connections, log
-import urllib2
+import urllib.request, urllib.error, urllib.parse
+from future.moves.urllib.request import urlopen
 
 
 class TestIo(Task):
@@ -44,17 +54,13 @@ class TestIo(Task):
 
         elif params["test"] == "urllib2-get":
 
-            fp = urllib2.urlopen(params["params"]["url"])
-            return fp.read()
+            return urlopen(params["params"]["url"], context=ctx).read()
 
         elif params["test"] == "urllib2-post":
 
-            return urllib2.urlopen(params["params"]["url"], data="x=x").read()
+            return urlopen(params["params"]["url"], data="x=x", context=ctx).read()
 
         elif params["test"] == "requests-get":
 
             import requests
             return requests.get(params["params"]["url"], verify=False).text
-
-
-

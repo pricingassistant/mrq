@@ -1,7 +1,7 @@
 argparse>=1.1
-redis>=2.10.3
+redis>=2.10.5
 pymongo>=3.0.1
-gevent>=1.1rc3
+gevent>=1.1.1
 ujson==1.33
 hiredis>=0.1.5
 psutil==1.2.1
@@ -10,3 +10,5 @@ termcolor==1.1.0
 subprocess32==3.2.7; python_version < '3.2'
 supervisor==3.0; python_version < '3.0'
 git+git://github.com/Supervisor/supervisor.git@c18aecf1641d8953767e7010be8bae1924a133bf#egg=Supervisor; python_version >= '3.0'
+future==0.15.2
+importlib==1.0.3; python_version < '2.7'

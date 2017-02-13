@@ -1,5 +1,7 @@
 # MRQ
 
+[![Build Status](https://travis-ci.org/pricingassistant/mrq.svg?branch=master)](https://travis-ci.org/pricingassistant/mrq) [![MIT License](https://img.shields.io/github/license/pricingassistant/mrq.svg)](LICENSE)
+
 [MRQ](http://pricingassistant.github.io/mrq) is a distributed task queue for python built on top of mongo, redis and gevent.
 
 Full documentation is available on [readthedocs](http://mrq.readthedocs.org/en/latest/)

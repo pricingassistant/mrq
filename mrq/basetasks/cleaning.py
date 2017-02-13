@@ -1,3 +1,4 @@
+from builtins import str
 from mrq.queue import Queue
 from mrq.task import Task
 from mrq.job import Job
@@ -10,6 +11,8 @@ class RequeueInterruptedJobs(Task):
 
     """ Requeue jobs that were marked as status=interrupt when a worker got a SIGTERM. """
 
+    max_concurrency = 1
+
     def run(self, params):
         return run_task("mrq.basetasks.utils.JobAction", {
             "status": "interrupt",
@@ -20,6 +23,8 @@ class RequeueInterruptedJobs(Task):
 class RequeueRetryJobs(Task):
 
     """ Requeue jobs that were marked as retry. """
+
+    max_concurrency = 1
 
     def run(self, params):
         return run_task("mrq.basetasks.utils.JobAction", {
@@ -36,6 +41,8 @@ class RequeueStartedJobs(Task):
         That may be because the worker got a SIGKILL or was terminated abruptly.
         The timeout parameter of this task is in addition to the task's own timeout.
     """
+
+    max_concurrency = 1
 
     def run(self, params):
 
@@ -75,6 +82,8 @@ class RequeueRedisStartedJobs(Task):
         They could have been lost by a worker interrupt between
         redis.lpop and mongodb.update
     """
+
+    max_concurrency = 1
 
     def run(self, params):
 
@@ -124,6 +133,8 @@ class RequeueLostJobs(Task):
         They could have been lost by a Redis flush or another severe issue
     """
 
+    max_concurrency = 1
+
     def run(self, params):
 
         # If there are more than this much items on the queue, we don't try to check if our mongodb
@@ -135,13 +146,20 @@ class RequeueLostJobs(Task):
             "requeued": 0
         }
 
-        all_queues = Queue.all_known()
+        # This was only checking in Redis and wasn't resistant to a redis-wide flush.
+        # Doing Queue.all() is slower but covers more edge cases.
+        # all_queues = Queue.all_known()
+
+        all_queues = Queue.all()
+
+        log.info("Checking %s queues" % len(all_queues))
 
         for queue_name in all_queues:
 
             queue = Queue(queue_name)
             queue_size = queue.size()
 
+            # If the queue is raw, the jobs were only stored in redis so they are lost for good.
             if queue.is_raw:
                 continue
 
@@ -186,6 +204,9 @@ class MigrateKnownQueues(Task):
     """
         Migrate known_queues from old set format to new zset
     """
+
+    max_concurrency = 1
+
     def run(self, params):
         key = "%s:known_queues" % get_current_config()["redis_prefix"]
         for queue in connections.redis.smembers(key):
@@ -202,6 +223,8 @@ class CleanKnownQueues(Task):
          - be empty
     """
 
+    max_concurrency = 1
+
     def run(self, params):
 
         max_age = int(params.get("max_age") or (7 * 86400))
@@ -214,7 +237,7 @@ class CleanKnownQueues(Task):
 
         queues_from_config = Queue.all_known_from_config()
 
-        print "Found %s known queues & %s from config" % (len(known_queues), len(queues_from_config))
+        print("Found %s known queues & %s from config" % (len(known_queues), len(queues_from_config)))
 
         # Only clean queues older than N days
         time_threshold = time.time() - max_age
@@ -228,10 +251,10 @@ class CleanKnownQueues(Task):
                     size += connections.mongodb_jobs.mrq_jobs.count({"queue": queue})
                 if size == 0:
                     removed_queues.append(queue)
-                    print "Removing empty queue '%s' from known queues ..." % queue
+                    print("Removing empty queue '%s' from known queues ..." % queue)
                     if not pretend:
                         q.remove_from_known_queues()
 
-        print "Cleaned %s queues" % len(removed_queues)
+        print("Cleaned %s queues" % len(removed_queues))
 
         return removed_queues

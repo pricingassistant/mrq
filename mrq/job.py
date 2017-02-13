@@ -1,7 +1,12 @@
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import object
 import datetime
 from bson import ObjectId
+from redis.exceptions import LockError
 import time
-from .exceptions import RetryInterrupt, MaxRetriesInterrupt, AbortInterrupt
+from .exceptions import RetryInterrupt, MaxRetriesInterrupt, AbortInterrupt, MaxConcurrencyInterrupt
 from .utils import load_class_by_path, group_iter
 import gevent
 import objgraph
@@ -10,12 +15,12 @@ import gc
 from collections import defaultdict
 import traceback
 import sys
-import urlparse
+import urllib.parse
 import re
 import linecache
 import fnmatch
 import encodings
-import copy_reg
+import copyreg
 from . import context
 
 
@@ -54,7 +59,10 @@ class Job(object):
         if job_id is None:
             self.id = None
         else:
-            self.id = ObjectId(job_id)
+            if isinstance(job_id, bytes):
+                self.id = ObjectId(job_id.decode('utf-8'))
+            else:
+                self.id = ObjectId(job_id)
 
         self.data = None
         self.saved = True
@@ -69,6 +77,12 @@ class Job(object):
             self.fetch(start=True, full_data=False)
         elif fetch:
             self.fetch(start=False, full_data=False)
+
+    @property
+    def redis_max_concurrency_key(self):
+        """ Returns the global redis key used to store started job ids """
+        return "%s:c:%s" % (context.get_current_config()["redis_prefix"],
+            self.data["path"])
 
     def exists(self):
         """ Returns True if a job with the current _id exists in MongoDB. """
@@ -274,7 +288,27 @@ class Job(object):
 
         self.task.is_main_task = True
 
-        result = self.task.run_wrapped(self.data["params"])
+        try:
+            lock = None
+
+            if self.task.max_concurrency:
+
+                if self.task.max_concurrency > 1:
+                    raise NotImplementedError()
+
+                # TODO: implement a semaphore
+                lock = context.connections.redis.lock(self.redis_max_concurrency_key, timeout=self.timeout + 5)
+                if not lock.acquire(blocking=True, blocking_timeout=0):
+                    raise MaxConcurrencyInterrupt()
+
+            result = self.task.run_wrapped(self.data["params"])
+
+        finally:
+            if lock:
+                try:
+                    lock.release()
+                except LockError:
+                    pass
 
         self.save_success(result)
 
@@ -489,10 +523,10 @@ class Job(object):
     def trace_memory_clean_caches(self):
         """ Avoid polluting results with some builtin python caches """
 
-        urlparse.clear_cache()
+        urllib.parse.clear_cache()
         re.purge()
         linecache.clearcache()
-        copy_reg.clear_extension_cache()
+        copyreg.clear_extension_cache()
 
         if hasattr(fnmatch, "purge"):
             fnmatch.purge()  # pylint: disable=no-member
