@@ -44,3 +44,6 @@ mrq-config.py
 dump.rdb
 supervisord.pid
 memory_traces
+
+# ssh keys
+pycharm-docker-mac-debug/ssh_keys/

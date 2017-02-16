@@ -1,0 +1,13 @@
+# Set this to some port that your setup doesn't use
+Port 5022
+ListenAddress 0.0.0.0
+Protocol 2
+PermitRootLogin without-password
+RSAAuthentication yes
+PubkeyAuthentication yes
+#AuthorizedKeysFile	%h/.ssh/authorized_keys
+Subsystem sftp internal-sftp
+UsePAM yes
+AllowTcpForwarding yes
+# Fix for PyCharm remote debugger support
+KexAlgorithms=diffie-hellman-group1-sha1

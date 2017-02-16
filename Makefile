@@ -67,3 +67,6 @@ pypi: linterrors
 
 build_docs:
 	python scripts/propagate_docs.py
+
+pycharm-debug:
+	pycharm-docker-mac-debug/run-dev.sh
