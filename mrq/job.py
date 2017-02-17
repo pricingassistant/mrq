@@ -433,7 +433,7 @@ class Job(object):
             "dateexpires": dateexpires
         }
 
-        self._save_status("abort", updates)
+        self._save_status("abort", updates, exception=True)
 
     def _save_status(self, status, updates=None, exception=False, w=None, j=None):
 
