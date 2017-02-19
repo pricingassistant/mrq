@@ -18,7 +18,8 @@ pages:
 - ["io-monitoring.md", "Visibility", "I/O Monitoring"]
 
 - ["design.md", "Advanced", "Design and architecture"]
-- ["performance.md", "Advanced", "Performance"]
+- ["performance.md", "Advanced", "Worker performance"]
+- ["queue-performance.md", "Advanced", "Queue performance"]
 - ["recurring-jobs.md", "Advanced", "Recurring jobs"]
 - ["jobs-maintenance.md", "Advanced", "Jobs maintenance"]
 - ["best-practices.md", "Advanced", "Best practices"]

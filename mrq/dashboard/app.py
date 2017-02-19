@@ -198,7 +198,7 @@ def api_datatables(unit):
             }
 
             if queue.is_sorted:
-                raw_config = cfg.get("raw_queues", {}).get(name, {})
+                raw_config = queue.get_config()
                 q["graph_config"] = raw_config.get("dashboard_graph", lambda: {
                     "start": time.time() - (7 * 24 * 3600),
                     "stop": time.time() + (7 * 24 * 3600),

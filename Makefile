@@ -10,11 +10,15 @@ test3: docker
 shell:
 	sh -c "docker run --rm -i -t -p 27017:27017 -p 6379:6379 -p 5555:5555 -p 20020:20020 -p 8000:8000 -v `pwd`:/app:rw -w /app mrq_local bash"
 
+reshell:
+	# Reconnect in the current taskqueue container
+	sh -c 'docker exec -t -i `docker ps | grep mrq_local | cut -f 1 -d " "` bash'
+
 shell_noport:
 	sh -c "docker run --rm -i -t -v `pwd`:/app:rw -w /app mrq_local bash"
 
 docs_serve:
-	sh -c "docker run --rm -i -t-p 8000:8000 -v `pwd`:/app:rw -w /app mrq_local mkdocs serve"
+	sh -c "docker run --rm -i -t -p 8000:8000 -v `pwd`:/app:rw -w /app mrq_local mkdocs serve"
 
 lint: docker
 	docker run -i -t -v `pwd`:/app:rw -w /app mrq_local pylint --init-hook="import sys; sys.path.append('.')" --rcfile .pylintrc mrq

@@ -14,7 +14,7 @@ def test_general_simple_task_one(worker):
 
     assert result == 42
 
-    time.sleep(0.1)
+    time.sleep(0.5)
 
     db_workers = list(worker.mongodb_jobs.mrq_workers.find())
     assert len(db_workers) == 1

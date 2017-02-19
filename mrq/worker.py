@@ -1,7 +1,6 @@
 from future import standard_library
 standard_library.install_aliases()
-from builtins import str
-from builtins import bytes
+from future.builtins import str, bytes
 from future.utils import iteritems
 import gevent
 import gevent.pool
@@ -453,6 +452,7 @@ class Worker(object):
 
         self.done_jobs = 0
         self.idle_wait_count = 0
+        self.datestarted_work_loop = datetime.datetime.utcnow()
 
         # has_raw = any(q.is_raw or q.is_sorted for q in [Queue(x) for x in self.queues])
 
@@ -567,6 +567,13 @@ class Worker(object):
 
             except StopRequested:
                 pass
+
+        self.datestopped_work_loop = datetime.datetime.utcnow()
+        lifetime = self.datestopped_work_loop - self.datestarted_work_loop
+        job_rate = float(self.done_jobs) / lifetime.total_seconds()
+        self.log.info("Worker spent %.3f seconds performing %s jobs (%.3f jobs/second)" % (
+            lifetime.total_seconds(), self.done_jobs, job_rate
+        ))
 
     def work_stop(self):
 

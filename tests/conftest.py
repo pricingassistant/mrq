@@ -194,6 +194,8 @@ class WorkerFixture(ProcessFixture):
         if not block:
             return job_ids
 
+        self.get_wait_for_idle()
+
         results = []
 
         for job_id in job_ids:
@@ -212,14 +214,7 @@ class WorkerFixture(ProcessFixture):
         queue_raw_jobs(queue, params_list)
 
         if block:
-            # Wait for the queue to be empty. Might be error-prone when tasks
-            # are in-memory between the 2
-            q = Queue(queue)
-            while q.size() > 0 or self.mongodb_jobs.mrq_jobs.find({"status": "started"}).count() > 0:
-                # print "S", q.size(),
-                # self.mongodb_jobs.mrq_jobs.find({"status":
-                # "started"}).count()
-                time.sleep(0.1)
+            self.get_wait_for_idle()
 
     def send_tasks(self, path, params_list, block=True, queue=None, accept_statuses=["success"], start=True):
         if not self.started and start:
@@ -250,6 +245,13 @@ class WorkerFixture(ProcessFixture):
         data = json.loads(f.read().decode('utf-8'))
         f.close()
         return data
+
+    def get_wait_for_idle(self):
+        wait_for_net_service("127.0.0.1", 20020, poll_interval=0.01)
+        f = urllib.request.urlopen("http://127.0.0.1:20020/wait_for_idle")
+        data = f.read().decode('utf-8')
+        assert data == "idle"
+        return True
 
 
 class RedisFixture(ProcessFixture):

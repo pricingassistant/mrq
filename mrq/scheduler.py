@@ -1,5 +1,4 @@
-from builtins import str
-from builtins import object
+from future.builtins import str, object
 from future.utils import iteritems
 from .context import log, queue_job
 import datetime

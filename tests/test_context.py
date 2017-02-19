@@ -1,5 +1,18 @@
 import json
 import os
+from collections import defaultdict
+
+# Read from tests.tasks.general.GetMetrics
+TEST_LOCAL_METRICS = defaultdict(int)
+
+
+def METRIC_HOOK(name, incr=1, **kwargs):
+    TEST_LOCAL_METRICS[name] += incr
+
+
+def _reset_local_metrics():
+    for k in TEST_LOCAL_METRICS.keys():
+        TEST_LOCAL_METRICS.pop(k)
 
 
 def test_context_get(worker):
@@ -19,6 +32,11 @@ def test_context_connections_redis(worker):
 
 
 def test_context_metric_success(worker):
+    from mrq.context import get_current_config
+
+    local_config = get_current_config()
+    local_config["metric_hook"] = METRIC_HOOK
+    _reset_local_metrics()
 
     worker.start(flags=" --config tests/fixtures/config-metric.py")
 
@@ -34,16 +52,19 @@ def test_context_metric_success(worker):
     assert metrics.get("queues.default.dequeued") == 3
     assert metrics.get("queues.all.dequeued") == 3
 
-    # Queued from the test process, not the worker one...
-    # assert metrics.get("queues.default.enqueued") == 3
-    # assert metrics.get("queues.all.enqueued") == 3
-    # assert metrics.get("jobs.status.queued") == 3
-
+    TEST_LOCAL_METRICS.get("jobs.status.queued") == 3
     assert metrics.get("jobs.status.started") == 3
-    assert metrics.get("jobs.status.success") == 2
+    assert metrics.get("jobs.status.success") == 2  # At the time it is run, GetMetrics isn't success yet.
+
+    local_config["metric_hook"] = None
 
 
 def test_context_metric_queue(worker):
+    from mrq.context import get_current_config
+
+    local_config = get_current_config()
+    local_config["metric_hook"] = METRIC_HOOK
+    _reset_local_metrics()
 
     worker.start(flags=" --config tests/fixtures/config-metric.py")
 
@@ -54,14 +75,15 @@ def test_context_metric_queue(worker):
         worker.send_task("tests.tasks.general.GetMetrics", {}))
 
     # GetMetrics is also a task!
-    assert metrics.get("queues.default.dequeued") == 3
-    assert metrics.get("queues.all.dequeued") == 3
-    assert metrics.get("jobs.status.started") == 3
-    assert metrics.get("jobs.status.success") == 2
+    assert metrics.get("queues.default.dequeued") == 2
+    assert metrics.get("queues.all.dequeued") == 2
+    assert metrics.get("jobs.status.started") == 2
+    assert metrics.get("jobs.status.success") == 1  # At the time it is run, GetMetrics isn't success yet.
 
-    assert metrics.get("queues.default.enqueued") == 1
-    assert metrics.get("queues.all.enqueued") == 1
-    assert metrics.get("jobs.status.queued") == 1
+    TEST_LOCAL_METRICS.get("queues.default.enqueued") == 2
+    TEST_LOCAL_METRICS.get("queues.all.enqueued") == 2
+
+    local_config["metric_hook"] = None
 
 
 def test_context_metric_failed(worker):

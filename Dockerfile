@@ -11,8 +11,8 @@ RUN echo \
     deb http://security.debian.org jessie/updates main\n' \
     > /etc/apt/sources.list
 
-RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10
-RUN echo "deb http://repo.mongodb.org/apt/debian wheezy/mongodb-org/3.0 main" > /etc/apt/sources.list.d/mongodb-org-3.0.list
+RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 0C49F3730359A14518585931BC711F9BA15703C6
+RUN echo "deb http://repo.mongodb.org/apt/debian jessie/mongodb-org/3.4 main" > /etc/apt/sources.list.d/mongodb-org-3.4.list
 RUN apt-get update && \
 	apt-get install -y --no-install-recommends \
 				curl \
@@ -21,9 +21,10 @@ RUN apt-get update && \
 				python-pip \
 				python3-pip \
     			python3-dev \
+    			make \
     			git \
     			vim \
-				mongodb-org-server \
+				mongodb-org \
 				nginx redis-server \
 	&& \
 	apt-get clean -y && \
@@ -51,6 +52,10 @@ RUN pip install -r /app/requirements-heroku.txt && \
 	rm -rf ~/.cache
 
 RUN mkdir -p /data/db
+
+RUN ln -s /app/mrq/bin/mrq_run.py /usr/bin/mrq-run
+RUN ln -s /app/mrq/bin/mrq_worker.py /usr/bin/mrq-worker
+ENV PYTHONPATH /app
 
 VOLUME ["/data"]
 WORKDIR /app

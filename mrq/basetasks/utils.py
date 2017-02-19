@@ -1,6 +1,6 @@
 from __future__ import print_function
 from future.utils import itervalues
-from builtins import str
+from future.builtins import str
 from mrq.task import Task
 from mrq.queue import Queue
 from bson import ObjectId
@@ -132,11 +132,6 @@ class JobAction(Task):
                     self.collection.update({
                         "_id": {"$in": jobs_by_queue[queue]}
                     }, {"$set": updates}, multi=True)
-
-                    # Between these two lines, jobs can become "lost" too.
-
-                    Queue(destination_queue or queue, add_to_known_queues=True).enqueue_job_ids(
-                        [str(x) for x in jobs_by_queue[queue]])
 
         print(stats)
 
