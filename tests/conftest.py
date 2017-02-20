@@ -79,7 +79,7 @@ class ProcessFixture(object):
             # print "Expecting %s children, got %s" % (expected_children,
             # psutil_process.get_children(recursive=False))
             while True:
-                self.process_children = psutil_process.get_children(
+                self.process_children = psutil_process.children(
                     recursive=True)
                 if len(self.process_children) >= expected_children:
                     break
