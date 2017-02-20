@@ -460,6 +460,7 @@ class Worker(object):
         try:
 
             queue_offset = 0
+            max_time_reached = False
 
             while True:
 
@@ -472,6 +473,12 @@ class Worker(object):
                     break
 
                 while True:
+
+                    # we put this here to make sure we have a strict limit on max_time
+                    if max_time and datetime.datetime.utcnow() - self.datestarted >= max_time:
+                        self.log.info("Reached max_time=%s" % max_time.seconds)
+                        max_time_reached = True
+                        break
 
                     free_pool_slots = self.gevent_pool.free_count()
 
@@ -487,6 +494,9 @@ class Worker(object):
                         break
                     self.status = "full"
                     gevent.sleep(0.01)
+
+                if max_time_reached:
+                    break
 
                 jobs = []
 
@@ -529,10 +539,6 @@ class Worker(object):
                     self.log.info("Reached max_jobs=%s" % self.done_jobs)
                     break
 
-                if max_time and datetime.datetime.utcnow() - self.datestarted >= max_time:
-                    self.log.info("Reached max_time=%s" % max_time.seconds)
-                    break
-
                 # We seem to have exhausted available jobs, we can sleep for a
                 # while.
                 if len(jobs) == 0:
@@ -566,7 +572,6 @@ class Worker(object):
 
                 self.log.debug("Joining the greenlet pool...")
                 self.status = "join"
-
                 self.gevent_pool.join(timeout=None, raise_error=False)
                 self.log.debug("Joined.")
 
