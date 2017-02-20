@@ -294,7 +294,7 @@ class Worker(object):
             cpu = {
                 "user": cpu_times.user,
                 "system": cpu_times.system,
-                "percent": self.process.get_cpu_percent(0)
+                "percent": self.process.cpu_percent(0)
             }
             mem = self.get_memory()
 
