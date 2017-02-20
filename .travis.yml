@@ -16,6 +16,5 @@ before_install:
 # TODO: coveralls?
 script:
   - docker run -i -t -v `pwd`:/app:rw -w /app mrq_local $PYTHON_BIN -m pylint --errors-only --init-hook="import sys; sys.path.append('.')" -d E1103 --rcfile .pylintrc mrq
-  - docker run -i -t -v `pwd`:/app:rw -w /app mrq_local $PYTHON_BIN -m pytest tests/ --collect-only
-  - travis_debug
-  - docker run -i -t -v `pwd`:/app:rw -w /app mrq_local $PYTHON_BIN -m pytest tests/ -v --junitxml=pytest-report.xml --cov mrq --cov-report term
+#  - docker run -i -t -v `pwd`:/app:rw -w /app mrq_local $PYTHON_BIN -m pytest tests/ --collect-only
+  - docker run -i -t -v `pwd`:/app:rw -w /app mrq_local $PYTHON_BIN -m pytest tests/ -vs --junitxml=pytest-report.xml --cov mrq --cov-report term
