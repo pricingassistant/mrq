@@ -48,9 +48,9 @@ class Queue(object):
 
         queue_type = Queue.get_queue_type(queue_id)
 
-        if queue_type == "mongo":
-            from .queue_mongo import QueueMongo
-            return QueueMongo(queue_id, **kwargs)
+        if queue_type == "regular":
+            from .queue_regular import QueueRegular
+            return QueueRegular(queue_id, **kwargs)
         else:
             from .queue_raw import QueueRaw
             return QueueRaw(queue_id, **kwargs)
@@ -85,7 +85,7 @@ class Queue(object):
             if "_%s" % queue_type in queue_id:
                 return queue_type
 
-        return "mongo"
+        return "regular"
 
     @classmethod
     def get_queues_config(cls):

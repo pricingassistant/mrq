@@ -4,7 +4,7 @@ import datetime
 from pymongo.collection import ReturnDocument
 
 
-class QueueMongo(Queue):
+class QueueRegular(Queue):
 
     @property
     def collection(self):

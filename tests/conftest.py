@@ -247,11 +247,15 @@ class WorkerFixture(ProcessFixture):
         return data
 
     def get_wait_for_idle(self):
-        wait_for_net_service("127.0.0.1", 20020, poll_interval=0.01)
-        f = urllib.request.urlopen("http://127.0.0.1:20020/wait_for_idle")
-        data = f.read().decode('utf-8')
-        assert data == "idle"
-        return True
+        try:
+            wait_for_net_service("127.0.0.1", 20020, poll_interval=0.01)
+            f = urllib.request.urlopen("http://127.0.0.1:20020/wait_for_idle")
+            data = f.read().decode('utf-8')
+            assert data == "idle"
+            return True
+        except Exception, e:
+            print("Couldn't get_wait_for_idle: %s" % e)
+            return False
 
 
 class RedisFixture(ProcessFixture):

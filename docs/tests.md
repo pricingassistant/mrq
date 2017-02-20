@@ -15,5 +15,6 @@ You can also open a shell inside the docker (just like you would enter in a virt
 
 ```
 $ make docker
-$ make ssh
+$ make shell
+$ py.test tests/ -v
 ```
