@@ -112,7 +112,7 @@ class ProcessFixture(object):
 
                 try:
                     p = psutil.Process(self.process.pid)
-                    if p.status == "zombie":
+                    if p.status() == "zombie":
                         # print "process %s zombie OK" % self.cmdline
                         return
                 except psutil.NoSuchProcess:
@@ -122,7 +122,7 @@ class ProcessFixture(object):
                 time.sleep(0.01)
 
             assert False, "Process '%s' was still in state %s after 20 seconds..." % (
-                self.cmdline, p.status)
+                self.cmdline, p.status())
 
 
 class WorkerFixture(ProcessFixture):
@@ -253,7 +253,7 @@ class WorkerFixture(ProcessFixture):
             data = f.read().decode('utf-8')
             assert data == "idle"
             return True
-        except Exception, e:
+        except Exception as e:
             print("Couldn't get_wait_for_idle: %s" % e)
             return False
 
