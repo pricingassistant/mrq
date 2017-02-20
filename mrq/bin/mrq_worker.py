@@ -71,7 +71,7 @@ def main():
                 # https://github.com/Supervisor/supervisor/issues/179
                 #
                 psutil_process = psutil.Process(process.pid)
-                worker_processes = psutil_process.get_children(recursive=False)
+                worker_processes = psutil_process.children(recursive=False)
 
                 if len(worker_processes) == 0:
                     return process.send_signal(signal.SIGTERM)

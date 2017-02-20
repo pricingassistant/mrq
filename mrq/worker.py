@@ -241,7 +241,7 @@ class Worker(object):
           time.sleep(self.config["paused_queues_refresh_interval"])
 
     def get_memory(self):
-        mmaps = self.process.get_memory_maps()
+        mmaps = self.process.memory_maps()
         mem = {
             "rss": sum([x.rss for x in mmaps]),
             "swap": sum([getattr(x, 'swap', getattr(x, 'swapped', 0)) for x in mmaps])
@@ -290,7 +290,7 @@ class Worker(object):
             }
             mem = {"rss": 0, "swap": 0, "total": 0}
         else:
-            cpu_times = self.process.get_cpu_times()
+            cpu_times = self.process.cpu_times()
             cpu = {
                 "user": cpu_times.user,
                 "system": cpu_times.system,
