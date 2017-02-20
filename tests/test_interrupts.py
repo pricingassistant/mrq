@@ -1,7 +1,7 @@
 import time
 import datetime
 from builtins import str
-from mrq.job import Job
+from mrq.job import Job, get_job_result
 from mrq.queue import Queue
 from bson import ObjectId
 import pytest
@@ -325,25 +325,20 @@ def test_interrupt_maxjobs(worker):
 def test_worker_interrupt_after_max_time(worker):
     worker.start(flags="--greenlets=2 --max_time=2", queues="test1 default")
 
-    worker.send_tasks("tests.tasks.general.Add", [{"a": i, "b": 1, "sleep": 3} for i in range(5)], block=False)
+    task_ids = worker.send_tasks("tests.tasks.general.Add", [{"a": i, "b": 1, "sleep": 3} for i in range(5)],
+                                 block=False)
 
     time.sleep(5)
 
-    assert Queue("default").size() == 3
+    results = [get_job_result(task_id) for task_id in task_ids]
 
+    queued_tasks = [result for result in results if result['status'] == "queued"]
+    successful_tasks = [(i, result) for i, result in enumerate(results) if result['status'] == "success"]
 
-def test_worker_runs_but_interrupt_after_max_time(worker):
-    worker.start(flags="--greenlets=2 --max_time=1", queues="test1 default")
-
-    result = worker.send_task("tests.tasks.general.Add", {"a": 2, "b": 1, "sleep": 1}, block=True)
-
-    assert result == 3
-
-    worker.send_tasks("tests.tasks.general.Add", [{"a": i, "b": 1, "sleep": 1} for i in range(5)], block=False)
-
-    time.sleep(3)
-
-    assert Queue("default").size() == 5
+    assert len(queued_tasks) == 3
+    assert len(successful_tasks) == 2
+    for i, result in successful_tasks:
+        assert result['result'] == i + 1
 
 
 def test_interrupt_maxconcurrency(worker):
