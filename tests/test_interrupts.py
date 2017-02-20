@@ -322,6 +322,30 @@ def test_interrupt_maxjobs(worker):
     assert Queue("default").size() == 7
 
 
+def test_worker_interrupt_after_max_time(worker):
+    worker.start(flags="--greenlets=2 --max_time=1", queues="test1 default")
+
+    worker.send_tasks("tests.tasks.general.Add", [{"a": i, "b": 1, "sleep": 1} for i in range(5)], block=False)
+
+    time.sleep(3)
+
+    assert Queue("default").size() == 3
+
+
+def test_worker_runs_but_interrupt_after_max_time(worker):
+    worker.start(flags="--greenlets=2 --max_time=1", queues="test1 default")
+
+    result = worker.send_task("tests.tasks.general.Add", {"a": 2, "b": 1, "sleep": 1}, block=True)
+
+    assert result == 3
+
+    worker.send_tasks("tests.tasks.general.Add", [{"a": i, "b": 1, "sleep": 1} for i in range(5)], block=False)
+
+    time.sleep(3)
+
+    assert Queue("default").size() == 5
+
+
 def test_interrupt_maxconcurrency(worker):
 
     # The worker will raise a maxconcurrency on the second job
