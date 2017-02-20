@@ -52,8 +52,7 @@ class Worker(object):
 
         self.done_jobs = 0
         self.max_jobs = self.config["max_jobs"]
-        max_time = self.config.get("max_time")
-        self.max_time = datetime.timedelta(seconds=max_time) if max_time is not None else None
+        self.max_time = datetime.timedelta(seconds=self.config["max_time"]) or None
 
         self.connected = False  # MongoDB + Redis
 

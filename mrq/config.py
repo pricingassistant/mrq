@@ -269,8 +269,8 @@ def add_parser_args(parser, config_type):
 
         parser.add_argument(
             '--max_time',
-            default=0,
-            type=int,
+            default=0.0,
+            type=float,
             action='store',
             help='Max time a worker should run before quitting.')
 

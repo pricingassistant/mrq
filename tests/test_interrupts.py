@@ -323,11 +323,11 @@ def test_interrupt_maxjobs(worker):
 
 
 def test_worker_interrupt_after_max_time(worker):
-    worker.start(flags="--greenlets=2 --max_time=1", queues="test1 default")
+    worker.start(flags="--greenlets=2 --max_time=2", queues="test1 default")
 
-    worker.send_tasks("tests.tasks.general.Add", [{"a": i, "b": 1, "sleep": 1} for i in range(5)], block=False)
+    worker.send_tasks("tests.tasks.general.Add", [{"a": i, "b": 1, "sleep": 3} for i in range(5)], block=False)
 
-    time.sleep(3)
+    time.sleep(5)
 
     assert Queue("default").size() == 3
 
