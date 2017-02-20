@@ -15,7 +15,6 @@ import psutil
 import sys
 import json as json_stdlib
 import ujson as json
-import http.server
 from bson import ObjectId
 from collections import defaultdict
 
@@ -53,6 +52,8 @@ class Worker(object):
 
         self.done_jobs = 0
         self.max_jobs = self.config["max_jobs"]
+        max_time = self.config.get("max_time")
+        self.max_time = datetime.timedelta(seconds=max_time) if max_time is not None else None
 
         self.connected = False  # MongoDB + Redis
 
@@ -419,7 +420,7 @@ class Worker(object):
         """
         self.work_init()
 
-        self.work_loop(max_jobs=self.max_jobs)
+        self.work_loop(max_jobs=self.max_jobs, max_time=self.max_time)
 
         return self.work_stop()
 
@@ -449,7 +450,7 @@ class Worker(object):
 
         self.install_signal_handlers()
 
-    def work_loop(self, max_jobs=None):
+    def work_loop(self, max_jobs=None, max_time=None):
 
         self.done_jobs = 0
         self.idle_wait_count = 0
@@ -526,6 +527,10 @@ class Worker(object):
                 # TODO consider this when dequeuing jobs to have strict limits
                 if max_jobs and self.done_jobs >= max_jobs:
                     self.log.info("Reached max_jobs=%s" % self.done_jobs)
+                    break
+
+                if max_time and datetime.datetime.utcnow() - self.datestarted >= max_time:
+                    self.log.info("Reached max_time=%s" % max_time.seconds)
                     break
 
                 # We seem to have exhausted available jobs, we can sleep for a
