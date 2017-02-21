@@ -68,6 +68,7 @@ def test_context_metric_queue(worker):
 
     worker.start(flags=" --config tests/fixtures/config-metric.py")
 
+    # Will send 1 task inside!
     worker.send_task("tests.tasks.general.SendTask", {
                      "path": "tests.tasks.general.Add", "params": {"a": 41, "b": 1}})
 
@@ -75,10 +76,10 @@ def test_context_metric_queue(worker):
         worker.send_task("tests.tasks.general.GetMetrics", {}))
 
     # GetMetrics is also a task!
-    assert metrics.get("queues.default.dequeued") == 2
-    assert metrics.get("queues.all.dequeued") == 2
-    assert metrics.get("jobs.status.started") == 2
-    assert metrics.get("jobs.status.success") == 1  # At the time it is run, GetMetrics isn't success yet.
+    assert metrics.get("queues.default.dequeued") == 3
+    assert metrics.get("queues.all.dequeued") == 3
+    assert metrics.get("jobs.status.started") == 3
+    assert metrics.get("jobs.status.success") == 2  # At the time it is run, GetMetrics isn't success yet.
 
     TEST_LOCAL_METRICS.get("queues.default.enqueued") == 2
     TEST_LOCAL_METRICS.get("queues.all.enqueued") == 2

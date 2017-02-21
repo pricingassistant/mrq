@@ -76,11 +76,11 @@ class ProcessFixture(object):
         if expected_children > 0:
             psutil_process = psutil.Process(self.process.pid)
 
-            # print "Expecting %s children, got %s" % (expected_children,
-            # psutil_process.get_children(recursive=False))
             while True:
-                self.process_children = psutil_process.children(
-                    recursive=True)
+                self.process_children = psutil_process.children(recursive=True)
+                # print("Expecting %s children of pid %s, got %s" % (
+                #     expected_children, self.process.pid, len(self.process_children))
+                # )
                 if len(self.process_children) >= expected_children:
                     break
                 time.sleep(0.1)
@@ -247,6 +247,11 @@ class WorkerFixture(ProcessFixture):
         return data
 
     def get_wait_for_idle(self):
+
+        if "--processes" in self.cmdline:
+            print("Warning: get_wait_for_idle() doesn't support multiprocess workers yet")
+            return False
+
         try:
             wait_for_net_service("127.0.0.1", 20020, poll_interval=0.01)
             f = urllib.request.urlopen("http://127.0.0.1:20020/wait_for_idle")

@@ -17,7 +17,7 @@ def test_current_job_inspect(worker):
     job_id = worker.send_task(
         "tests.tasks.general.MongoInsert", {"a": 41, "b": 1, "sleep": 3}, block=False)
 
-    time.sleep(1)
+    time.sleep(2)
 
     # Test the HTTP admin API
     admin_worker = json.loads(urllib.request.urlopen("http://localhost:20020").read().decode('utf-8'))
