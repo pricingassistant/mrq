@@ -119,7 +119,7 @@ def test_io_hooks_mongodb(worker):
     assert job_events[4]["method"] == "cursor"
     assert job_events[5]["method"] == "cursor"
 
-    # Then getmore query
+    # Then getmore query (can't understand why there are 2 more of those)
     assert job_events[6]["hook"] == "mongodb_pre"
     assert job_events[7]["hook"] == "mongodb_post"
 
@@ -129,15 +129,25 @@ def test_io_hooks_mongodb(worker):
     assert job_events[6]["method"] == "cursor"
     assert job_events[7]["method"] == "cursor"
 
-    # Result MongoDB update
-
+    # Then getmore query
     assert job_events[8]["hook"] == "mongodb_pre"
     assert job_events[9]["hook"] == "mongodb_post"
 
-    assert job_events[8]["method"] == "update"
-    assert job_events[9]["method"] == "update"
+    assert job_events[8]["collection"] == "mrq.tests_inserts"
+    assert job_events[9]["collection"] == "mrq.tests_inserts"
 
-    assert job_events[8]["collection"] == "mrq.mrq_jobs"
-    assert job_events[9]["collection"] == "mrq.mrq_jobs"
+    assert job_events[8]["method"] == "cursor"
+    assert job_events[9]["method"] == "cursor"
 
-    assert len(job_events) == 5 * 2
+    # Result MongoDB update
+
+    assert job_events[10]["hook"] == "mongodb_pre"
+    assert job_events[11]["hook"] == "mongodb_post"
+
+    assert job_events[10]["method"] == "update"
+    assert job_events[11]["method"] == "update"
+
+    assert job_events[10]["collection"] == "mrq.mrq_jobs"
+    assert job_events[11]["collection"] == "mrq.mrq_jobs"
+
+    assert len(job_events) == 6 * 2

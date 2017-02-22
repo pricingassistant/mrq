@@ -389,10 +389,6 @@ def patch_io_pymongo_cursor(config):
         # Some dark magic is needed here to cope with python's name mangling for private variables.
         def _Cursor__send_message(self, *args, **kwargs):
 
-            if len(args) and args[0].name == "find":
-                return Cursor._Cursor__send_message(self, *args, **kwargs)
-
-            # print self.__dict__
             job = get_current_job()
 
             if job:

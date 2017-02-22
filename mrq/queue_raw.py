@@ -142,7 +142,6 @@ class QueueRaw(Queue):
         retry_queue = self.get_retry_queue()
 
         params = []
-        jobs = []
 
         # ZSET with times
         if self.is_timed:
@@ -187,10 +186,11 @@ class QueueRaw(Queue):
             params = redis_group_command("lpop", max_jobs, self.redis_key)
 
         if len(params) == 0:
-            return []
+            return
 
         if worker:
             worker.status = "spawn"
+            worker.idle_event.clear()
 
         job_data = [job_factory(p) for p in params]
         for j in job_data:
@@ -200,9 +200,8 @@ class QueueRaw(Queue):
             if worker:
                 j["worker"] = worker.id
 
-        jobs += job_class.insert(job_data, statuses_no_storage=statuses_no_storage)
-
-        return jobs
+        for job in job_class.insert(job_data, statuses_no_storage=statuses_no_storage):
+            yield job
 
     def get_sorted_graph(
             self,

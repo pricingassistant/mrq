@@ -144,6 +144,8 @@ class Worker(object):
             [("dateexpires", 1)], sparse=True, background=False, expireAfterSeconds=0)
         self.mongodb_jobs.mrq_jobs.ensure_index(
             [("dateretry", 1)], sparse=True, background=False)
+        self.mongodb_jobs.mrq_jobs.ensure_index(
+            [("datequeued", 1)], sparse=True, background=True)
 
         self.mongodb_jobs.mrq_scheduled_jobs.ensure_index(
             [("hash", 1)], unique=True, background=False, drop_dups=True)

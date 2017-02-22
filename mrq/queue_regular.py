@@ -18,7 +18,7 @@ class QueueRegular(Queue):
     def list_job_ids(self, skip=0, limit=20):
         """ Returns a list of job ids on a queue """
 
-        return [str(x) for x in self.collection.find(
+        return [str(x["_id"]) for x in self.collection.find(
             {"status": "queued"},
             sort=[("_id", -1 if self.is_reverse else 1)],
             projection={"_id": 1})
@@ -31,25 +31,49 @@ class QueueRegular(Queue):
             from .job import Job
             job_class = Job
 
-        if worker:
-            worker.status = "spawn"
-            worker.idle_event.clear()
-
         count = 0
 
-        for _ in range(max_jobs):
+        job_ids = None
 
-            job_data = self.collection.find_one_and_update(
+        # TODO: remove _id sort after full migration to datequeued
+        sort_order = [("datequeued", -1 if self.is_reverse else 1), ("_id", -1 if self.is_reverse else 1)]
+
+        # MongoDB optimization: with many jobs it's faster to fetch the IDs first and do the atomic update second
+        # Some jobs may have been stolen by another worker in the meantime but it's a balance (should we over-fetch?)
+        if max_jobs > 5:
+            job_ids = [x["_id"] for x in self.collection.find(
                 {
                     "status": "queued",
                     "queue": self.id
                 },
+                limit=max_jobs,
+                sort=sort_order,
+                projection={"_id": 1}
+            )]
+
+            if len(job_ids) == 0:
+                return
+
+        for i in range(max_jobs if job_ids is None else len(job_ids)):
+
+            query = {
+                "status": "queued",
+                "queue": self.id
+            }
+            if job_ids is not None:
+                query = {
+                    "status": "queued",
+                    "_id": job_ids[i]
+                }
+
+            job_data = self.collection.find_one_and_update(
+                query,
                 {"$set": {
                     "status": "started",
                     "datestarted": datetime.datetime.utcnow(),
                     "worker": worker.id if worker else None
                 }},
-                sort=[("_id", -1 if self.is_reverse else 1)],
+                sort=sort_order,
                 return_document=ReturnDocument.AFTER,
                 projection={
                     "_id": 1,
@@ -63,6 +87,10 @@ class QueueRegular(Queue):
 
             if not job_data:
                 break
+
+            if worker:
+                worker.status = "spawn"
+                worker.idle_event.clear()
 
             count += 1
             context.metric("queues.%s.dequeued" % job_data["queue"], 1)

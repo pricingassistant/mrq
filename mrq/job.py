@@ -266,6 +266,7 @@ class Job(object):
 
         self._save_status("queued", updates={
             "queue": queue,
+            "datequeued": datetime.datetime.utcnow(),
             "retry_count": retry_count
         })
 
@@ -632,6 +633,7 @@ def queue_jobs(main_task_path, params_list, queue=None, batch_size=1000):
             "path": main_task_path,
             "params": params,
             "queue": queue,
+            "datequeued": datetime.datetime.utcnow(),
             "status": "queued"
         } for params in params_group], w=1, return_jobs=False)
 

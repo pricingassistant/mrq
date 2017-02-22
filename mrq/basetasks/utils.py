@@ -120,6 +120,7 @@ class JobAction(Task):
 
                     updates = {
                         "status": "queued",
+                        "datequeued": datetime.datetime.utcnow(),
                         "dateupdated": datetime.datetime.utcnow()
                     }
 

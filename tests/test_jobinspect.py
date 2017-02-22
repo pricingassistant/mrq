@@ -102,9 +102,10 @@ def test_current_job_trace_io(worker, p_testtype, p_testparams, p_type, p_data, 
                     admin_worker = {}
                 if len(admin_worker.get("jobs", [])) > 0:
                     io = admin_worker["jobs"][0].get("io")
+
                     # Don't take MRQ's IOs as regular IO
                     if io:
-                        if io["type"] == "mongodb" and io["data"]["collection"] in ["mrq.mrq_jobs", "mrq.mrq_logs"]:
+                        if io["type"].startswith("mongodb") and io["data"]["collection"] in ["mrq.mrq_jobs", "mrq.mrq_logs"]:
                             io = False
                         else:
                             break

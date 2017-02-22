@@ -112,6 +112,26 @@ def test_general_simple_task_multiple(worker):
         [["dateupdated", 1]])] == [42, 42, 41]
 
 
+def test_general_requeue_order(worker):
+    from mrq.job import Job
+
+    jobids = worker.send_tasks("tests.tasks.general.Add", [
+        {"a": 41, "b": 1, "sleep": 4},
+        {"a": 42, "b": 1, "sleep": 1},
+        {"a": 43, "b": 1, "sleep": 1}
+    ], block=False)
+
+    time.sleep(2)
+
+    # We should be executing job1 now. Let's requeue job2, making it go to the end of the queue.
+    Job(jobids[1]).requeue()
+
+    worker.get_wait_for_idle()
+
+    assert [x["result"] for x in worker.mongodb_jobs.mrq_jobs.find().sort(
+        [["dateupdated", 1]])] == [42, 44, 43]
+
+
 def test_general_simple_task_reverse(worker):
 
     worker.start(queues="default_reverse xtest test_timed_set", flags="--config tests/fixtures/config-raw1.py")
