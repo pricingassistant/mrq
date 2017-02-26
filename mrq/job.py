@@ -283,25 +283,29 @@ class Job(object):
 
         self.task.is_main_task = True
 
-        try:
+        if not self.task.max_concurrency:
+
+            result = self.task.run_wrapped(self.data["params"])
+
+        else:
+
+            if self.task.max_concurrency > 1:
+                raise NotImplementedError()
+
             lock = None
-
-            if self.task.max_concurrency:
-
-                if self.task.max_concurrency > 1:
-                    raise NotImplementedError()
+            try:
 
                 # TODO: implement a semaphore
                 lock = context.connections.redis.lock(self.redis_max_concurrency_key, timeout=self.timeout + 5)
                 if not lock.acquire(blocking=True, blocking_timeout=0):
                     raise MaxConcurrencyInterrupt()
 
-            result = self.task.run_wrapped(self.data["params"])
+                result = self.task.run_wrapped(self.data["params"])
 
-        finally:
-            if lock:
+            finally:
                 try:
-                    lock.release()
+                    if lock:
+                        lock.release()
                 except LockError:
                     pass
 
