@@ -25,11 +25,11 @@ from .context import (set_current_worker, set_current_job, get_current_job, get_
                       connections, enable_greenlet_tracing)
 from .queue import Queue
 from .utils import MongoJSONEncoder, MovingAverage
+from .processes import Process
 
 
-class Worker(object):
-
-    """ Main worker class. """
+class Worker(Process):
+    """ Main worker class """
 
     # Allow easy overloading
     job_class = Job
@@ -55,7 +55,6 @@ class Worker(object):
 
         self.connected = False  # MongoDB + Redis
 
-        self.exitcode = 0
         self.process = psutil.Process(os.getpid())
         self.greenlet = gevent.getcurrent()
         self.graceful_stop = None
@@ -80,8 +79,9 @@ class Worker(object):
         self.queues = [Queue(x, add_to_known_queues=True) for x in self.config["queues"] if x]
 
         self.log.info(
-            "Starting Gevent pool with %s worker greenlets (+ report, logs, adminhttp)" %
-            self.pool_size)
+            "Starting worker on %s queues with %s greenlets" %
+            (len(self.queues), self.pool_size)
+        )
 
         self.gevent_pool = gevent.pool.Pool(self.pool_size)
 
@@ -172,7 +172,7 @@ class Worker(object):
 
     def greenlet_report(self):
         """ This greenlet always runs in background to update current status
-            in MongoDB every 10 seconds.
+            in MongoDB every N seconds.
 
             Caution: it might get delayed when doing long blocking operations.
             Should we do this in a thread instead?
@@ -422,8 +422,6 @@ class Worker(object):
 
         self.work_loop(max_jobs=self.max_jobs)
 
-        return self.work_stop()
-
     def work_init(self):
 
         self.connect()
@@ -467,9 +465,9 @@ class Worker(object):
                 if self.graceful_stop:
                     break
 
-                # If the scheduler greenlet are crashed, fail loudly.
+                # If the scheduler greenlet is crashed, fail loudly.
                 if self.config["scheduler"] and not self.greenlets["scheduler"]:
-                    self.exitcode = 6
+                    self.exitcode = 1
                     break
 
                 while True:
@@ -480,7 +478,6 @@ class Worker(object):
                         total_started = (self.pool_size - free_pool_slots) + self.done_jobs
                         free_pool_slots = min(free_pool_slots, max_jobs - total_started)
                         if free_pool_slots == 0:
-                            self.exitcode = 5
                             break
 
                     if free_pool_slots > 0:
@@ -602,8 +599,6 @@ class Worker(object):
             "Exiting main worker greenlet (%0.5fs, %s switches)." %
             (g_time, g_switches))
 
-        return self.exitcode
-
     def perform_job(self, job):
         """ Wraps a job.perform() call with timeout logic and exception handlers.
 
@@ -674,17 +669,10 @@ class Worker(object):
     def shutdown_graceful(self):
         """ Graceful shutdown: waits for all the jobs to finish. """
 
-        # This is in the 'exitcodes' list in supervisord so processes
-        # exiting gracefully won't be restarted.
-        self.exitcode = 2
-
         self.log.info("Graceful shutdown...")
         raise StopRequested()  # pylint: disable=nonstandard-exception
 
     def shutdown_max_memory(self):
-
-        # Not in the exitcodes list: we want it to be restarted.
-        self.exitcode = 4
 
         self.log.info("Max memory reached, shutdown...")
         self.graceful_stop = True
@@ -692,36 +680,9 @@ class Worker(object):
     def shutdown_now(self):
         """ Forced shutdown: interrupts all the jobs. """
 
-        # This is in the 'exitcodes' list in supervisord so processes
-        # exiting gracefully won't be restarted.
-        self.exitcode = 3
-
         self.log.info("Forced shutdown...")
         self.status = "killing"
 
         self.gevent_pool.kill(exception=JobInterrupt, block=False)
 
         raise StopRequested()  # pylint: disable=nonstandard-exception
-
-    def install_signal_handlers(self):
-        """ Handle events like Ctrl-C from the command line. """
-
-        self.graceful_stop = False
-
-        def request_shutdown_now():
-            self.shutdown_now()
-
-        def request_shutdown_graceful():
-
-            # Second time CTRL-C, shutdown now
-            if self.graceful_stop:
-                request_shutdown_now()
-            else:
-                self.graceful_stop = True
-                self.shutdown_graceful()
-
-        # First time CTRL-C, try to shutdown gracefully
-        gevent.signal(signal.SIGINT, request_shutdown_graceful)
-
-        # User (or Heroku) requests a stop now, just mark tasks as interrupted.
-        gevent.signal(signal.SIGTERM, request_shutdown_now)

@@ -4,6 +4,7 @@ import argparse
 import os
 import sys
 import re
+import psutil
 from .version import VERSION
 from .utils import get_local_ip, DelimiterArgParser
 import atexit
@@ -255,8 +256,31 @@ def add_parser_args(parser, config_type):
             type=str,
             help='Bind the dashboard to this IP. Default is "0.0.0.0", use "127.0.0.1" to restrict access.')
 
-    # Worker-specific args
+    # Agent-specific args
+    elif config_type == "agent":
 
+        parser.add_argument(
+            '--worker_group',
+            default="default",
+            action="store",
+            type=str,
+            help='The name of the worker group to manage')
+
+        parser.add_argument(
+            '--available_memory',
+            default=int(psutil.virtual_memory().total * 0.8),
+            action="store",
+            type=int,
+            help="How much memory MB this agent's workers can use. Used for scheduling, not a hard limit.")
+
+        parser.add_argument(
+            '--available_cpu',
+            default=psutil.cpu_count(logical=True) * 1024,
+            action="store",
+            type=int,
+            help="How much CPU units this agent's workers can use. We recommend using 1024 per CPU.")
+
+    # Worker-specific args
     elif config_type == "worker":
 
         parser.add_argument(

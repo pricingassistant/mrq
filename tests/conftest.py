@@ -97,6 +97,7 @@ class ProcessFixture(object):
 
         if self.process is not None:
 
+            print("Test sending signal %s to %s" % (sig, self.process.pid))
             os.kill(self.process.pid, sig)
 
             # When sending a sigkill to the process, we also want to kill the
@@ -153,10 +154,6 @@ class WorkerFixture(ProcessFixture):
             kwargs.get("flags", ""),
             kwargs.get("queues", "high default low")
         )
-
-        # +1 because of supervisord itself
-        if processes > 0:
-            processes += 1
 
         print(cmdline)
         ProcessFixture.start(self, cmdline=cmdline, env=kwargs.get("env"), expected_children=processes)

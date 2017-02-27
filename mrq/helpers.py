@@ -1,5 +1,5 @@
 """ Helpers are util functions which use the context """
-from mrq.context import connections, get_current_config
+from .context import connections, get_current_config
 import time
 
 
