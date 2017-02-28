@@ -163,8 +163,8 @@ def test_agent_process(worker):
     time.sleep(3)
 
     assert connections.mongodb_jobs.mrq_workers.count() == 1
-    worker = connections.mongodb_jobs.mrq_workers.find_one()
-    assert worker["status"] == "wait"
+    w = connections.mongodb_jobs.mrq_workers.find_one()
+    assert w["status"] == "wait"
 
     connections.mongodb_jobs.mrq_workergroups.update_one({"_id": "xxx"}, {"$set": {"profiles": [
 
@@ -172,5 +172,13 @@ def test_agent_process(worker):
 
     time.sleep(4)
 
-    worker = connections.mongodb_jobs.mrq_workers.find_one()
-    assert worker["status"] == "stop"
+    w = connections.mongodb_jobs.mrq_workers.find_one()
+    assert w["status"] == "stop"
+
+    assert connections.mongodb_jobs.mrq_agents.count() == 1
+
+    worker.stop(deps=False)
+
+    assert connections.mongodb_jobs.mrq_agents.count() == 0
+
+    worker.stop_deps()

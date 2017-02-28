@@ -148,7 +148,12 @@ class Worker(Process):
             [("datequeued", 1)], sparse=True, background=True)
 
         self.mongodb_jobs.mrq_scheduled_jobs.ensure_index(
-            [("hash", 1)], unique=True, background=False, drop_dups=True)
+            [("hash", 1)], unique=True, background=False)
+
+        self.mongodb_jobs.mrq_agents.ensure_index(
+            [("datereported", 1)], background=False, expireAfterSeconds=300)
+        self.mongodb_jobs.mrq_agents.ensure_index(
+            [("worker_group", 1)], background=False)
 
         try:
             # This will be default in MongoDB 2.6

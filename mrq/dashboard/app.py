@@ -15,6 +15,7 @@ from bson import ObjectId
 import json
 import argparse
 from werkzeug.serving import run_simple
+from future.builtins import str
 
 sys.path.insert(0, os.getcwd())
 
@@ -120,6 +121,24 @@ def get_workers():
     cursor = collection.find({"status": {"$ne": "stop"}})
     data = {"workers": list(cursor)}
     return jsonify(data)
+
+
+@app.route('/api/workergroups', methods=["GET"])
+@requires_auth
+def get_workergroups():
+    collection = connections.mongodb_jobs.mrq_workergroups
+    data = {"workergroups": {str(row.pop("_id")): row for row in collection.find(sort=[("_id", 1)])}}
+    return jsonify(data)
+
+
+@app.route('/api/workergroups', methods=["POST"])
+@requires_auth
+def post_workergroups():
+    workergroups = json.loads(request.form["workergroups"])
+    for k, v in workergroups.iteritems():
+        connections.mongodb_jobs.mrq_workergroups.update_one({"_id": k}, {"$set": v}, upsert=True)
+
+    return jsonify({"status": "ok"})
 
 
 def build_api_datatables_query(req):

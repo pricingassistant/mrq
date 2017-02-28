@@ -2,7 +2,7 @@ from future.builtins import object
 
 from .context import get_current_config, connections, log
 import time
-import json
+import datetime
 import gevent
 from bson import ObjectId
 from collections import defaultdict
@@ -32,6 +32,8 @@ class Agent(Process):
         self.pool.start()
 
         self.pool.wait()
+
+        connections.mongodb_jobs.mrq_agents.delete_one({"_id": self.id})
 
     def shutdown_now(self):
         self.pool.terminate()
@@ -78,7 +80,8 @@ class Agent(Process):
             "current_workers": [p["command"] for p in self.pool.processes],
             "available_cpu": get_current_config()["available_cpu"],
             "available_memory": get_current_config()["available_memory"],
-            "worker_group": self.worker_group
+            "worker_group": self.worker_group,
+
         }
         return report
 
@@ -181,7 +184,8 @@ class Agent(Process):
                 connections.mongodb_jobs.mrq_agents.update_one({"_id": agent["_id"]}, {"$set": {
                     "desired_workers": agent["new_desired_workers"],
                     "free_cpu": agent["free_cpu"],
-                    "free_memory": agent["free_memory"]
+                    "free_memory": agent["free_memory"],
+                    "datereported": datetime.datetime.utcnow()
                 }})
 
     def get_desired_workers_for_group(self, group):

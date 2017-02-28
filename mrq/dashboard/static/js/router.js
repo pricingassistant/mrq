@@ -12,7 +12,8 @@ define(["backbone", "underscore", "jquery"],function(Backbone, _, $) {
       'jobs': 'jobs',
       'io': 'io',
       'scheduledjobs': 'scheduledjobs',
-      'status': 'status'
+      'status': 'status',
+      'workergroups': 'workergroups'
     },
 
     /**
@@ -123,6 +124,11 @@ define(["backbone", "underscore", "jquery"],function(Backbone, _, $) {
     io: function(params) {
       this.setNavbar("io");
       this.app.rootView.showChildPage('io', {"options": {"params": params || {}}});
+    },
+
+    workergroups: function(params) {
+      this.setNavbar("workergroups");
+      this.app.rootView.showChildPage('workergroups', {"options": {"params": params || {}}});
     },
 
     taskpaths: function(params) {
