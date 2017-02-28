@@ -422,6 +422,8 @@ class Worker(Process):
 
         self.work_loop(max_jobs=self.max_jobs)
 
+        self.work_stop()
+
     def work_init(self):
 
         self.connect()

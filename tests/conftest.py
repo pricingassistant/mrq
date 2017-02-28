@@ -136,7 +136,7 @@ class WorkerFixture(ProcessFixture):
 
         self.started = False
 
-    def start(self, flush=True, deps=True, trace=True, **kwargs):
+    def start(self, flush=True, deps=True, trace=True, agent=False, **kwargs):
 
         self.started = True
 
@@ -144,16 +144,22 @@ class WorkerFixture(ProcessFixture):
             self.start_deps(flush=flush)
 
         processes = 0
-        m = re.search(r"--processes (\d+)", kwargs.get("flags", ""))
-        if m:
-            processes = int(m.group(1))
 
-        cmdline = "python mrq/bin/mrq_worker.py --mongodb_logs_size 0 %s %s %s %s" % (
-            "--admin_port 20020" if (processes <= 1) else "",
-            "--trace_io --trace_greenlets" if trace else "",
-            kwargs.get("flags", ""),
-            kwargs.get("queues", "high default low")
-        )
+        if agent:
+            cmdline = "python mrq/bin/mrq_agent.py %s" % kwargs.get("flags", "")
+
+        else:
+
+            m = re.search(r"--processes (\d+)", kwargs.get("flags", ""))
+            if m:
+                processes = int(m.group(1))
+
+            cmdline = "python mrq/bin/mrq_worker.py --mongodb_logs_size 0 %s %s %s %s" % (
+                "--admin_port 20020" if (processes <= 1) else "",
+                "--trace_io --trace_greenlets" if trace else "",
+                kwargs.get("flags", ""),
+                kwargs.get("queues", "high default low")
+            )
 
         print(cmdline)
         ProcessFixture.start(self, cmdline=cmdline, env=kwargs.get("env"), expected_children=processes)

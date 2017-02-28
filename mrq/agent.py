@@ -17,6 +17,7 @@ class Agent(Process):
         self.id = ObjectId()
         self.worker_group = worker_group or get_current_config()["worker_group"]
         self.pool = ProcessPool()
+        self.config = get_current_config()
 
     def work(self):
 
@@ -50,7 +51,7 @@ class Agent(Process):
             try:
                 self.manage()
             except Exception as e:  # pylint: disable=broad-except
-                self.log.error("When reporting: %s" % e)
+                log.error("When reporting: %s" % e)
             finally:
                 time.sleep(self.config["report_interval"])
 
@@ -59,11 +60,13 @@ class Agent(Process):
         report = self.get_agent_report()
 
         try:
-            db = self.mongodb_jobs.mrq_agents.find_and_modify({
+            db = connections.mongodb_jobs.mrq_agents.find_and_modify({
                 "_id": ObjectId(self.id)
             }, {"$set": report}, upsert=True)
+            if not db:
+                return
         except Exception as e:  # pylint: disable=broad-except
-            self.log.debug("Agent report failed: %s" % e)
+            log.debug("Agent report failed: %s" % e)
             return
 
         # If the desired_workers was changed by an orchestrator, apply the changes locally
@@ -74,16 +77,17 @@ class Agent(Process):
         report = {
             "current_workers": [p["command"] for p in self.pool.processes],
             "available_cpu": get_current_config()["available_cpu"],
-            "available_memory": get_current_config()["available_memory"]
+            "available_memory": get_current_config()["available_memory"],
+            "worker_group": self.worker_group
         }
         return report
 
     def greenlet_orchestrate(self):
 
         while True:
-            with connections.redis.lock(self.redis_agent_orchestrator_key, timeout=60):
+            with connections.redis.lock(self.redis_agent_orchestrator_key, timeout=self.config["orchestrate_interval"] + 10):
                 self.orchestrate()
-                time.sleep(30)
+                time.sleep(self.config["orchestrate_interval"])
 
     @property
     def redis_agent_orchestrator_key(self):

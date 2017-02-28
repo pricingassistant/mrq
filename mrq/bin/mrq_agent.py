@@ -13,16 +13,18 @@ monkey.patch_all(subprocess=False)
 import sys
 import argparse
 
-from .config import get_config
-from .agent import Agent
-from .context import set_current_config
+sys.path.insert(0, os.getcwd())
+
+from mrq import config
+from mrq.agent import Agent
+from mrq.context import set_current_config
 
 
 def main():
 
     parser = argparse.ArgumentParser(description='Start a MRQ agent')
 
-    cfg = get_config(parser=parser, config_type="agent", sources=("file", "env", "args"))
+    cfg = config.get_config(parser=parser, config_type="agent", sources=("file", "env", "args"))
 
     set_current_config(cfg)
 

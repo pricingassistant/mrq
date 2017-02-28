@@ -280,6 +280,20 @@ def add_parser_args(parser, config_type):
             type=int,
             help="How much CPU units this agent's workers can use. We recommend using 1024 per CPU.")
 
+        parser.add_argument(
+            '--orchestrate_interval',
+            default=30,
+            action="store",
+            type=float,
+            help="How much seconds to wait between orchestration runs.")
+
+        parser.add_argument(
+            '--report_interval',
+            default=10,
+            action='store',
+            type=float,
+            help='Seconds between agent reports to MongoDB')
+
     # Worker-specific args
     elif config_type == "worker":
 

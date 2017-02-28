@@ -1,5 +1,6 @@
 from mrq.agent import Agent
 from mrq.context import connections
+import time
 
 
 def scenario(profiles, agents):
@@ -136,3 +137,40 @@ def test_orchestration_scenarios(worker):
     }
 
     worker.stop()
+
+
+def test_agent_process(worker):
+
+    worker.start(agent=True, flags="--worker_group xxx --available_memory=500 --available_cpu=500 --orchestrate_interval=1 --report_interval=1")
+
+    time.sleep(3)
+
+    agents = list(connections.mongodb_jobs.mrq_agents.find())
+
+    assert len(agents) == 1
+
+    assert connections.mongodb_jobs.mrq_workers.count() == 0
+
+    connections.mongodb_jobs.mrq_workergroups.insert_one({"_id": "xxx", "profiles": [
+        {
+            "command": "mrq-worker a",
+            "memory": 100,
+            "cpu": 100,
+            "min_count": 1
+        }
+    ]})
+
+    time.sleep(3)
+
+    assert connections.mongodb_jobs.mrq_workers.count() == 1
+    worker = connections.mongodb_jobs.mrq_workers.find_one()
+    assert worker["status"] == "wait"
+
+    connections.mongodb_jobs.mrq_workergroups.update_one({"_id": "xxx"}, {"$set": {"profiles": [
+
+    ]}})
+
+    time.sleep(4)
+
+    worker = connections.mongodb_jobs.mrq_workers.find_one()
+    assert worker["status"] == "stop"
