@@ -643,4 +643,6 @@ def queue_jobs(main_task_path, params_list, queue=None, batch_size=1000):
 
         all_ids += job_ids
 
+    queue_obj.notify(len(all_ids))
+
     return all_ids

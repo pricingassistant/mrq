@@ -262,4 +262,4 @@ class GetIoHookEvents(Task):
 class SendTask(Task):
 
     def run(self, params):
-        return queue_job(params["path"], params["params"])
+        return queue_job(params["path"], params["params"], queue=params.get("queue"))

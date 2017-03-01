@@ -135,7 +135,7 @@ class WorkerFixture(ProcessFixture):
 
         self.started = False
 
-    def start(self, flush=True, deps=True, trace=True, **kwargs):
+    def start(self, flush=True, deps=True, trace=True, bind_admin_port=True, **kwargs):
 
         self.started = True
 
@@ -148,7 +148,7 @@ class WorkerFixture(ProcessFixture):
             processes = int(m.group(1))
 
         cmdline = "python mrq/bin/mrq_worker.py --mongodb_logs_size 0 %s %s %s %s" % (
-            "--admin_port 20020" if (processes <= 1) else "",
+            "--admin_port 20020" if (processes <= 1 and bind_admin_port) else "",
             "--trace_io --trace_greenlets" if trace else "",
             kwargs.get("flags", ""),
             kwargs.get("queues", "high default low")
@@ -158,8 +158,12 @@ class WorkerFixture(ProcessFixture):
         if processes > 0:
             processes += 1
 
+        env = kwargs.get("env") or {}
+        env.setdefault("MRQ_MAX_LATENCY", "0.1")
+        env.setdefault("MRQ_NO_MONGODB_ENSURE_INDEXES", "1")  # For performance
+
         print(cmdline)
-        ProcessFixture.start(self, cmdline=cmdline, env=kwargs.get("env"), expected_children=processes)
+        ProcessFixture.start(self, cmdline=cmdline, env=env, expected_children=processes)
 
     def start_deps(self, flush=True):
 
@@ -313,7 +317,11 @@ def redis(request):
 
 @pytest.fixture(scope="function")
 def worker(request, mongodb, redis):
+    return WorkerFixture(request, mongodb=mongodb, redis=redis)
 
+
+@pytest.fixture(scope="function")
+def worker2(request, mongodb, redis):
     return WorkerFixture(request, mongodb=mongodb, redis=redis)
 
 

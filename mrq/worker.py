@@ -61,7 +61,6 @@ class Worker(object):
         self.graceful_stop = None
 
         self.idle_event = gevent.event.Event()
-        self.idle_wait_count = 0
 
         self.id = ObjectId()
         if self.config.get("name"):
@@ -78,6 +77,7 @@ class Worker(object):
         self.log = self.log_handler.get_logger(worker=self.id)
 
         self.queues = [Queue(x, add_to_known_queues=True) for x in self.config["queues"] if x]
+        self.queues_with_notify = list(set([q.redis_key_notify() for q in self.queues if q.use_notify()]))
 
         self.log.info(
             "Starting Gevent pool with %s worker greenlets (+ report, logs, adminhttp)" %
@@ -394,7 +394,6 @@ class Worker(object):
                 report = self.get_worker_report(with_memory=(path == "/report_mem"))
                 res = bytes(json_stdlib.dumps(report, cls=MongoJSONEncoder), 'utf-8')
             elif path == "/wait_for_idle":
-                self.idle_wait_count = 0
                 self.idle_event.clear()
                 self.idle_event.wait()
                 res = "idle"
@@ -453,7 +452,6 @@ class Worker(object):
     def work_loop(self, max_jobs=None):
 
         self.done_jobs = 0
-        self.idle_wait_count = 0
         self.datestarted_work_loop = datetime.datetime.utcnow()
 
         # has_raw = any(q.is_raw or q.is_sorted for q in [Queue(x) for x in self.queues])
@@ -540,19 +538,11 @@ class Worker(object):
 
                     if (
                         not self.idle_event.is_set() and
-                        len(jobs) == 0 and
-                        free_pool_slots == self.pool_size and
-                        self.idle_wait_count > 0
+                        free_pool_slots == self.pool_size
                     ):
                         self.idle_event.set()
 
-                    self.status = "wait"
-                    self.idle_wait_count += 1
-                    gevent.sleep(min(self.config["max_latency"], 0.001 * self.idle_wait_count))
-
-                # We got some jobs, reset the idle counter.
-                else:
-                    self.idle_wait_count = 0
+                    self.work_wait()
 
         except StopRequested:
             pass
@@ -576,6 +566,17 @@ class Worker(object):
         self.log.info("Worker spent %.3f seconds performing %s jobs (%.3f jobs/second)" % (
             lifetime.total_seconds(), self.done_jobs, job_rate
         ))
+
+    def work_wait(self):
+        """ Wait for new jobs to arrive """
+
+        self.status = "wait"
+
+        if len(self.queues_with_notify) > 0:
+            # https://github.com/antirez/redis/issues/874
+            connections.redis.blpop(*(self.queues_with_notify + [max(1, int(self.config["max_latency"]))]))
+        else:
+            gevent.sleep(self.config["max_latency"])
 
     def work_stop(self):
 

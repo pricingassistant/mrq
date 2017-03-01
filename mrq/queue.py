@@ -279,6 +279,27 @@ class Queue(object):
         self.remove_from_known_queues()
         return context.connections.redis.delete(self.redis_key)
 
+    def redis_key_notify(self):
+        return "%s:notify:%s" % (context.get_current_config()["redis_prefix"], self.root_id)
+
+    def use_notify(self):
+        """ Does this queue use notifications? """
+        return bool(self.get_config().get("notify"))
+
+    def notify(self, new_jobs_count):
+        """ We just queued new_jobs_count jobs on this queue, wake up the workers if needed """
+
+        if not self.use_notify():
+            return
+
+        # Not really useful to send more than 100 notifs (to be configured)
+        count = min(new_jobs_count, 100)
+
+        notify_key = self.redis_key_notify()
+
+        context.connections.redis.lpush(notify_key, *([1] * count))
+        context.connections.redis.expire(notify_key, max(1, int(context.get_current_config()["max_latency"] * 2)))
+
 
 #
 # Deprecated methods. Tagged for removal in 1.0.0
