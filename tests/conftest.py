@@ -97,7 +97,7 @@ class ProcessFixture(object):
 
         if self.process is not None:
 
-            print("Test sending signal %s to %s" % (sig, self.process.pid))
+            print("Sending signal %s to pid %s" % (sig, self.process.pid))
             os.kill(self.process.pid, sig)
 
             # When sending a sigkill to the process, we also want to kill the

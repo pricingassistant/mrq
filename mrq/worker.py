@@ -151,7 +151,9 @@ class Worker(Process):
             [("hash", 1)], unique=True, background=False)
 
         self.mongodb_jobs.mrq_agents.ensure_index(
-            [("datereported", 1)], background=False, expireAfterSeconds=300)
+            [("datereported", 1)], background=False)
+        self.mongodb_jobs.mrq_agents.ensure_index(
+            [("dateexpires", 1)], background=False, expireAfterSeconds=0)
         self.mongodb_jobs.mrq_agents.ensure_index(
             [("worker_group", 1)], background=False)
 

@@ -31,9 +31,11 @@ class Agent(Process):
 
         self.pool.start()
 
-        self.pool.wait()
-
-        connections.mongodb_jobs.mrq_agents.delete_one({"_id": self.id})
+        try:
+            self.pool.wait()
+        finally:
+            self.shutdown_now()
+            connections.mongodb_jobs.mrq_agents.delete_one({"_id": self.id})
 
     def shutdown_now(self):
         self.pool.terminate()
@@ -81,7 +83,8 @@ class Agent(Process):
             "available_cpu": get_current_config()["available_cpu"],
             "available_memory": get_current_config()["available_memory"],
             "worker_group": self.worker_group,
-
+            "datereported": datetime.datetime.utcnow(),
+            "dateexpires": datetime.datetime.utcnow() + datetime.timedelta(seconds=(self.config["report_interval"] * 3) + 5)
         }
         return report
 
@@ -184,8 +187,7 @@ class Agent(Process):
                 connections.mongodb_jobs.mrq_agents.update_one({"_id": agent["_id"]}, {"$set": {
                     "desired_workers": agent["new_desired_workers"],
                     "free_cpu": agent["free_cpu"],
-                    "free_memory": agent["free_memory"],
-                    "datereported": datetime.datetime.utcnow()
+                    "free_memory": agent["free_memory"]
                 }})
 
     def get_desired_workers_for_group(self, group):
@@ -206,4 +208,3 @@ class Agent(Process):
 
     def fetch_worker_group_definition(self):
         return connections.mongodb_jobs.mrq_workergroups.find_one({"_id": self.worker_group})
-

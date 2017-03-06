@@ -153,14 +153,14 @@ def test_agent_process(worker):
 
     connections.mongodb_jobs.mrq_workergroups.insert_one({"_id": "xxx", "profiles": [
         {
-            "command": "mrq-worker a",
+            "command": "mrq-worker a --report_interval=1",
             "memory": 100,
             "cpu": 100,
             "min_count": 1
         }
     ]})
 
-    time.sleep(3)
+    time.sleep(7)
 
     assert connections.mongodb_jobs.mrq_workers.count() == 1
     w = connections.mongodb_jobs.mrq_workers.find_one()
@@ -178,6 +178,8 @@ def test_agent_process(worker):
     assert connections.mongodb_jobs.mrq_agents.count() == 1
 
     worker.stop(deps=False)
+
+    time.sleep(2)
 
     assert connections.mongodb_jobs.mrq_agents.count() == 0
 
