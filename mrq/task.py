@@ -1,4 +1,5 @@
-from builtins import object
+from future.builtins import object
+
 
 class Task(object):
 

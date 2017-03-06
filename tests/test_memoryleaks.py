@@ -6,23 +6,27 @@ import pytest
 
 def test_max_memory_restart(worker):
 
-    N = 20
+    N = 10
 
     worker.start(
-        flags="--processes 1 --greenlets 1 --max_memory 50 --report_interval 1")
+        flags=" --processes 1 --greenlets 1 --max_memory 50 --report_interval 1")
 
     worker.send_tasks(
         "tests.tasks.general.Leak",
         [{"size": 1000000, "sleep": 1} for _ in range(N)],
         queue="default",
-        block=True
+        block=False
     )
+
+    time.sleep(N * 2)
 
     assert worker.mongodb_jobs.mrq_jobs.find(
         {"status": "success"}).count() == N
 
     # We must have been restarted at least once.
     assert worker.mongodb_jobs.mrq_workers.find().count() > 1
+
+    worker.stop()
 
 
 def get_diff_after_jobs(worker, n_tasks, leak, sleep=0):

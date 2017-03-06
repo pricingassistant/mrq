@@ -76,11 +76,11 @@ class ProcessFixture(object):
         if expected_children > 0:
             psutil_process = psutil.Process(self.process.pid)
 
-            # print "Expecting %s children, got %s" % (expected_children,
-            # psutil_process.get_children(recursive=False))
             while True:
-                self.process_children = psutil_process.get_children(
-                    recursive=True)
+                self.process_children = psutil_process.children(recursive=True)
+                # print("Expecting %s children of pid %s, got %s" % (
+                #     expected_children, self.process.pid, len(self.process_children))
+                # )
                 if len(self.process_children) >= expected_children:
                     break
                 time.sleep(0.1)
@@ -112,7 +112,7 @@ class ProcessFixture(object):
 
                 try:
                     p = psutil.Process(self.process.pid)
-                    if p.status == "zombie":
+                    if p.status() == "zombie":
                         # print "process %s zombie OK" % self.cmdline
                         return
                 except psutil.NoSuchProcess:
@@ -122,7 +122,7 @@ class ProcessFixture(object):
                 time.sleep(0.01)
 
             assert False, "Process '%s' was still in state %s after 20 seconds..." % (
-                self.cmdline, p.status)
+                self.cmdline, p.status())
 
 
 class WorkerFixture(ProcessFixture):
@@ -135,7 +135,7 @@ class WorkerFixture(ProcessFixture):
 
         self.started = False
 
-    def start(self, flush=True, deps=True, trace=True, **kwargs):
+    def start(self, flush=True, deps=True, trace=True, bind_admin_port=True, **kwargs):
 
         self.started = True
 
@@ -148,7 +148,7 @@ class WorkerFixture(ProcessFixture):
             processes = int(m.group(1))
 
         cmdline = "python mrq/bin/mrq_worker.py --mongodb_logs_size 0 %s %s %s %s" % (
-            "--admin_port 20020" if (processes <= 1) else "",
+            "--admin_port 20020" if (processes <= 1 and bind_admin_port) else "",
             "--trace_io --trace_greenlets" if trace else "",
             kwargs.get("flags", ""),
             kwargs.get("queues", "high default low")
@@ -158,8 +158,12 @@ class WorkerFixture(ProcessFixture):
         if processes > 0:
             processes += 1
 
+        env = kwargs.get("env") or {}
+        env.setdefault("MRQ_MAX_LATENCY", "0.1")
+        env.setdefault("MRQ_NO_MONGODB_ENSURE_INDEXES", "1")  # For performance
+
         print(cmdline)
-        ProcessFixture.start(self, cmdline=cmdline, env=kwargs.get("env"), expected_children=processes)
+        ProcessFixture.start(self, cmdline=cmdline, env=env, expected_children=processes)
 
     def start_deps(self, flush=True):
 
@@ -194,6 +198,8 @@ class WorkerFixture(ProcessFixture):
         if not block:
             return job_ids
 
+        self.get_wait_for_idle()
+
         results = []
 
         for job_id in job_ids:
@@ -212,14 +218,7 @@ class WorkerFixture(ProcessFixture):
         queue_raw_jobs(queue, params_list)
 
         if block:
-            # Wait for the queue to be empty. Might be error-prone when tasks
-            # are in-memory between the 2
-            q = Queue(queue)
-            while q.size() > 0 or self.mongodb_jobs.mrq_jobs.find({"status": "started"}).count() > 0:
-                # print "S", q.size(),
-                # self.mongodb_jobs.mrq_jobs.find({"status":
-                # "started"}).count()
-                time.sleep(0.1)
+            self.get_wait_for_idle()
 
     def send_tasks(self, path, params_list, block=True, queue=None, accept_statuses=["success"], start=True):
         if not self.started and start:
@@ -250,6 +249,22 @@ class WorkerFixture(ProcessFixture):
         data = json.loads(f.read().decode('utf-8'))
         f.close()
         return data
+
+    def get_wait_for_idle(self):
+
+        if "--processes" in self.cmdline:
+            print("Warning: get_wait_for_idle() doesn't support multiprocess workers yet")
+            return False
+
+        try:
+            wait_for_net_service("127.0.0.1", 20020, poll_interval=0.01)
+            f = urllib.request.urlopen("http://127.0.0.1:20020/wait_for_idle")
+            data = f.read().decode('utf-8')
+            assert data == "idle"
+            return True
+        except Exception as e:
+            print("Couldn't get_wait_for_idle: %s" % e)
+            return False
 
 
 class RedisFixture(ProcessFixture):
@@ -302,7 +317,11 @@ def redis(request):
 
 @pytest.fixture(scope="function")
 def worker(request, mongodb, redis):
+    return WorkerFixture(request, mongodb=mongodb, redis=redis)
 
+
+@pytest.fixture(scope="function")
+def worker2(request, mongodb, redis):
     return WorkerFixture(request, mongodb=mongodb, redis=redis)
 
 

@@ -1,7 +1,6 @@
 from future import standard_library
 standard_library.install_aliases()
-from builtins import str
-from builtins import object
+from future.builtins import str, object
 import datetime
 from bson import ObjectId
 from redis.exceptions import LockError
@@ -81,8 +80,7 @@ class Job(object):
     @property
     def redis_max_concurrency_key(self):
         """ Returns the global redis key used to store started job ids """
-        return "%s:c:%s" % (context.get_current_config()["redis_prefix"],
-            self.data["path"])
+        return "%s:c:%s" % (context.get_current_config()["redis_prefix"], self.data["path"])
 
     def exists(self):
         """ Returns True if a job with the current _id exists in MongoDB. """
@@ -264,16 +262,13 @@ class Job(object):
             queue = self.data["queue"]
 
         from .queue import Queue
-        queue_obj = Queue(queue, add_to_known_queues=True)
+        Queue(queue, add_to_known_queues=True)
 
         self._save_status("queued", updates={
             "queue": queue,
+            "datequeued": datetime.datetime.utcnow(),
             "retry_count": retry_count
         })
-
-        # Between these two lines, jobs can become "lost" too.
-
-        queue_obj.enqueue_job_ids([str(self.id)])
 
     def perform(self):
         """ Loads and starts the main task for this job, the saves the result. """
@@ -288,25 +283,29 @@ class Job(object):
 
         self.task.is_main_task = True
 
-        try:
+        if not self.task.max_concurrency:
+
+            result = self.task.run_wrapped(self.data["params"])
+
+        else:
+
+            if self.task.max_concurrency > 1:
+                raise NotImplementedError()
+
             lock = None
-
-            if self.task.max_concurrency:
-
-                if self.task.max_concurrency > 1:
-                    raise NotImplementedError()
+            try:
 
                 # TODO: implement a semaphore
                 lock = context.connections.redis.lock(self.redis_max_concurrency_key, timeout=self.timeout + 5)
                 if not lock.acquire(blocking=True, blocking_timeout=0):
                     raise MaxConcurrencyInterrupt()
 
-            result = self.task.run_wrapped(self.data["params"])
+                result = self.task.run_wrapped(self.data["params"])
 
-        finally:
-            if lock:
+            finally:
                 try:
-                    lock.release()
+                    if lock:
+                        lock.release()
                 except LockError:
                     pass
 
@@ -638,18 +637,12 @@ def queue_jobs(main_task_path, params_list, queue=None, batch_size=1000):
             "path": main_task_path,
             "params": params,
             "queue": queue,
+            "datequeued": datetime.datetime.utcnow(),
             "status": "queued"
         } for params in params_group], w=1, return_jobs=False)
 
-        # Between these 2 calls, a task can be inserted in MongoDB but not queued in Redis.
-        # This is the same as dequeueing a task from Redis and being stopped before updating
-        # the "started" flag in MongoDB.
-        #
-        # These jobs will be collected by mrq.basetasks.cleaning.RequeueLostJobs
-
-        # Insert the job ID in Redis
-        queue_obj.enqueue_job_ids([str(x) for x in job_ids])
-
         all_ids += job_ids
+
+    queue_obj.notify(len(all_ids))
 
     return all_ids

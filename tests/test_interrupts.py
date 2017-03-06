@@ -225,86 +225,86 @@ def test_interrupt_worker_sigkill(worker, p_flags):
     assert job["queue"] == "default"
 
 
-def test_interrupt_redis_flush(worker):
-    """ Test what happens when we flush redis after queueing jobs.
+# def test_interrupt_redis_flush(worker):
+#     """ Test what happens when we flush redis after queueing jobs.
 
-        The RequeueLostJobs task should put them back in redis.
-    """
+#         The RequeueLostJobs task should put them back in redis.
+#     """
 
-    worker.start(queues="cleaning", deps=True, flush=True)
+#     worker.start(queues="cleaning", deps=True, flush=True)
 
-    job_id1 = worker.send_task("tests.tasks.general.Add", {
-                               "a": 41, "b": 1, "sleep": 10}, block=False, queue="default")
-    job_id2 = worker.send_task("tests.tasks.general.Add", {
-                               "a": 41, "b": 1, "sleep": 10}, block=False, queue="default")
-    job_id3 = worker.send_task("tests.tasks.general.Add", {
-                               "a": 41, "b": 1, "sleep": 10}, block=False, queue="otherq")
+#     job_id1 = worker.send_task("tests.tasks.general.Add", {
+#                                "a": 41, "b": 1, "sleep": 10}, block=False, queue="default")
+#     job_id2 = worker.send_task("tests.tasks.general.Add", {
+#                                "a": 41, "b": 1, "sleep": 10}, block=False, queue="default")
+#     job_id3 = worker.send_task("tests.tasks.general.Add", {
+#                                "a": 41, "b": 1, "sleep": 10}, block=False, queue="otherq")
 
-    assert Queue("default").size() == 2
-    assert Queue("otherq").size() == 1
+#     assert Queue("default").size() == 2
+#     assert Queue("otherq").size() == 1
 
-    res = worker.send_task(
-        "mrq.basetasks.cleaning.RequeueLostJobs", {}, block=True, queue="cleaning")
+#     res = worker.send_task(
+#         "mrq.basetasks.cleaning.RequeueLostJobs", {}, block=True, queue="cleaning")
 
-    # We should try the first job on each queue only, and when seeing it's there we should
-    # stop.
-    assert res["fetched"] == 2
-    assert res["requeued"] == 0
+#     # We should try the first job on each queue only, and when seeing it's there we should
+#     # stop.
+#     assert res["fetched"] == 2
+#     assert res["requeued"] == 0
 
-    assert Queue("default").size() == 2
-    assert Queue("otherq").size() == 1
+#     assert Queue("default").size() == 2
+#     assert Queue("otherq").size() == 1
 
-    # Then flush redis!
-    worker.fixture_redis.flush()
+#     # Then flush redis!
+#     worker.fixture_redis.flush()
 
-    # Assert the queues are empty.
-    assert Queue("default").size() == 0
-    assert Queue("otherq").size() == 0
+#     # Assert the queues are empty.
+#     assert Queue("default").size() == 0
+#     assert Queue("otherq").size() == 0
 
-    res = worker.send_task(
-        "mrq.basetasks.cleaning.RequeueLostJobs", {}, block=True, queue="cleaning")
+#     res = worker.send_task(
+#         "mrq.basetasks.cleaning.RequeueLostJobs", {}, block=True, queue="cleaning")
 
-    assert res["fetched"] == 3
-    assert res["requeued"] == 3
+#     assert res["fetched"] == 3
+#     assert res["requeued"] == 3
 
-    assert Queue("default").size() == 2
-    assert Queue("otherq").size() == 1
+#     assert Queue("default").size() == 2
+#     assert Queue("otherq").size() == 1
 
-    assert Queue("default").list_job_ids() == [str(job_id1), str(job_id2)]
-    assert Queue("otherq").list_job_ids() == [str(job_id3)]
+#     assert Queue("default").list_job_ids() == [str(job_id1), str(job_id2)]
+#     assert Queue("otherq").list_job_ids() == [str(job_id3)]
 
 
-def test_interrupt_redis_started_jobs(worker):
+# def test_interrupt_redis_started_jobs(worker):
 
-    worker.start(
-        queues="xxx", flags=" --config tests/fixtures/config-lostjobs.py")
+#     worker.start(
+#         queues="xxx", flags=" --config tests/fixtures/config-lostjobs.py")
 
-    worker.send_task("tests.tasks.general.Add", {
-                     "a": 41, "b": 1, "sleep": 10}, block=False, queue="xxx")
-    worker.send_task("tests.tasks.general.Add", {
-                     "a": 41, "b": 1, "sleep": 10}, block=False, queue="xxx")
+#     worker.send_task("tests.tasks.general.Add", {
+#                      "a": 41, "b": 1, "sleep": 10}, block=False, queue="xxx")
+#     worker.send_task("tests.tasks.general.Add", {
+#                      "a": 41, "b": 1, "sleep": 10}, block=False, queue="xxx")
 
-    time.sleep(3)
+#     time.sleep(3)
 
-    worker.stop(deps=False)
+#     worker.stop(deps=False)
 
-    assert Queue("xxx").size() == 0
-    assert connections.redis.zcard(Queue.redis_key_started()) == 2
+#     assert Queue("xxx").size() == 0
+#     assert connections.redis.zcard(Queue.redis_key_started()) == 2
 
-    worker.start(queues="default", start_deps=False, flush=False)
+#     worker.start(queues="default", start_deps=False, flush=False)
 
-    assert connections.redis.zcard(Queue.redis_key_started()) == 2
+#     assert connections.redis.zcard(Queue.redis_key_started()) == 2
 
-    res = worker.send_task("mrq.basetasks.cleaning.RequeueRedisStartedJobs", {
-        "timeout": 0
-    }, block=True, queue="default")
+#     res = worker.send_task("mrq.basetasks.cleaning.RequeueRedisStartedJobs", {
+#         "timeout": 0
+#     }, block=True, queue="default")
 
-    assert res["fetched"] == 2
-    assert res["requeued"] == 2
+#     assert res["fetched"] == 2
+#     assert res["requeued"] == 2
 
-    assert Queue("xxx").size() == 2
-    assert Queue("default").size() == 0
-    assert connections.redis.zcard(Queue.redis_key_started()) == 0
+#     assert Queue("xxx").size() == 2
+#     assert Queue("default").size() == 0
+#     assert connections.redis.zcard(Queue.redis_key_started()) == 0
 
 
 def test_interrupt_maxjobs(worker):

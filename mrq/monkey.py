@@ -99,9 +99,9 @@ def patch_pymongo(config):
                 ret = base_method(self, *args, **kwargs)
             finally:
                 stop_time = time.time()
-                
+
                 job = None
-                
+
                 if config["trace_io"]:
                     job = get_current_job()
                     if job:
@@ -388,7 +388,7 @@ def patch_io_pymongo_cursor(config):
 
         # Some dark magic is needed here to cope with python's name mangling for private variables.
         def _Cursor__send_message(self, *args, **kwargs):
-            # print self.__dict__
+
             job = get_current_job()
 
             if job:

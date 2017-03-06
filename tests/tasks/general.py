@@ -25,6 +25,11 @@ class Add(Task):
         return res
 
 
+class Square(Task):
+    def run(self, params):
+        return int(params["n"]) ** 2
+
+
 class TimeoutFromConfig(Add):
     pass
 
@@ -257,4 +262,4 @@ class GetIoHookEvents(Task):
 class SendTask(Task):
 
     def run(self, params):
-        return queue_job(params["path"], params["params"])
+        return queue_job(params["path"], params["params"], queue=params.get("queue"))

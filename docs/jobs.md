@@ -24,7 +24,7 @@ However, to be reliable a task queue needs to prepare for everything that can go
 * ```retry```: The method `task.retry()` was called to interrupt the job but mark it for being retried later. This may be useful when calling unreliable 3rd-party services.
 * ```maxretries```: The task was retried too many times. Max retries default to 3 and can be configured globally or per task. At this point it should be up to you to cancel them or requeue them again.
 
-Only jobs in statuses `success` and `cancel` will be cleaned from MongoDB after a delay of `result_ttl` seconds (see [Task configuration](configuration.md))
+Jobs in status `success` will be cleaned from MongoDB after a delay of `result_ttl` seconds (see [Task configuration](configuration.md))
 
 ## Task API
 

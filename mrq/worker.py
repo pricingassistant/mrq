@@ -1,7 +1,6 @@
 from future import standard_library
 standard_library.install_aliases()
-from builtins import str
-from builtins import bytes
+from future.builtins import str, bytes
 from future.utils import iteritems
 import gevent
 import gevent.pool
@@ -62,7 +61,6 @@ class Worker(object):
         self.graceful_stop = None
 
         self.idle_event = gevent.event.Event()
-        self.idle_wait_count = 0
 
         self.id = ObjectId()
         if self.config.get("name"):
@@ -79,6 +77,7 @@ class Worker(object):
         self.log = self.log_handler.get_logger(worker=self.id)
 
         self.queues = [Queue(x, add_to_known_queues=True) for x in self.config["queues"] if x]
+        self.queues_with_notify = list(set([q.redis_key_notify() for q in self.queues if q.use_notify()]))
 
         self.log.info(
             "Starting Gevent pool with %s worker greenlets (+ report, logs, adminhttp)" %
@@ -145,6 +144,8 @@ class Worker(object):
             [("dateexpires", 1)], sparse=True, background=False, expireAfterSeconds=0)
         self.mongodb_jobs.mrq_jobs.ensure_index(
             [("dateretry", 1)], sparse=True, background=False)
+        self.mongodb_jobs.mrq_jobs.ensure_index(
+            [("datequeued", 1)], sparse=True, background=True)
 
         self.mongodb_jobs.mrq_scheduled_jobs.ensure_index(
             [("hash", 1)], unique=True, background=False, drop_dups=True)
@@ -242,7 +243,7 @@ class Worker(object):
           time.sleep(self.config["paused_queues_refresh_interval"])
 
     def get_memory(self):
-        mmaps = self.process.get_memory_maps()
+        mmaps = self.process.memory_maps()
         mem = {
             "rss": sum([x.rss for x in mmaps]),
             "swap": sum([getattr(x, 'swap', getattr(x, 'swapped', 0)) for x in mmaps])
@@ -291,11 +292,11 @@ class Worker(object):
             }
             mem = {"rss": 0, "swap": 0, "total": 0}
         else:
-            cpu_times = self.process.get_cpu_times()
+            cpu_times = self.process.cpu_times()
             cpu = {
                 "user": cpu_times.user,
                 "system": cpu_times.system,
-                "percent": self.process.get_cpu_percent(0)
+                "percent": self.process.cpu_percent(0)
             }
             mem = self.get_memory()
 
@@ -393,7 +394,6 @@ class Worker(object):
                 report = self.get_worker_report(with_memory=(path == "/report_mem"))
                 res = bytes(json_stdlib.dumps(report, cls=MongoJSONEncoder), 'utf-8')
             elif path == "/wait_for_idle":
-                self.idle_wait_count = 0
                 self.idle_event.clear()
                 self.idle_event.wait()
                 res = "idle"
@@ -452,7 +452,7 @@ class Worker(object):
     def work_loop(self, max_jobs=None):
 
         self.done_jobs = 0
-        self.idle_wait_count = 0
+        self.datestarted_work_loop = datetime.datetime.utcnow()
 
         # has_raw = any(q.is_raw or q.is_sorted for q in [Queue(x) for x in self.queues])
 
@@ -538,19 +538,11 @@ class Worker(object):
 
                     if (
                         not self.idle_event.is_set() and
-                        len(jobs) == 0 and
-                        free_pool_slots == self.pool_size and
-                        self.idle_wait_count > 0
+                        free_pool_slots == self.pool_size
                     ):
                         self.idle_event.set()
 
-                    self.status = "wait"
-                    self.idle_wait_count += 1
-                    gevent.sleep(min(self.config["max_latency"], 0.001 * self.idle_wait_count))
-
-                # We got some jobs, reset the idle counter.
-                else:
-                    self.idle_wait_count = 0
+                    self.work_wait()
 
         except StopRequested:
             pass
@@ -567,6 +559,24 @@ class Worker(object):
 
             except StopRequested:
                 pass
+
+        self.datestopped_work_loop = datetime.datetime.utcnow()
+        lifetime = self.datestopped_work_loop - self.datestarted_work_loop
+        job_rate = float(self.done_jobs) / lifetime.total_seconds()
+        self.log.info("Worker spent %.3f seconds performing %s jobs (%.3f jobs/second)" % (
+            lifetime.total_seconds(), self.done_jobs, job_rate
+        ))
+
+    def work_wait(self):
+        """ Wait for new jobs to arrive """
+
+        self.status = "wait"
+
+        if len(self.queues_with_notify) > 0:
+            # https://github.com/antirez/redis/issues/874
+            connections.redis.blpop(*(self.queues_with_notify + [max(1, int(self.config["max_latency"]))]))
+        else:
+            gevent.sleep(self.config["max_latency"])
 
     def work_stop(self):
 
