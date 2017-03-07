@@ -45,7 +45,7 @@ class Process(object):
 class ProcessPool(object):
     """ Manages a pool of processes """
 
-    def __init__(self, watch_interval=10):
+    def __init__(self, watch_interval=1):
         self.processes = []
         self.desired_commands = []
         self.greenlet_watch = None

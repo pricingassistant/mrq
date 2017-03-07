@@ -36,7 +36,7 @@ def test_raw_sorted(worker, p_queue, p_pushback, p_timed, p_flags):
         "ccc": current_time + 6
     }, block=False)
 
-    time.sleep(2)
+    time.sleep(3)
 
     if not p_timed:
 
@@ -262,9 +262,9 @@ def test_raw_retry(worker):
     # ["test_set test_raw default"],
     # ["test test2 test_set test_raw default"]
 ] for x2 in [
-    #[1],
+    # [1],
     [2],
-    #[10]
+    # [10]
 ]])
 def test_raw_mixed(worker, p_queue, p_greenlets):
 
@@ -286,7 +286,7 @@ def test_raw_mixed(worker, p_queue, p_greenlets):
     test_collection = worker.mongodb_logs.tests_inserts
     jobs_collection = worker.mongodb_jobs.mrq_jobs
 
-    time.sleep(1)
+    time.sleep(3)
 
     assert Queue("test_raw").size() == 0
     assert Queue("default").size() == 0

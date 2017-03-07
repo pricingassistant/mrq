@@ -24,7 +24,7 @@ def test_retry_otherqueue_delay_zero(worker):
     job_id = worker.send_task(
         "tests.tasks.general.Retry", {"queue": "noexec", "delay": 0}, block=False)
 
-    time.sleep(1)
+    time.sleep(3)
 
     assert worker.mongodb_jobs.tests_inserts.find().count() == 1
 

@@ -18,7 +18,7 @@ def test_max_memory_restart(worker):
         block=False
     )
 
-    time.sleep(N * 2)
+    time.sleep(N * 3)
 
     assert worker.mongodb_jobs.mrq_jobs.find(
         {"status": "success"}).count() == N

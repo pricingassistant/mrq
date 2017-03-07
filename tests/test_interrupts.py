@@ -134,9 +134,9 @@ def test_interrupt_worker_sigterm(worker, p_flags):
     worker.start(flags=p_flags)
 
     job_id = worker.send_task(
-        "tests.tasks.general.Add", {"a": 41, "b": 1, "sleep": 10}, block=False)
+        "tests.tasks.general.Add", {"a": 41, "b": 1, "sleep": 20}, block=False)
 
-    time.sleep(1)
+    time.sleep(3)
 
     worker.stop(block=True, sig=15, deps=False)
 
@@ -145,7 +145,7 @@ def test_interrupt_worker_sigterm(worker, p_flags):
     job = Job(job_id).fetch().data
     assert job["status"] == "interrupt"
 
-    assert time.time() - start_time < 6
+    assert time.time() - start_time < 10
 
     worker.stop_deps()
 
@@ -168,9 +168,9 @@ def test_interrupt_worker_sigkill(worker, p_flags):
     assert cfg["tasks"]["tests.tasks.general.Add"]["timeout"] == 200
 
     job_id = worker.send_task(
-        "tests.tasks.general.Add", {"a": 41, "b": 1, "sleep": 10}, block=False)
+        "tests.tasks.general.Add", {"a": 41, "b": 1, "sleep": 20}, block=False)
 
-    time.sleep(1)
+    time.sleep(3)
 
     worker.stop(block=True, sig=9, deps=False)
 
@@ -184,7 +184,7 @@ def test_interrupt_worker_sigkill(worker, p_flags):
 
     assert job["status"] == "started"
 
-    assert time.time() - start_time < 6
+    assert time.time() - start_time < 10
 
     # Then try the cleaning task that requeues started jobs
 
