@@ -55,6 +55,9 @@ RUN mkdir -p /data/db
 
 RUN ln -s /app/mrq/bin/mrq_run.py /usr/bin/mrq-run
 RUN ln -s /app/mrq/bin/mrq_worker.py /usr/bin/mrq-worker
+RUN ln -s /app/mrq/bin/mrq_agent.py /usr/bin/mrq-agent
+RUN ln -s /app/mrq/dashboard/app.py /usr/bin/mrq-dashboard
+
 ENV PYTHONPATH /app
 
 VOLUME ["/data"]

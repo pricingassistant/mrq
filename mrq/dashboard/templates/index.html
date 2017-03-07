@@ -38,6 +38,9 @@
             <li class="js-nav-workers">
               <a href="/#workers">Workers</a>
             </li>
+            <li class="js-nav-workergroups">
+              <a href="/#workergroups">Worker groups</a>
+            </li>
             <li class="js-nav-taskpaths">
               <a href="/#taskpaths">Paths</a>
             </li>
@@ -114,6 +117,7 @@
         <div class="js-page-taskpaths"></div>
         <div class="js-page-taskexceptions"></div>
         <div class="js-page-io"></div>
+        <div class="js-page-workergroups"></div>
 
 
       </script>
@@ -243,6 +247,17 @@
         <div class="container">
           <table cellpadding="0" cellspacing="0" border="0" class="datatable table table-striped table-bordered js-datatable">
           </table>
+        </div>
+      </script>
+
+      <script id="tpl-page-workergroups" type="text/template">
+
+        <h3>Worker groups</h3>
+        <div class="container">
+          <div class="row">
+            <textarea style="width:100%;height:400px;font-family:monospace;" onkeydown="if(event.keyCode===9){var v=this.value,s=this.selectionStart,e=this.selectionEnd;this.value=v.substring(0, s)+'\t'+v.substring(e);this.selectionStart=this.selectionEnd=s+1;return false;}"></textarea>
+            <button class="submit">Save</button>
+          </div>
         </div>
       </script>
 

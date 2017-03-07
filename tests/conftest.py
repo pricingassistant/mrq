@@ -97,6 +97,7 @@ class ProcessFixture(object):
 
         if self.process is not None:
 
+            print("Sending signal %s to pid %s" % (sig, self.process.pid))
             os.kill(self.process.pid, sig)
 
             # When sending a sigkill to the process, we also want to kill the
@@ -135,7 +136,7 @@ class WorkerFixture(ProcessFixture):
 
         self.started = False
 
-    def start(self, flush=True, deps=True, trace=True, bind_admin_port=True, **kwargs):
+    def start(self, flush=True, deps=True, trace=True, bind_admin_port=True, agent=False, **kwargs):
 
         self.started = True
 
@@ -143,20 +144,23 @@ class WorkerFixture(ProcessFixture):
             self.start_deps(flush=flush)
 
         processes = 0
-        m = re.search(r"--processes (\d+)", kwargs.get("flags", ""))
-        if m:
-            processes = int(m.group(1))
 
-        cmdline = "python mrq/bin/mrq_worker.py --mongodb_logs_size 0 %s %s %s %s" % (
-            "--admin_port 20020" if (processes <= 1 and bind_admin_port) else "",
-            "--trace_io --trace_greenlets" if trace else "",
-            kwargs.get("flags", ""),
-            kwargs.get("queues", "high default low")
-        )
+        if agent:
 
-        # +1 because of supervisord itself
-        if processes > 0:
-            processes += 1
+            cmdline = "python mrq/bin/mrq_agent.py %s" % kwargs.get("flags", "")
+
+        else:
+
+            m = re.search(r"--processes (\d+)", kwargs.get("flags", ""))
+            if m:
+                processes = int(m.group(1))
+
+            cmdline = "python mrq/bin/mrq_worker.py --mongodb_logs_size 0 %s %s %s %s" % (
+                "--admin_port 20020" if (processes <= 1 and bind_admin_port) else "",
+                "--trace_io --trace_greenlets" if trace else "",
+                kwargs.get("flags", ""),
+                kwargs.get("queues", "high default low")
+            )
 
         env = kwargs.get("env") or {}
         env.setdefault("MRQ_MAX_LATENCY", "0.1")

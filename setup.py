@@ -49,6 +49,7 @@ setup(
         'console_scripts': [
             'mrq-worker = mrq.bin.mrq_worker:main',
             'mrq-run = mrq.bin.mrq_run:main',
+            'mrq-agent = mrq.bin.mrq_agent:main',
             'mrq-dashboard = mrq.dashboard.app:main'
         ]
     },

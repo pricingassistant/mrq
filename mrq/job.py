@@ -79,7 +79,7 @@ class Job(object):
 
     @property
     def redis_max_concurrency_key(self):
-        """ Returns the global redis key used to store started job ids """
+        """ Returns the global redis key used to control job concurrency """
         return "%s:c:%s" % (context.get_current_config()["redis_prefix"], self.data["path"])
 
     def exists(self):
