@@ -108,6 +108,27 @@ RAW_QUEUES = {
             }
         }
     },
+    "testperformance_efficiency_raw": {
+        "job_factory": lambda rawparam: {
+            "path": "tests.tasks.general.Add",
+            "params": {
+                "a": 1,
+                "b": 2,
+                "sleep": float(rawparam)
+            }
+        }
+    },
+    "testperformance_efficiency_nostorage_raw": {
+        "statuses_no_storage": ("started", "success"),
+        "job_factory": lambda rawparam: {
+            "path": "tests.tasks.general.Add",
+            "params": {
+                "a": 1,
+                "b": 2,
+                "sleep": float(rawparam)
+            }
+        }
+    },
     "teststarted_raw": {
         "retry_queue": "teststartedx",
         "job_factory": lambda rawparam: {

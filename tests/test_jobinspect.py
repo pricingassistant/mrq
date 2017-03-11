@@ -79,7 +79,7 @@ def test_current_job_trace_io(worker, p_testtype, p_testparams, p_type, p_data, 
     if os.path.isfile(report_file):
         os.remove(report_file)
 
-    worker.start(flags="--trace_io --no_mongodb_ensure_indexes --add_network_latency=0.2 --report_interval=0.1 --report_file=%s" % report_file)
+    worker.start(flags="--trace_io --add_network_latency=0.2 --report_interval=0.1 --report_file=%s" % report_file)
 
     worker.send_task(
         "tests.tasks.io.TestIo",

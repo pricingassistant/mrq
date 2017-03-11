@@ -75,8 +75,9 @@ class Worker(Process):
         self.log_handler = LogHandler(quiet=self.config["quiet"])
         self.log = self.log_handler.get_logger(worker=self.id)
 
-        self.queues = [Queue(x, add_to_known_queues=True) for x in self.config["queues"] if x]
+        self.refresh_queues()
         self.queues_with_notify = list(set([q.redis_key_notify() for q in self.queues if q.use_notify()]))
+        self.has_subqueues = any([queue.endswith("/") for queue in self.config["queues"]])
 
         self.log.info(
             "Starting worker on %s queues with %s greenlets" %
@@ -113,58 +114,6 @@ class Worker(Process):
             self.log_handler.set_collection(self.mongodb_logs.mrq_logs)
 
         self.connected = True
-
-        # Be mindful that this is done each time a worker starts
-        if not self.config["no_mongodb_ensure_indexes"]:
-            self.ensure_indexes()
-
-    def ensure_indexes(self):
-
-        if self.mongodb_logs:
-
-            self.mongodb_logs.mrq_logs.ensure_index(
-                [("job", 1)], background=False)
-            self.mongodb_logs.mrq_logs.ensure_index(
-                [("worker", 1)], background=False, sparse=True)
-
-        self.mongodb_jobs.mrq_workers.ensure_index(
-            [("status", 1)], background=False)
-        self.mongodb_jobs.mrq_workers.ensure_index(
-            [("datereported", 1)], background=False, expireAfterSeconds=3600)
-
-        self.mongodb_jobs.mrq_jobs.ensure_index(
-            [("status", 1)], background=True)
-        self.mongodb_jobs.mrq_jobs.ensure_index(
-            [("path", 1)], background=True)
-        self.mongodb_jobs.mrq_jobs.ensure_index(
-            [("worker", 1)], background=True, sparse=True)
-        self.mongodb_jobs.mrq_jobs.ensure_index(
-            [("queue", 1)], background=True)
-        self.mongodb_jobs.mrq_jobs.ensure_index(
-            [("dateexpires", 1)], sparse=True, background=False, expireAfterSeconds=0)
-        self.mongodb_jobs.mrq_jobs.ensure_index(
-            [("dateretry", 1)], sparse=True, background=False)
-        self.mongodb_jobs.mrq_jobs.ensure_index(
-            [("datequeued", 1)], sparse=True, background=True)
-
-        self.mongodb_jobs.mrq_scheduled_jobs.ensure_index(
-            [("hash", 1)], unique=True, background=False)
-
-        self.mongodb_jobs.mrq_agents.ensure_index(
-            [("datereported", 1)], background=False)
-        self.mongodb_jobs.mrq_agents.ensure_index(
-            [("dateexpires", 1)], background=False, expireAfterSeconds=0)
-        self.mongodb_jobs.mrq_agents.ensure_index(
-            [("worker_group", 1)], background=False)
-
-        try:
-            # This will be default in MongoDB 2.6
-            self.mongodb_jobs.command(
-                {"collMod": "mrq_jobs", "usePowerOf2Sizes": True})
-            self.mongodb_jobs.command(
-                {"collMod": "mrq_workers", "usePowerOf2Sizes": True})
-        except:  # pylint: disable=bare-except
-            pass
 
     def greenlet_scheduler(self):
 
@@ -212,34 +161,28 @@ class Worker(Process):
 
     def greenlet_subqueues(self):
 
-        has_subqueues = any([
-            queue.endswith(get_current_config().get("subqueues_delimiter"))
-            for queue in self.config["queues"]
-        ])
-
         while True:
-
-            # Update the process-local list of known queues
-            Queue.known_queues = Queue.redis_known_queues()
-
-            queues = []
-            try:
-                for queue in self.config["queues"]:
-                    if queue.endswith(get_current_config().get("subqueues_delimiter")):
-                        queues += Queue(queue, add_to_known_queues=True).redis_known_subqueues()
-                    else:
-                        queues.append(Queue(queue, add_to_known_queues=True))
-
-            except Exception as e:  # pylint: disable=broad-except
-                self.log.error("When refreshing subqueues: %s", e)
-            else:
-                self.queues = queues
-
-            # No need for this greenlet if we don't have any subqueues
-            if not has_subqueues:
-                return
-
+            self.refresh_queues()
             time.sleep(self.config["subqueues_refresh_interval"])
+
+    def refresh_queues(self):
+        """ Updates the list of currently known queues and subqueues """
+
+        # Update the process-local list of known queues
+        Queue.known_queues = Queue.redis_known_queues()
+
+        queues = []
+        try:
+            for queue in self.config["queues"]:
+                if queue.endswith("/"):
+                    queues += Queue(queue, add_to_known_queues=True).redis_known_subqueues()
+                else:
+                    queues.append(Queue(queue, add_to_known_queues=True))
+
+        except Exception as e:  # pylint: disable=broad-except
+            self.log.error("When refreshing subqueues: %s", e)
+        else:
+            self.queues = queues
 
     def greenlet_paused_queues(self):
 
@@ -401,8 +344,7 @@ class Worker(Process):
                 report = self.get_worker_report(with_memory=(path == "/report_mem"))
                 res = bytes(json_stdlib.dumps(report, cls=MongoJSONEncoder), 'utf-8')
             elif path == "/wait_for_idle":
-                self.idle_event.clear()
-                self.idle_event.wait()
+                self.wait_for_idle()
                 res = "idle"
             else:
                 status = "404 Not Found"
@@ -419,6 +361,24 @@ class Worker(Process):
 
     def flush_logs(self, w=0):
         self.log_handler.flush(w=w)
+
+    def wait_for_idle(self):
+        """ Waits until the worker has nothing more to do. Very useful in tests """
+
+        self.idle_event.clear()
+
+        while True:
+
+            self.idle_event.wait()
+            self.idle_event.clear()
+
+            self.refresh_queues()
+
+            # We might be dequeueing a new subqueue. Double check that we don't have anything more to do
+            outcome, dequeue_jobs = self.work_once(free_pool_slots=1, max_jobs=None)
+
+            if outcome is "wait" and dequeue_jobs == 0:
+                break
 
     def work(self):
         """Starts the work loop.
@@ -437,7 +397,7 @@ class Worker(Process):
         self.status = "started"
 
         # An interval of 0 disables the refresh
-        if self.config["subqueues_refresh_interval"] > 0:
+        if self.has_subqueues and self.config["subqueues_refresh_interval"] > 0:
             self.greenlets["subqueues"] = gevent.spawn(self.greenlet_subqueues)
 
         # An interval of 0 disables the refresh
@@ -460,12 +420,9 @@ class Worker(Process):
 
         self.done_jobs = 0
         self.datestarted_work_loop = datetime.datetime.utcnow()
-
-        # has_raw = any(q.is_raw or q.is_sorted for q in [Queue(x) for x in self.queues])
+        self.queue_offset = 0
 
         try:
-
-            queue_offset = 0
 
             while True:
 
@@ -490,64 +447,17 @@ class Worker(Process):
                     if free_pool_slots > 0:
                         self.status = "wait"
                         break
+
                     self.status = "full"
-                    gevent.sleep(0.01)
 
-                jobs = []
+                    self.gevent_pool.wait_available(timeout=60)
 
-                available_queues = [
-                    queue for queue in self.queues
-                    if queue.root_id not in Queue.paused_queues and
-                    queue.id not in Queue.paused_queues
-                ]
+                outcome, dequeue_jobs = self.work_once(free_pool_slots=free_pool_slots, max_jobs=max_jobs)
 
-                for queue_i in range(len(available_queues)):
-
-                    queue = available_queues[(queue_i + queue_offset) % len(available_queues)]
-
-                    max_jobs_per_queue = free_pool_slots - len(jobs)
-
-                    if max_jobs_per_queue <= 0:
-                        queue_i -= 1
-                        break
-
-                    if self.config["dequeue_strategy"] == "parallel":
-                        max_jobs_per_queue = max(1, int(max_jobs_per_queue / (len(available_queues) - queue_i)))
-
-                    jobs += queue.dequeue_jobs(
-                        max_jobs=max_jobs_per_queue,
-                        job_class=self.job_class,
-                        worker=self
-                    )
-
-                # At the next pass, start at the next queue to avoid always dequeuing the same one
-                if self.config["dequeue_strategy"] == "parallel":
-                    queue_offset = (queue_offset + queue_i + 1) % len(self.queues)
-
-                for job in jobs:
-
-                    # TODO investigate spawn_raw?
-                    self.gevent_pool.spawn(self.perform_job, job)
-
-                # TODO consider this when dequeuing jobs to have strict limits
-                if max_jobs and self.done_jobs >= max_jobs:
-                    self.log.info("Reached max_jobs=%s" % self.done_jobs)
+                if outcome == "break":
                     break
 
-                # We seem to have exhausted available jobs, we can sleep for a
-                # while.
-                if len(jobs) == 0:
-
-                    if self.config["dequeue_strategy"] == "burst":
-                        self.log.info("Burst mode: stopping now because queues were empty")
-                        break
-
-                    if (
-                        not self.idle_event.is_set() and
-                        free_pool_slots == self.pool_size
-                    ):
-                        self.idle_event.set()
-
+                if outcome == "wait":
                     self.work_wait()
 
         except StopRequested:
@@ -572,6 +482,67 @@ class Worker(Process):
         self.log.info("Worker spent %.3f seconds performing %s jobs (%.3f jobs/second)" % (
             lifetime.total_seconds(), self.done_jobs, job_rate
         ))
+
+    def work_once(self, free_pool_slots=1, max_jobs=None):
+        """ Does one lookup for new jobs, inside the inner work loop """
+
+        dequeued_jobs = 0
+
+        available_queues = [
+            queue for queue in self.queues
+            if queue.root_id not in Queue.paused_queues and
+            queue.id not in Queue.paused_queues
+        ]
+
+        for queue_i in range(len(available_queues)):
+
+            queue = available_queues[(queue_i + self.queue_offset) % len(available_queues)]
+
+            max_jobs_per_queue = free_pool_slots - dequeued_jobs
+
+            if max_jobs_per_queue <= 0:
+                queue_i -= 1
+                break
+
+            if self.config["dequeue_strategy"] == "parallel":
+                max_jobs_per_queue = max(1, int(max_jobs_per_queue / (len(available_queues) - queue_i)))
+
+            for job in queue.dequeue_jobs(
+                max_jobs=max_jobs_per_queue,
+                job_class=self.job_class,
+                worker=self
+            ):
+                dequeued_jobs += 1
+
+                # TODO investigate spawn_raw?
+                self.gevent_pool.spawn(self.perform_job, job)
+
+        # At the next pass, start at the next queue to avoid always dequeuing the same one
+        if self.config["dequeue_strategy"] == "parallel":
+            self.queue_offset = (self.queue_offset + queue_i + 1) % len(self.queues)
+
+        # TODO consider this when dequeuing jobs to have strict limits
+        if max_jobs and self.done_jobs >= max_jobs:
+            self.log.info("Reached max_jobs=%s" % self.done_jobs)
+            return "break", dequeued_jobs
+
+        # We seem to have exhausted available jobs, we can sleep for a
+        # while.
+        if dequeued_jobs == 0:
+
+            if self.config["dequeue_strategy"] == "burst":
+                self.log.info("Burst mode: stopping now because queues were empty")
+                return "break"
+
+            if (
+                not self.idle_event.is_set() and
+                free_pool_slots == self.pool_size
+            ):
+                self.idle_event.set()
+
+            return "wait", dequeued_jobs
+
+        return None, dequeued_jobs
 
     def work_wait(self):
         """ Wait for new jobs to arrive """

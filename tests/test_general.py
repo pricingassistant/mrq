@@ -126,7 +126,7 @@ def test_general_requeue_order(worker):
     # We should be executing job1 now. Let's requeue job2, making it go to the end of the queue.
     Job(jobids[1]).requeue()
 
-    worker.get_wait_for_idle()
+    worker.wait_for_idle()
 
     assert [x["result"] for x in worker.mongodb_jobs.mrq_jobs.find().sort(
         [["dateupdated", 1]])] == [42, 44, 43]
@@ -151,14 +151,14 @@ def test_general_simple_task_reverse(worker):
 def test_known_queues_lifecycle(worker):
 
     worker.start(queues="default_reverse xtest test_timed_set", flags="--config tests/fixtures/config-raw1.py")
-    time.sleep(1)
+
     # Test known queues
     from mrq.queue import Queue, send_task
     assert set(Queue.redis_known_queues().keys()) == set(["default", "xtest", "test_timed_set"])
 
     # Try queueing a task
     send_task("tests.tasks.general.Add", {"a": 41, "b": 1, "sleep": 1}, queue="x")
-    time.sleep(1)
+
     assert set(Queue.redis_known_queues().keys()) == set(["x", "default", "xtest", "test_timed_set"])
 
     Queue("x").add_to_known_queues(timestamp=time.time() - (8 * 86400))

@@ -6,7 +6,7 @@ import sys
 import re
 import psutil
 from .version import VERSION
-from .utils import get_local_ip, DelimiterArgParser
+from .utils import get_local_ip
 import atexit
 
 
@@ -78,12 +78,6 @@ def add_parser_args(parser, config_type):
         1024,
         type=int,
         help='If provided, sets the log collection to capped to that amount of bytes.')
-
-    parser.add_argument(
-        '--no_mongodb_ensure_indexes',
-        action='store_true',
-        default=False,
-        help='If provided, skip the creation of MongoDB indexes at worker startup.')
 
     parser.add_argument(
         '--redis',
@@ -387,12 +381,6 @@ def add_parser_args(parser, config_type):
             action='store',
             type=float,
             help="Seconds between worker refreshes of the paused queues list")
-
-        parser.add_argument(
-            '--subqueues_delimiter',
-            default='/',
-            help='Delimiter between main queue and subqueue names',
-            action=DelimiterArgParser)
 
         parser.add_argument(
             '--admin_port',

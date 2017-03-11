@@ -164,10 +164,12 @@ class WorkerFixture(ProcessFixture):
 
         env = kwargs.get("env") or {}
         env.setdefault("MRQ_MAX_LATENCY", "0.1")
-        env.setdefault("MRQ_NO_MONGODB_ENSURE_INDEXES", "1")  # For performance
 
         print(cmdline)
         ProcessFixture.start(self, cmdline=cmdline, env=env, expected_children=processes)
+
+        if not agent:
+            self.wait_for_idle()
 
     def start_deps(self, flush=True):
 
@@ -202,7 +204,7 @@ class WorkerFixture(ProcessFixture):
         if not block:
             return job_ids
 
-        self.get_wait_for_idle()
+        self.wait_for_idle()
 
         results = []
 
@@ -222,7 +224,7 @@ class WorkerFixture(ProcessFixture):
         queue_raw_jobs(queue, params_list)
 
         if block:
-            self.get_wait_for_idle()
+            self.wait_for_idle()
 
     def send_tasks(self, path, params_list, block=True, queue=None, accept_statuses=["success"], start=True):
         if not self.started and start:
@@ -254,10 +256,10 @@ class WorkerFixture(ProcessFixture):
         f.close()
         return data
 
-    def get_wait_for_idle(self):
+    def wait_for_idle(self):
 
         if "--processes" in self.cmdline:
-            print("Warning: get_wait_for_idle() doesn't support multiprocess workers yet")
+            print("Warning: wait_for_idle() doesn't support multiprocess workers yet")
             return False
 
         try:
@@ -267,7 +269,7 @@ class WorkerFixture(ProcessFixture):
             assert data == "idle"
             return True
         except Exception as e:
-            print("Couldn't get_wait_for_idle: %s" % e)
+            print("Couldn't wait_for_idle: %s" % e)
             return False
 
 

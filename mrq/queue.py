@@ -65,10 +65,9 @@ class Queue(object):
 
         self.root_id = self.id
 
-        delimiter = context.get_current_config().get("subqueues_delimiter")
-        if delimiter is not None and delimiter in self.id:
+        if "/" in self.id:
             # Get the root queue id with no trailing delimiter
-            self.root_id = self.id.split(delimiter)[0]
+            self.root_id = self.id.split("/")[0]
 
         self.use_large_ids = context.get_current_config()["use_large_job_ids"]
 
@@ -150,14 +149,14 @@ class Queue(object):
 
     def redis_known_subqueues(self):
         """ Return the known subqueues of this queue as Queue objects. """
-        delimiter = context.get_current_config()["subqueues_delimiter"]
+
         queues = []
 
-        if not self.id.endswith(delimiter):
+        if not self.id.endswith("/"):
             return queues
 
         for key in Queue.known_queues:
-            if key.startswith(self.id) and not key.endswith(delimiter):
+            if key.startswith(self.id) and not key.endswith("/"):
                 queues.append(Queue(key, add_to_known_queues=True))
 
         return queues
@@ -185,8 +184,7 @@ class Queue(object):
           TODO: handle subqueues with more than one level, e.g. "queue/subqueue/"
       """
       queue = self.id
-      delimiter = context.get_current_config().get("subqueues_delimiter")
-      if delimiter is not None and self.id.endswith(delimiter):
+      if self.id.endswith("/"):
           queue = self.root_id
       return queue
 

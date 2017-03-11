@@ -16,7 +16,6 @@ The following general flags can be passed as command-line arguments to either **
  - `--mongodb_jobs, --mongodb`: MongoDB URI for the jobs, scheduled_jobs & workers database. Defaults to **mongodb://127.0.0.1:27017/mrq**.
  - `--mongodb_logs` :MongoDB URI for the logs database."0" will disable remote logs, "1" will use main MongoDB. Defaults to **1**
  - `--mongodb_logs_size`: If provided, sets the log collection to capped to that amount of bytes.
- - `--no_mongodb_ensure_indexes`: If provided, skip the creation of MongoDB indexes at worker startup.
  - `--redis`: Redis URI. Defaults to **redis://127.0.0.1:6379**.
  - `--redis_prefix`: Redis key prefix. Defaults to "mrq".
  - `--redis_max_connections`: Redis max connection pool size. Defaults to **1000**.
@@ -55,7 +54,6 @@ You can pass additional configuration flags:
  - `--report_interval`: Seconds between worker reports to MongoDB. Defaults to **10** seconds, floats are acceptable too.
  - `--report_file`: Filepath of a json dump of the worker status. Disabled if none.
  - `--subqueues_refresh_interval`: Seconds between worker refreshes of the known subqueues.
- - `--subqueues_delimiter`: Delimiter between main queue and subqueue names.
  - `--paused_queues_refresh_interval`: Seconds between worker refreshes of the paused queues list.
  - `--admin_port`: Start an admin server on this port, if provided. Incompatible with --processes. Defaults to **0**
  - `--admin_ip`: IP for the admin server to listen on. Use "0.0.0.0" to allow access from outside. Defaults to **127.0.0.1**.

@@ -44,6 +44,13 @@ SCHEDULER_TASKS = [
     "path": "mrq.basetasks.cleaning.CleanKnownQueues",
     "params": {},
     "interval": 24 * 3600
+  },
+
+  # This will make sure MRQ's indexes are built
+  {
+    "path": "mrq.basetasks.indexes.EnsureIndexes",
+    "params": {},
+    "interval": 24 * 3600
   }
 ]
 ```

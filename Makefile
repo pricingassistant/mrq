@@ -21,13 +21,13 @@ docs_serve:
 	sh -c "docker run --rm -i -t -p 8000:8000 -v `pwd`:/app:rw -w /app mrq_local mkdocs serve"
 
 lint: docker
-	docker run -i -t -v `pwd`:/app:rw -w /app mrq_local pylint --init-hook="import sys; sys.path.append('.')" --rcfile .pylintrc mrq
+	docker run -i -t -v `pwd`:/app:rw -w /app mrq_local pylint -j 0 --init-hook="import sys; sys.path.append('.')" --rcfile .pylintrc mrq
 
 linterrors: docker
-	docker run -i -t -v `pwd`:/app:rw -w /app mrq_local pylint --errors-only --init-hook="import sys; sys.path.append('.')" -d E1103 --rcfile .pylintrc mrq
+	docker run -i -t -v `pwd`:/app:rw -w /app mrq_local pylint -j 0 --errors-only --init-hook="import sys; sys.path.append('.')" -d E1103 --rcfile .pylintrc mrq
 
 linterrors3: docker
-	docker run -i -t -v `pwd`:/app:rw -w /app mrq_local python3 -m pylint --errors-only --init-hook="import sys; sys.path.append('.')" -d E1103 --rcfile .pylintrc mrq
+	docker run -i -t -v `pwd`:/app:rw -w /app mrq_local python3 -m pylint -j 0 --errors-only --init-hook="import sys; sys.path.append('.')" -d E1103 --rcfile .pylintrc mrq
 
 virtualenv:
 	virtualenv venv --distribute

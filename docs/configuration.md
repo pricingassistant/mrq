@@ -20,7 +20,6 @@ Remember, put mrq-config.py in your workers directory.
 MONGODB_JOBS = "mongodb://127.0.0.1:27017/mrq" # MongoDB URI for the jobs, scheduled_jobs & workers database.Defaults to mongodb://127.0.0.1:27017/mrq
 MONGODB_LOGS = 1 #MongoDB URI for the logs database."0" will disable remote logs, "1" will use main MongoDB.Defaults to 1
 MONGODB_LOGS_SIZE = None #If provided, sets the log collection to capped to that amount of bytes.
-NO_MONGODB_ENSURE_INDEXES = None #If provided, skip the creation of MongoDB indexes at worker startup.
 
 #Redis settings
 REDIS = "redis://127.0.0.1:6379" #Redis URI.Defaults to redis://127.0.0.1:6379
