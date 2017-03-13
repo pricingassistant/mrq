@@ -16,6 +16,7 @@ import json as json_stdlib
 import ujson as json
 import http.server
 from bson import ObjectId
+from redis.lock import LuaLock
 from collections import defaultdict
 
 from .job import Job
@@ -115,16 +116,19 @@ class Worker(Process):
 
         self.connected = True
 
+    @property
+    def redis_scheduler_lock_key(self):
+        """ Returns the global redis key used to ensure only one scheduler runs at a time """
+        return "%s:schedulerlock" % get_current_config()["redis_prefix"]
+
     def greenlet_scheduler(self):
 
-        from .scheduler import Scheduler
-        scheduler = Scheduler(self.mongodb_jobs.mrq_scheduled_jobs)
-
-        scheduler.sync_tasks(self.config.get("scheduler_tasks") or [])
-
         while True:
-            scheduler.check()
-            time.sleep(int(self.config["scheduler_interval"]))
+            with LuaLock(connections.redis, self.redis_scheduler_lock_key,
+                         timeout=self.config["scheduler_interval"] + 10, blocking=False, thread_local=False):
+                self.scheduler.check()
+
+            time.sleep(self.config["scheduler_interval"])
 
     def greenlet_report(self):
         """ This greenlet always runs in background to update current status
@@ -175,7 +179,9 @@ class Worker(Process):
         try:
             for queue in self.config["queues"]:
                 if queue.endswith("/"):
-                    queues += Queue(queue, add_to_known_queues=True).redis_known_subqueues()
+                    q = Queue(queue, add_to_known_queues=True)
+                    queues.append(q)
+                    queues += q.redis_known_subqueues()
                 else:
                     queues.append(Queue(queue, add_to_known_queues=True))
 
@@ -409,6 +415,12 @@ class Worker(Process):
             self.greenlets["logs"] = gevent.spawn(self.greenlet_logs)
 
         if self.config["scheduler"] and self.config["scheduler_interval"] > 0:
+
+            from .scheduler import Scheduler
+            self.scheduler = Scheduler(self.mongodb_jobs.mrq_scheduled_jobs, self.config.get("scheduler_tasks") or [])
+
+            self.scheduler.check_config_integrity()  # If this fails, we won't dequeue any jobs
+
             self.greenlets["scheduler"] = gevent.spawn(self.greenlet_scheduler)
 
         if self.config["admin_port"]:
@@ -514,7 +526,6 @@ class Worker(Process):
             ):
                 dequeued_jobs += 1
 
-                # TODO investigate spawn_raw?
                 self.gevent_pool.spawn(self.perform_job, job)
 
         # At the next pass, start at the next queue to avoid always dequeuing the same one
@@ -532,7 +543,7 @@ class Worker(Process):
 
             if self.config["dequeue_strategy"] == "burst":
                 self.log.info("Burst mode: stopping now because queues were empty")
-                return "break"
+                return "break", dequeued_jobs
 
             if (
                 not self.idle_event.is_set() and

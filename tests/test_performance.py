@@ -14,6 +14,7 @@ try:
 except:
     import subprocess
 
+
 @pytest.mark.parametrize(["p_max_latency", "p_min_observed_latency", "p_max_observed_latency"], [
     [1, -0.3, 1],
     [0.01, -1, 0.02]
@@ -56,12 +57,12 @@ def test_job_max_latency(worker, p_max_latency, p_min_observed_latency, p_max_ob
 
 @pytest.mark.parametrize(["p_latency", "p_min", "p_max"], [
     [0, 0, 3],
-    ["0.05", 4, 20],
-    ["0.05-0.1", 4, 35]
+    ["0.05", 4, 30],
+    ["0.05-0.1", 4, 40]
 ])
 def test_network_latency(worker, p_latency, p_min, p_max):
 
-    worker.start(flags=" --mongodb_logs 0 --report_interval 10000 --add_network_latency=%s" % (p_latency), trace=False)
+    worker.start(flags=" --max_latency=1 --mongodb_logs 0 --report_interval 10000 --add_network_latency=%s" % (p_latency), trace=False)
 
     start_time = time.time()
 

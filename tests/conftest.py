@@ -95,7 +95,7 @@ class ProcessFixture(object):
             return
         self.stopped = True
 
-        if self.process is not None:
+        if self.process is not None and self.process.returncode is None:
 
             print("Sending signal %s to pid %s" % (sig, self.process.pid))
             os.kill(self.process.pid, sig)
@@ -109,21 +109,8 @@ class ProcessFixture(object):
             if not block:
                 return
 
-            for _ in range(2000):
-
-                try:
-                    p = psutil.Process(self.process.pid)
-                    if p.status() == "zombie":
-                        # print "process %s zombie OK" % self.cmdline
-                        return
-                except psutil.NoSuchProcess:
-                    # print "process %s exit OK" % self.cmdline
-                    return
-
-                time.sleep(0.01)
-
-            assert False, "Process '%s' was still in state %s after 20 seconds..." % (
-                self.cmdline, p.status())
+            # Will raise TimeoutExpired
+            self.process.wait(timeout=20)
 
 
 class WorkerFixture(ProcessFixture):
@@ -133,10 +120,11 @@ class WorkerFixture(ProcessFixture):
 
         self.fixture_mongodb = kwargs["mongodb"]
         self.fixture_redis = kwargs["redis"]
+        self.admin_port = kwargs.get("admin_port")
 
         self.started = False
 
-    def start(self, flush=True, deps=True, trace=True, bind_admin_port=True, agent=False, **kwargs):
+    def start(self, flush=True, deps=True, trace=True, agent=False, **kwargs):
 
         self.started = True
 
@@ -156,7 +144,7 @@ class WorkerFixture(ProcessFixture):
                 processes = int(m.group(1))
 
             cmdline = "python mrq/bin/mrq_worker.py --mongodb_logs_size 0 %s %s %s %s" % (
-                "--admin_port 20020" if (processes <= 1 and bind_admin_port) else "",
+                "--admin_port %s" % self.admin_port if (processes <= 1) else "",
                 "--trace_io --trace_greenlets" if trace else "",
                 kwargs.get("flags", ""),
                 kwargs.get("queues", "high default low")
@@ -168,7 +156,7 @@ class WorkerFixture(ProcessFixture):
         print(cmdline)
         ProcessFixture.start(self, cmdline=cmdline, env=env, expected_children=processes)
 
-        if not agent:
+        if not agent and not kwargs.get("block") is False:
             self.wait_for_idle()
 
     def start_deps(self, flush=True):
@@ -250,8 +238,8 @@ class WorkerFixture(ProcessFixture):
         return out
 
     def get_report(self, with_memory=False):
-        wait_for_net_service("127.0.0.1", 20020, poll_interval=0.01)
-        f = urllib.request.urlopen("http://127.0.0.1:20020/report%s" % ("_mem" if with_memory else ""))
+        wait_for_net_service("127.0.0.1", self.admin_port, poll_interval=0.01)
+        f = urllib.request.urlopen("http://127.0.0.1:%s/report%s" % (self.admin_port, "_mem" if with_memory else ""))
         data = json.loads(f.read().decode('utf-8'))
         f.close()
         return data
@@ -262,9 +250,12 @@ class WorkerFixture(ProcessFixture):
             print("Warning: wait_for_idle() doesn't support multiprocess workers yet")
             return False
 
+        if self.process.returncode is not None:
+            return True
+
         try:
-            wait_for_net_service("127.0.0.1", 20020, poll_interval=0.01)
-            f = urllib.request.urlopen("http://127.0.0.1:20020/wait_for_idle")
+            wait_for_net_service("127.0.0.1", self.admin_port, poll_interval=0.01)
+            f = urllib.request.urlopen("http://127.0.0.1:%s/wait_for_idle" % self.admin_port)
             data = f.read().decode('utf-8')
             assert data == "idle"
             return True
@@ -323,15 +314,15 @@ def redis(request):
 
 @pytest.fixture(scope="function")
 def worker(request, mongodb, redis):
-    return WorkerFixture(request, mongodb=mongodb, redis=redis)
+    return WorkerFixture(request, mongodb=mongodb, redis=redis, admin_port=20020)
 
 
 @pytest.fixture(scope="function")
 def worker2(request, mongodb, redis):
-    return WorkerFixture(request, mongodb=mongodb, redis=redis)
+    return WorkerFixture(request, mongodb=mongodb, redis=redis, admin_port=20021)
 
 
 @pytest.fixture(scope="function")
 def worker_mongodb_with_journal(request, mongodb_with_journal, redis):
 
-    return WorkerFixture(request, mongodb=mongodb_with_journal, redis=redis)
+    return WorkerFixture(request, mongodb=mongodb_with_journal, redis=redis, admin_port=20022)

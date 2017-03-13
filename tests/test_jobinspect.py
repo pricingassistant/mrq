@@ -20,7 +20,7 @@ def test_current_job_inspect(worker):
     time.sleep(2)
 
     # Test the HTTP admin API
-    admin_worker = json.loads(urllib.request.urlopen("http://localhost:20020").read().decode('utf-8'))
+    admin_worker = json.loads(urllib.request.urlopen("http://localhost:%s" % worker.admin_port).read().decode('utf-8'))
 
     assert admin_worker["status"] == "full"
     assert len(admin_worker["jobs"]) == 1
@@ -35,7 +35,7 @@ def test_current_job_inspect(worker):
 
     time.sleep(3)
 
-    admin_worker = json.loads(urllib.request.urlopen("http://localhost:20020").read().decode('utf-8'))
+    admin_worker = json.loads(urllib.request.urlopen("http://localhost:%s" % worker.admin_port).read().decode('utf-8'))
 
     assert admin_worker["status"] == "wait"
     assert len(admin_worker["jobs"]) == 0
@@ -142,7 +142,7 @@ def test_trace_long_fetch(worker, httpbin):
         admin_worker = json.loads(read)
 
     # Test the HTTP admin API
-    # admin_worker = json.load(urllib2.urlopen("http://localhost:20020/"))
+    # admin_worker = json.load(urllib2.urlopen("http://localhost:%s" % worker.admin_port))
 
     assert admin_worker["jobs"][0]["io"]["type"] == "http.get"
 

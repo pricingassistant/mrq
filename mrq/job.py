@@ -363,8 +363,7 @@ class Job(object):
 
             time.sleep(poll_interval)
 
-        raise Exception(
-            "Waited for job result for %ss seconds, timeout." % timeout)
+        raise Exception("Waited for job result for %s seconds, timeout." % timeout)
 
     def save_retry(self, retry_exc):
 

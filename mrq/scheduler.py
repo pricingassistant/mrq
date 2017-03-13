@@ -1,8 +1,8 @@
 from future.builtins import str, object
-from future.utils import iteritems
 from .context import log, queue_job
 import datetime
 import ujson as json
+import time
 
 
 def _hash_task(task):
@@ -20,19 +20,32 @@ def _hash_task(task):
 
 class Scheduler(object):
 
-    def __init__(self, collection):
+    def __init__(self, collection, config_tasks):
         self.collection = collection
+        self.config_tasks = config_tasks
+        self.config_synced = False
         self.all_tasks = []
 
-        self.refresh()
+    def check_config_integrity(self):
+        """ Make sure the scheduler config is valid """
+        tasks_by_hash = {_hash_task(t): t for t in self.config_tasks}
 
-    def refresh(self):
-        self.all_tasks = list(self.collection.find())
+        if len(tasks_by_hash) != len(self.config_tasks):
+            raise Exception("Fatal error: there was a hash duplicate in the scheduled tasks config.")
 
-    def sync_tasks(self, tasks):
+        for h, task in tasks_by_hash.items():
+            if task.get("monthday") and not task.get("dailytime"):
+                raise Exception("Fatal error: you can't schedule a task with 'monthday' and without 'dailytime' (%s)" % h)
+            if task.get("weekday") and not task.get("dailytime"):
+                raise Exception("Fatal error: you can't schedule a task with 'weekday' and without 'dailytime' (%s)" % h)
+
+            if not task.get("monthday") and not task.get("weekday") and not task.get("dailytime") and not task.get("interval"):
+                raise Exception("Fatal error: scheduler must be specified one of monthday,weekday,dailytime,interval. (%s)" % h)
+
+    def sync_config_tasks(self):
         """ Performs the first sync of a list of tasks, often defined in the config file. """
 
-        tasks_by_hash = {_hash_task(t): t for t in tasks}
+        tasks_by_hash = {_hash_task(t): t for t in self.config_tasks}
 
         for task in self.all_tasks:
             if tasks_by_hash.get(task["hash"]):
@@ -41,7 +54,8 @@ class Scheduler(object):
                 self.collection.remove({"_id": task["_id"]})
                 log.debug("Scheduler: deleted %s" % task["hash"])
 
-        for h, task in iteritems(tasks_by_hash):
+        # What remains are the new ones to be inserted
+        for h, task in tasks_by_hash.items():
             task["hash"] = h
             task["datelastqueued"] = datetime.datetime.fromtimestamp(0)
             if task.get("dailytime"):
@@ -55,19 +69,25 @@ class Scheduler(object):
             self.collection.find_one_and_update({"hash": task["hash"]}, {"$set": task}, upsert=True)
             log.debug("Scheduler: added %s" % task["hash"])
 
-        self.refresh()
-
     def check(self):
 
-        log.debug(
-            "Scheduler checking for out-of-date scheduled tasks (%s scheduled)..." %
-            len(
-                self.all_tasks))
-        for task in self.all_tasks:
+        self.all_tasks = list(self.collection.find())
 
-            now = datetime.datetime.utcnow()
-            current_weekday = now.weekday()
-            current_monthday = now.day
+        if not self.config_synced:
+            self.sync_config_tasks()
+            self.all_tasks = list(self.collection.find())
+            self.config_synced = True
+
+        # log.debug(
+        #     "Scheduler checking for out-of-date scheduled tasks (%s scheduled)..." %
+        #     len(self.all_tasks)
+        # )
+
+        now = datetime.datetime.utcnow()
+        current_weekday = now.weekday()
+        current_monthday = now.day
+
+        for task in self.all_tasks:
 
             interval = datetime.timedelta(seconds=task["interval"])
 
@@ -80,57 +100,22 @@ class Scheduler(object):
                 continue
 
             if task.get("dailytime"):
+                if task["datelastqueued"].date() == now.date() or now.time() < task["dailytime"].time():
+                    continue
 
-                dailytime = task.get("dailytime").time()
+            if task["datelastqueued"] <= last_time:
 
-                time_datelastqueued = task.get(
-                    "datelastqueued").time().isoformat()[0:8]
-                time_dailytime = dailytime.isoformat()[0:8]
-                if task.get(
-                        "datelastqueued") and time_datelastqueued != time_dailytime:
-                    log.debug(
-                        "Adjusting the time of scheduled task %s from %s to %s" %
-                        (task["_id"], time_datelastqueued, time_dailytime))
-
-                    # Make sure we don't queue the task in a loop by adjusting
-                    # the time
-                    if time_datelastqueued < time_dailytime:
-                        adjusted_datelastqueued = datetime.datetime.combine(
-                            task.get("datelastqueued").date() -
-                            datetime.timedelta(days=1),
-                            dailytime)
-                    else:
-                        adjusted_datelastqueued = datetime.datetime.combine(
-                            task.get("datelastqueued").date(), dailytime)
-
-                    # We do find_and_modify and not update() because several check()
-                    # may be happening at the same time.
-                    self.collection.find_and_modify(
-                        {
-                            "_id": task["_id"],
-                            "datelastqueued": task.get("datelastqueued")
-                        },
-                        {"$set": {
-                            "datelastqueued": adjusted_datelastqueued
-                        }}
-                    )
-                    self.refresh()
-
-            task_data = self.collection.find_and_modify(
-                {
-                    "_id": task["_id"],
-                    "datelastqueued": {"$lt": last_time}
-                },
-                {"$set": {
-                    "datelastqueued": now
-                }}
-            )
-
-            if task_data:
                 queue_job(
-                    task_data["path"],
-                    task_data.get("params") or {},
-                    queue=task.get("queue"))
-                log.debug("Scheduler: queued %s" % task_data)
+                    task["path"],
+                    task.get("params") or {},
+                    queue=task.get("queue")
+                )
 
-                self.refresh()
+                self.collection.update({"_id": task["_id"]}, {"$set": {
+                    "datelastqueued": now
+                }})
+
+                log.debug("Scheduler: queued %s" % _hash_task(task))
+
+        # Make sure we never again execute a scheduler with the same exact second.
+        time.sleep(1)

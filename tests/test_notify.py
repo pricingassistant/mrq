@@ -7,12 +7,10 @@ from mrq.job import Job
 
 def test_queue_notify(worker, worker2):
 
-    worker.start(flags="--max_latency 30 --config tests/fixtures/config-notify.py", queues="withnotify withoutnotify", bind_admin_port=False)
+    worker.start(flags="--max_latency 30 --config tests/fixtures/config-notify.py", queues="withnotify withoutnotify")
 
     # Used to queue jobs in the same environment & config!
     worker2.start(flags="--config tests/fixtures/config-notify.py")
-
-    time.sleep(4)
 
     id1 = worker2.send_task("tests.tasks.general.SendTask", {
         "params": {"a": 42, "b": 1},

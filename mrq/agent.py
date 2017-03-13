@@ -5,6 +5,7 @@ import time
 import datetime
 import gevent
 from bson import ObjectId
+from redis.lock import LuaLock
 from collections import defaultdict
 from .processes import Process, ProcessPool
 
@@ -91,9 +92,10 @@ class Agent(Process):
     def greenlet_orchestrate(self):
 
         while True:
-            with connections.redis.lock(self.redis_agent_orchestrator_key, timeout=self.config["orchestrate_interval"] + 10):
+            with LuaLock(connections.redis, self.redis_agent_orchestrator_key,
+                         timeout=self.config["orchestrate_interval"] + 10, thread_local=False, blocking=False):
                 self.orchestrate()
-                time.sleep(self.config["orchestrate_interval"])
+            time.sleep(self.config["orchestrate_interval"])
 
     @property
     def redis_agent_orchestrator_key(self):

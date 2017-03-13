@@ -61,7 +61,8 @@ def test_redis_disconnections(gevent_count, subpool_size, iterations, expected_c
     gevent_count = gevent_count if gevent_count is not None else 1
 
     def get_clients():
-        return [c for c in connections.redis.client_list() if c.get("cmd") != "client"]
+        lst = connections.redis.client_list()
+        return [c for c in lst if c.get("cmd") != "client"]
 
     assert len(get_clients()) == 0
 

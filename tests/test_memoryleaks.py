@@ -2,6 +2,7 @@ from __future__ import print_function
 from builtins import range
 import time
 import pytest
+import os
 
 
 def test_max_memory_restart(worker):
@@ -18,10 +19,12 @@ def test_max_memory_restart(worker):
         block=False
     )
 
-    time.sleep(N * 3)
-
-    assert worker.mongodb_jobs.mrq_jobs.find(
-        {"status": "success"}).count() == N
+    i = 0
+    while worker.mongodb_jobs.mrq_jobs.find({"status": "success"}).count() != N:
+        time.sleep(1)
+        i += 1
+        if i % 5 == 0:
+            os.system("ps -ef")
 
     # We must have been restarted at least once.
     assert worker.mongodb_jobs.mrq_workers.find().count() > 1

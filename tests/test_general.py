@@ -23,7 +23,7 @@ def test_general_simple_task_one(worker):
     assert worker_report["done_jobs"] == 1
 
     # Test the HTTP admin API
-    admin_worker = json.loads(urllib.request.urlopen("http://localhost:20020").read().decode('utf-8'))
+    admin_worker = json.loads(urllib.request.urlopen("http://localhost:%s" % worker.admin_port).read().decode('utf-8'))
 
     assert admin_worker["_id"] == str(db_workers[0]["_id"])
     assert admin_worker["status"] == "wait"

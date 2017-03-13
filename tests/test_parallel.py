@@ -22,6 +22,8 @@ def test_parallel_100sleeps(worker, p_flags):
 
     total_time = time.time() - start_time
 
+    print("Total time for 100 parallel sleeps: %s" % total_time)
+
     # But should be done quickly!
     assert total_time < 15
 
