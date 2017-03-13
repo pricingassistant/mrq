@@ -11,7 +11,7 @@ def METRIC_HOOK(name, incr=1, **kwargs):
 
 
 def _reset_local_metrics():
-    for k in TEST_LOCAL_METRICS.keys():
+    for k in list(TEST_LOCAL_METRICS.keys()):
         TEST_LOCAL_METRICS.pop(k)
 
 

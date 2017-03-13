@@ -133,9 +133,13 @@ class WorkerFixture(ProcessFixture):
 
         processes = 0
 
+        python_bin = "python"
+        if os.environ.get("PYTHON_BIN"):
+            python_bin = os.environ["PYTHON_BIN"]
+
         if agent:
 
-            cmdline = "python mrq/bin/mrq_agent.py %s" % kwargs.get("flags", "")
+            cmdline = "%s mrq/bin/mrq_agent.py %s" % (python_bin, kwargs.get("flags", ""))
 
         else:
 
@@ -143,7 +147,8 @@ class WorkerFixture(ProcessFixture):
             if m:
                 processes = int(m.group(1))
 
-            cmdline = "python mrq/bin/mrq_worker.py --mongodb_logs_size 0 %s %s %s %s" % (
+            cmdline = "%s mrq/bin/mrq_worker.py --mongodb_logs_size 0 %s %s %s %s" % (
+                python_bin,
                 "--admin_port %s" % self.admin_port if (processes <= 1) else "",
                 "--trace_io --trace_greenlets" if trace else "",
                 kwargs.get("flags", ""),

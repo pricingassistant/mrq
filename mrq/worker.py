@@ -351,7 +351,7 @@ class Worker(Process):
                 res = bytes(json_stdlib.dumps(report, cls=MongoJSONEncoder), 'utf-8')
             elif path == "/wait_for_idle":
                 self.wait_for_idle()
-                res = "idle"
+                res = bytes("idle", "utf-8")
             else:
                 status = "404 Not Found"
             start_response(status, [('Content-Type', 'application/json')])
