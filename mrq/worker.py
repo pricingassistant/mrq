@@ -371,12 +371,9 @@ class Worker(Process):
     def wait_for_idle(self):
         """ Waits until the worker has nothing more to do. Very useful in tests """
 
-        self.idle_event.clear()
-
         while True:
 
             self.idle_event.wait()
-            self.idle_event.clear()
 
             self.refresh_queues()
 
@@ -524,6 +521,7 @@ class Worker(Process):
                 job_class=self.job_class,
                 worker=self
             ):
+                self.idle_event.clear()
                 dequeued_jobs += 1
 
                 self.gevent_pool.spawn(self.perform_job, job)

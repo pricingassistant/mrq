@@ -389,19 +389,19 @@ def patch_io_pymongo_cursor(config):
         # Some dark magic is needed here to cope with python's name mangling for private variables.
         def _Cursor__send_message(self, *args, **kwargs):
 
+            subtype = "cursor"
+            collection = self._Cursor__collection.name  # pylint: disable=no-member
+
+            if collection == "$cmd":
+                items = list(self._Cursor__spec.items())  # pylint: disable=no-member
+                if len(items) > 0:
+                    subtype, collection = items[0]
+
+            full_name = "%s.%s" % (self._Cursor__collection.database.name, collection)  # pylint: disable=no-member
+
             job = get_current_job()
 
             if job:
-
-                subtype = "cursor"
-                collection = self._Cursor__collection.name  # pylint: disable=no-member
-
-                if collection == "$cmd":
-                    items = list(self._Cursor__spec.items())  # pylint: disable=no-member
-                    if len(items) > 0:
-                        subtype, collection = items[0]
-
-                full_name = "%s.%s" % (self._Cursor__collection.database.name, collection)  # pylint: disable=no-member
 
                 job.set_current_io({
                     "type": "mongodb.%s" % subtype,
