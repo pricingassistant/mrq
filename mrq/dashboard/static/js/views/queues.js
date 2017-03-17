@@ -174,7 +174,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
       },
 
       updateTableData: function(){
-          this.setTableData('/api/datatables/jobs', this.getFilterData());
+          this.setTableData('/api/datatables/queues', this.getFilterData());
       }
   });
 

@@ -83,7 +83,17 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
 
       this.initDataTable(datatableConfig);
 
-    }
+    },
+
+      getFilterData: function(){
+          return {
+              sEcho: 1
+          };
+      },
+
+      updateTableData: function(){
+          this.setTableData('/api/datatables/taskexceptions', this.getFilterData());
+      }
   });
 
 });
