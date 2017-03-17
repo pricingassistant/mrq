@@ -255,7 +255,6 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
     },
 
     renderDatatable:function() {
-
       var self = this;
 
       var datatableConfig = self.getCommonDatatableConfig("jobs");
@@ -400,7 +399,6 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
 
 
         ],
-        "aaSorting":[ [0,'asc'] ],
 
         "fnDrawCallback": function (oSettings) {
 
@@ -438,6 +436,23 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
 
       window.location = "/#jobs?"+$.param(self.filters, true).replace(/\+/g, "%20");
     },
+
+      getFilterData: function(){
+          return {
+              id: $('#jobs-form-id').val(),
+              queue: $('#jobs-form-queue').val(),
+              worker: $('#jobs-form-worker').val(),
+              path: $('#jobs-form-path').val(),
+              status: $('#jobs-form-status').val(),
+              params: $('#jobs-form-params').val(),
+              exceptiontype: $('#jobs-form-exceptiontype').val(),
+              sEcho: 1
+          };
+      },
+
+      updateTableData: function(){
+          this.setTableData('/api/datatables/jobs', this.getFilterData());
+      }
 
   });
 

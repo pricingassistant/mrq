@@ -158,7 +158,24 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
 
       this.initDataTable(datatableConfig);
 
-    }
+    },
+
+      getFilterData: function(){
+          return {
+              id: $('#jobs-form-id').val(),
+              queue: $('#jobs-form-queue').val(),
+              worker: $('#jobs-form-worker').val(),
+              path: $('#jobs-form-path').val(),
+              status: $('#jobs-form-status').val(),
+              params: $('#jobs-form-params').val(),
+              exceptiontype: $('#jobs-form-exceptiontype').val(),
+              sEcho: 1
+          };
+      },
+
+      updateTableData: function(){
+          this.setTableData('/api/datatables/jobs', this.getFilterData());
+      }
   });
 
 });

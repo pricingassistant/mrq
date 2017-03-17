@@ -20,7 +20,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models", "moment
 
           {
             "sTitle": "Status",
-            "sClass": "col-status",
+            "sClass": "col-status sorted-by-_id",
             "sType":"string",
             "sWidth":"150px",
             "mData":function(source, type/*, val*/) {
@@ -29,7 +29,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models", "moment
           },
           {
             "sTitle": "Jobs",
-            "sClass": "col-jobs",
+            "sClass": "col-jobs sorted-by-",
             "sType":"numeric",
             "sWidth":"120px",
             "mData":function(source, type/*, val*/) {
@@ -48,7 +48,6 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models", "moment
             "sClass": "col-eta",
             "sType":"numeric",
             "mData":function(source, type, val) {
-              console.log()
               return (Math.round(self.getCounterSpeed("index.status."+source._id) * 100) / 100) + " jobs/second";
             }
           },
@@ -76,7 +75,19 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models", "moment
 
       this.initDataTable(datatableConfig);
 
-    }
+    },
+
+      getFilterData: function(){
+          return {
+              sEcho: 1
+          };
+      },
+
+      updateTableData: function(){
+          this.setTableData('/api/datatables/status', this.getFilterData());
+      }
   });
+
+
 
 });

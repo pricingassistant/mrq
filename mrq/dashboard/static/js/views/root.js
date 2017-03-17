@@ -33,6 +33,7 @@ define(["views/generic/page", "jquery",
 
         var onchange = function(evt) {
 
+
             var prevVisible = self.isTabVisible;
             var v = true, h = false,
                 evtMap = {
