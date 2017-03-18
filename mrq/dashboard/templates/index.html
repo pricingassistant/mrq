@@ -246,6 +246,20 @@
         <h3>Jobs by task path</h3>
 
         <div class="container">
+          <form class="form-inline js-datatable-filters pull-left" role="form">
+            <br/>
+            Filter by: &nbsp;
+            <div class="form-group">
+              <label class="sr-only" for="jobs-form-id">Name</label>
+              <input type="text" class="form-control input-sm js-datatable-filters-name" id="taskpath-form-name" placeholder="Name">
+            </div>
+
+            <button type="submit" class="btn btn-default js-datatable-filters-submit input-sm" style="padding:5px">OK</button>
+
+          </form>
+        </div>
+
+        <div class="container">
           <table cellpadding="0" cellspacing="0" border="0" class="datatable table table-striped table-bordered js-datatable">
           </table>
         </div>

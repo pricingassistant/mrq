@@ -276,6 +276,7 @@ define(["views/generic/page", "underscore", "jquery"], function (Page, _, $) {
             $.getJSON(url, filterData, function (json) {
                 self.dataTable.fnClearTable();
                 self.dataTable.fnAddData(json.aaData);
+                console.log(json);
             }).always(function () {
                 self.loading = false;
                 $('.ox-loader').hide();

@@ -96,10 +96,20 @@ def api_jobstatuses():
 @app.route('/api/datatables/taskpaths')
 @requires_auth
 def api_taskpaths():
-    stats = list(connections.mongodb_jobs.mrq_jobs.aggregate([
-        {"$sort": {"path": 1}},  # https://jira.mongodb.org/browse/SERVER-11447
-        {"$group": {"_id": "$path", "jobs": {"$sum": 1}}}
-    ]))
+    if request.args.get("name"):
+        name = request.args.get("name")
+        stats = list(connections.mongodb_jobs.mrq_jobs.aggregate([
+            {"$sort": {"path": 1}},  # https://jira.mongodb.org/browse/SERVER-11447
+            {"$match": {"path": name}},
+            {"$group": {"_id": "$path", "jobs": {"$sum": 1}}},
+
+        ]))
+    else:
+        stats = list(connections.mongodb_jobs.mrq_jobs.aggregate([
+            {"$sort": {"path": 1}},  # https://jira.mongodb.org/browse/SERVER-11447
+            {"$group": {"_id": "$path", "jobs": {"$sum": 1}}},
+
+        ]))
 
     stats.sort(key=lambda x: -x["jobs"])
 
