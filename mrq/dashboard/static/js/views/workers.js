@@ -12,7 +12,6 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models", "moment
         },
 
         initFilters: function () {
-
             this.filters = {
                 "showstopped": this.options.params.showstopped || ""
             };

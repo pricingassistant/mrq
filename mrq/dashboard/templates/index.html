@@ -211,6 +211,31 @@
       <script id="tpl-page-scheduledjobs" type="text/template">
 
         <div class="container">
+          <form class="form-inline js-datatable-filters pull-left" role="form">
+            <br/>
+            Filter by: &nbsp;
+            <div class="form-group">
+              <label class="sr-only" for="jobs-form-id">Name</label>
+              <input type="text" class="form-control input-sm js-datatable-filters-name" id="scheduledjobs-form-name" placeholder="Name" value="<%- filters.id %>">
+            </div>
+            <div class="form-group">
+              <label class="sr-only" for="jobs-form-queue">Interval</label>
+              <input type="text" class="form-control input-sm js-datatable-filters-interval" id="scheduledjobs-form-interval" placeholder="Interval" value="<%- filters.queue %>">
+            </div>
+            <div class="form-group">
+              <label class="sr-only" for="jobs-form-worker">Last Queued</label>
+              <input type="text" class="form-control input-sm js-datatable-filters-last_queued" id="scheduledjobs-form-last_queued" placeholder="Last Queued" value="<%- filters.worker %>">
+            </div>
+            <div class="form-group">
+              <label class="sr-only" for="jobs-form-path">Params</label>
+              <input type="text" class="form-control input-sm js-datatable-filters-params" id="scheduledjobs-form-params" placeholder="Params" value="<%- filters.path %>">
+            </div>
+
+            <button type="submit" class="btn btn-default js-datatable-filters-submit input-sm" style="padding:5px">OK</button>
+
+          </form>
+        </div>
+        <div class="container">
           <table cellpadding="0" cellspacing="0" border="0" class="datatable table table-striped table-bordered js-datatable">
           </table>
         </div>

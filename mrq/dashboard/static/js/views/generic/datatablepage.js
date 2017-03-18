@@ -82,6 +82,7 @@ define(["views/generic/page", "underscore", "jquery"], function (Page, _, $) {
                 "sPaginationType": "bs_full",
                 "bProcessing": true,
                 "bDeferRender": true,
+                "bDestroy": true,
                 // "sAjaxSource": "/api/datatables/" + unit_name,
                 // "fnServerData": function (sSource, aoData, fnCallback) {
                 //     self.loading = true;
@@ -273,9 +274,8 @@ define(["views/generic/page", "underscore", "jquery"], function (Page, _, $) {
             self.loading = true;
             $('.ox-loader').show();
             $.getJSON(url, filterData, function (json) {
-                $('.js-datatable').dataTable().fnClearTable();
-                $('.js-datatable').dataTable().fnAddData(json.aaData);
-                //$('.datatable').dataTable().fnSort([[0, 'desc']]);
+                self.dataTable.fnClearTable();
+                self.dataTable.fnAddData(json.aaData);
             }).always(function () {
                 self.loading = false;
                 $('.ox-loader').hide();
