@@ -37,7 +37,7 @@ def test_current_job_inspect(worker):
 
     admin_worker = json.loads(urllib.request.urlopen("http://localhost:%s" % worker.admin_port).read().decode('utf-8'))
 
-    assert admin_worker["status"] == "wait"
+    assert admin_worker["status"] in ["wait", "spawn"]
     assert len(admin_worker["jobs"]) == 0
     assert admin_worker["done_jobs"] == 1
 

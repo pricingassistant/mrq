@@ -90,7 +90,6 @@ class QueueRegular(Queue):
 
             if worker:
                 worker.status = "spawn"
-                worker.idle_event.clear()
 
             count += 1
             context.metric("queues.%s.dequeued" % job_data["queue"], 1)

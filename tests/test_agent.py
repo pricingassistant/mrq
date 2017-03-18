@@ -164,7 +164,7 @@ def test_agent_process(worker):
 
     assert connections.mongodb_jobs.mrq_workers.count() == 1
     w = connections.mongodb_jobs.mrq_workers.find_one()
-    assert w["status"] == "wait"
+    assert w["status"] in ("spawn", "wait")
 
     connections.mongodb_jobs.mrq_workergroups.update_one({"_id": "xxx"}, {"$set": {"profiles": [
 

@@ -60,8 +60,6 @@ class Worker(Process):
         self.greenlet = gevent.getcurrent()
         self.graceful_stop = None
 
-        self.idle_event = gevent.event.Event()
-
         self.id = ObjectId()
         if self.config.get("name"):
             self.name = self.config["name"]
@@ -373,12 +371,28 @@ class Worker(Process):
 
         while True:
 
-            self.idle_event.wait()
+            # Wait until the pool is empty at least once.
+            # http://www.gevent.org/gevent.pool.html#gevent.pool.Pool.join
+            self.gevent_pool.join()
 
+            if len(self.gevent_pool) > 0:
+                continue
+
+            # Force a refresh of the current subqueues, one might just have been created.
             self.refresh_queues()
+
+            # Wait until we are not dequeueing anything
+            while self.status != "wait":
+                time.sleep(0.01)
+
+            if len(self.gevent_pool) > 0:
+                continue
 
             # We might be dequeueing a new subqueue. Double check that we don't have anything more to do
             outcome, dequeue_jobs = self.work_once(free_pool_slots=1, max_jobs=None)
+
+            if len(self.gevent_pool) > 0:
+                continue
 
             if outcome is "wait" and dequeue_jobs == 0:
                 break
@@ -454,14 +468,15 @@ class Worker(Process):
                             break
 
                     if free_pool_slots > 0:
-                        self.status = "wait"
+
                         break
 
                     self.status = "full"
-
                     self.gevent_pool.wait_available(timeout=60)
 
+                self.status = "spawn"
                 outcome, dequeue_jobs = self.work_once(free_pool_slots=free_pool_slots, max_jobs=max_jobs)
+                self.status = "wait"
 
                 if outcome == "break":
                     break
@@ -521,7 +536,6 @@ class Worker(Process):
                 job_class=self.job_class,
                 worker=self
             ):
-                self.idle_event.clear()
                 dequeued_jobs += 1
 
                 self.gevent_pool.spawn(self.perform_job, job)
@@ -543,20 +557,12 @@ class Worker(Process):
                 self.log.info("Burst mode: stopping now because queues were empty")
                 return "break", dequeued_jobs
 
-            if (
-                not self.idle_event.is_set() and
-                free_pool_slots == self.pool_size
-            ):
-                self.idle_event.set()
-
             return "wait", dequeued_jobs
 
         return None, dequeued_jobs
 
     def work_wait(self):
         """ Wait for new jobs to arrive """
-
-        self.status = "wait"
 
         if len(self.queues_with_notify) > 0:
             # https://github.com/antirez/redis/issues/874

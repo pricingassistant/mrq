@@ -190,7 +190,6 @@ class QueueRaw(Queue):
 
         if worker:
             worker.status = "spawn"
-            worker.idle_event.clear()
 
         job_data = [job_factory(p) for p in params]
         for j in job_data:

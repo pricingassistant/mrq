@@ -19,14 +19,14 @@ def test_general_simple_task_one(worker):
     db_workers = list(worker.mongodb_jobs.mrq_workers.find())
     assert len(db_workers) == 1
     worker_report = worker.get_report()
-    assert worker_report["status"] in ["full", "wait"]
+    assert worker_report["status"] in ["full", "wait", "spawn"]
     assert worker_report["done_jobs"] == 1
 
     # Test the HTTP admin API
     admin_worker = json.loads(urllib.request.urlopen("http://localhost:%s" % worker.admin_port).read().decode('utf-8'))
 
     assert admin_worker["_id"] == str(db_workers[0]["_id"])
-    assert admin_worker["status"] == "wait"
+    assert admin_worker["status"] in ["wait", "spawn"]
 
     # Stop the worker gracefully
     worker.stop(deps=False)
