@@ -114,6 +114,7 @@ def api_taskpaths():
     return jsonify(data)
 
 
+# Route to be deprecated!
 @app.route('/workers')
 @requires_auth
 def get_workers():
@@ -246,6 +247,15 @@ def api_datatables(unit):
         fields = None
         query = {"status": {"$nin": ["stop"]}}
         collection = connections.mongodb_jobs.mrq_workers
+        sort = [("datestarted", -1)]
+
+        if request.args.get("showstopped"):
+            query = {}
+
+    elif unit == "agents":
+        fields = None
+        query = {"status": {"$nin": ["stop"]}}
+        collection = connections.mongodb_jobs.mrq_agents
         sort = [("datestarted", -1)]
 
         if request.args.get("showstopped"):

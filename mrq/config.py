@@ -261,14 +261,14 @@ def add_parser_args(parser, config_type):
             help='The name of the worker group to manage')
 
         parser.add_argument(
-            '--available_memory',
-            default=int(psutil.virtual_memory().total * 0.8),
+            '--total_memory',
+            default=int(psutil.virtual_memory().total * 0.8 / (1024 * 1024)),
             action="store",
             type=int,
             help="How much memory MB this agent's workers can use. Used for scheduling, not a hard limit.")
 
         parser.add_argument(
-            '--available_cpu',
+            '--total_cpu',
             default=psutil.cpu_count(logical=True) * 1024,
             action="store",
             type=int,
@@ -324,17 +324,6 @@ def add_parser_args(parser, config_type):
             action='store',
             help='Number of processes to launch with supervisord')
 
-        default_template = os.path.abspath(os.path.join(
-            os.path.dirname(__file__),
-            "supervisord_templates/default.conf"
-        ))
-
-        parser.add_argument(
-            '--supervisord_template',
-            default=default_template,
-            action='store',
-            help='Path of supervisord template to use')
-
         parser.add_argument(
             '--scheduler',
             default=False,
@@ -361,6 +350,13 @@ def add_parser_args(parser, config_type):
             action='store',
             type=str,
             help='Filepath of a json dump of the worker status. Disabled if none')
+
+        parser.add_argument(
+            '--agent_id',
+            default="",
+            action='store',
+            type=str,
+            help='ID of the Agent this worker process is linked to')
 
         parser.add_argument(
             'queues',

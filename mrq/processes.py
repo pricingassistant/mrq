@@ -45,12 +45,13 @@ class Process(object):
 class ProcessPool(object):
     """ Manages a pool of processes """
 
-    def __init__(self, watch_interval=1):
+    def __init__(self, watch_interval=1, extra_env=None):
         self.processes = []
         self.desired_commands = []
         self.greenlet_watch = None
         self.watch_interval = watch_interval
         self.stopping = False
+        self.extra_env = extra_env
 
     def set_commands(self, commands, timeout=None):
         """ Sets the processes' desired commands for this pool and manages diff to reach that state """
@@ -80,11 +81,11 @@ class ProcessPool(object):
         # process_name
         # output
         # time before starting (wait for port?)
-        # overwrite one env variable (ISWORKER?)
         # start_new_session=True : avoid sending parent signals to child
 
         env = dict(os.environ)
         env["MRQ_IS_SUBPROCESS"] = "1"
+        env.update(self.extra_env or {})
 
         p = subprocess.Popen(shlex.split(command), shell=False, close_fds=True, env=env, cwd=os.getcwd())
 

@@ -17,12 +17,14 @@ class Agent(Process):
         self.greenlets = {}
         self.id = ObjectId()
         self.worker_group = worker_group or get_current_config()["worker_group"]
-        self.pool = ProcessPool()
+        self.pool = ProcessPool(extra_env={"MRQ_AGENT_ID": str(self.id)})
         self.config = get_current_config()
+        self.status = "started"
 
     def work(self):
 
         self.install_signal_handlers()
+        self.datestarted = datetime.datetime.utcnow()
 
         self.greenlets["orchestrate"] = gevent.spawn(self.greenlet_orchestrate)
         self.greenlets["orchestrate"].start()
@@ -36,7 +38,8 @@ class Agent(Process):
             self.pool.wait()
         finally:
             self.shutdown_now()
-            connections.mongodb_jobs.mrq_agents.delete_one({"_id": self.id})
+            self.status = "stop"
+            self.manage()
 
     def shutdown_now(self):
         self.pool.terminate()
@@ -75,15 +78,17 @@ class Agent(Process):
             return
 
         # If the desired_workers was changed by an orchestrator, apply the changes locally
-        if sorted(db.get("desired_workers", [])) != sorted(self.pool.desired_commands):
+        if self.status != "stop" and sorted(db.get("desired_workers", [])) != sorted(self.pool.desired_commands):
             self.pool.set_commands(db.get("desired_workers", []))
 
     def get_agent_report(self):
         report = {
             "current_workers": [p["command"] for p in self.pool.processes],
-            "available_cpu": get_current_config()["available_cpu"],
-            "available_memory": get_current_config()["available_memory"],
+            "total_cpu": get_current_config()["total_cpu"],
+            "total_memory": get_current_config()["total_memory"],
             "worker_group": self.worker_group,
+            "status": self.status,
+            "datestarted": self.datestarted,
             "datereported": datetime.datetime.utcnow(),
             "dateexpires": datetime.datetime.utcnow() + datetime.timedelta(seconds=(self.config["report_interval"] * 3) + 5)
         }
@@ -110,6 +115,8 @@ class Agent(Process):
             log.error("Worker group %s has no definition yet. Can't orchestrate!" % self.worker_group)
             return
 
+        log.debug("Starting orchestration run for worker group %s" % self.worker_group)
+
         agents = self.fetch_worker_group_agents()
 
         desired_workers = self.get_desired_workers_for_group(group)
@@ -117,8 +124,8 @@ class Agent(Process):
         # Evaluate what workers are currently, rightfully there. They won't be touched.
         current_workers = defaultdict(int)
         for agent in agents:
-            agent["free_memory"] = agent["available_memory"]
-            agent["free_cpu"] = agent["available_cpu"]
+            agent["free_memory"] = agent["total_memory"]
+            agent["free_cpu"] = agent["total_cpu"]
             agent["new_desired_workers"] = []
             for worker in agent.get("desired_workers", []):
                 if worker in desired_workers:
@@ -147,7 +154,7 @@ class Agent(Process):
 
             for _ in range(delta, 0):
                 found = False
-                for agent in sorted(agents, key=lambda a: float(a["free_cpu"]) / a["available_cpu"]):
+                for agent in sorted(agents, key=lambda a: float(a["free_cpu"]) / a["total_cpu"]):
                     for i in range(len(agent["new_desired_workers"])):
                         if agent["new_desired_workers"][i] == worker:
                             agent["new_desired_workers"].pop(i)
@@ -170,7 +177,7 @@ class Agent(Process):
 
             for _ in range(delta):
                 found = False
-                for agent in sorted(agents, key=lambda a: float(a["free_cpu"]) / a["available_cpu"], reverse=True):
+                for agent in sorted(agents, key=lambda a: float(a["free_cpu"]) / a["total_cpu"], reverse=True):
                     if cpu <= agent["free_cpu"] and memory <= agent["free_memory"]:
                         agent["new_desired_workers"].append(worker)
                         agent["free_cpu"] -= cpu
@@ -191,6 +198,8 @@ class Agent(Process):
                     "free_cpu": agent["free_cpu"],
                     "free_memory": agent["free_memory"]
                 }})
+
+        log.debug("Orchestration finished.")
 
     def get_desired_workers_for_group(self, group):
 

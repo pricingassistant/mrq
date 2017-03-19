@@ -41,6 +41,9 @@
             <li class="js-nav-workergroups">
               <a href="/#workergroups">Worker groups</a>
             </li>
+              <li class="js-nav-agents">
+              <a href="/#agents">Agents</a>
+            </li>
             <li class="js-nav-taskpaths">
               <a href="/#taskpaths">Paths</a>
             </li>
@@ -75,8 +78,8 @@
             <li><a>Autorefresh <select class="js-autorefresh">
               <option value="1">1s</option>
               <option value="3">3s</option>
-              <option selected="selected" value="5">5s</option>
-              <option value="10">10s</option>
+              <option value="5">5s</option>
+              <option selected="selected" value="10">10s</option>
               <option value="20">20s</option>
               <option value="60">1m</option>
               <option value="300">5m</option>
@@ -118,6 +121,7 @@
         <div class="js-page-taskexceptions"></div>
         <div class="js-page-io"></div>
         <div class="js-page-workergroups"></div>
+        <div class="js-page-agents"></div>
 
 
       </script>
@@ -258,6 +262,31 @@
             <textarea style="width:100%;height:400px;font-family:monospace;" onkeydown="if(event.keyCode===9){var v=this.value,s=this.selectionStart,e=this.selectionEnd;this.value=v.substring(0, s)+'\t'+v.substring(e);this.selectionStart=this.selectionEnd=s+1;return false;}"></textarea>
             <button class="submit">Save</button>
           </div>
+        </div>
+      </script>
+
+      <script id="tpl-page-agents" type="text/template">
+
+        <div class="container" style="margin-bottom:5px;">
+
+          <form class="form-inline js-datatable-filters pull-left" role="form">
+            <br/>
+            Filter by: &nbsp;
+
+            <div class="form-group">
+              <div class="checkbox">
+                <label>
+                  <input type="checkbox" class="js-datatable-filters-showstopped" <%= filters.showstopped?'checked="checked"':'' %>> Show stopped
+                </label>
+              </div>
+            </div>
+
+          </form>
+        </div>
+
+        <div class="container">
+          <table cellpadding="0" cellspacing="0" border="0" class="datatable table table-striped table-bordered js-datatable">
+          </table>
         </div>
       </script>
 

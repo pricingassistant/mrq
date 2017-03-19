@@ -4,7 +4,7 @@ from mrq.context import connections
 
 class EnsureIndexes(Task):
 
-    def ensure_indexes(self):
+    def run(self, params):
 
         if connections.mongodb_logs:
             connections.mongodb_logs.mrq_logs.ensure_index(

@@ -8,7 +8,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models", "moment
 
     events:{
       "change .js-datatable-filters-showstopped": "filterschanged",
-      "click .js-workers-io": "showworkerio",
+      "click .js-workers-io": "showworkerio"
     },
 
     initFilters: function() {

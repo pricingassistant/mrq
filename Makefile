@@ -71,3 +71,6 @@ pypi: linterrors
 
 build_docs:
 	python scripts/propagate_docs.py
+
+ensureindexes:
+	mrq-run mrq.basetasks.indexes.EnsureIndexes

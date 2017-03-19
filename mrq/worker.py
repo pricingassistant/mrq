@@ -257,12 +257,15 @@ class Worker(Process):
         # Avoid sharing passwords or sensitive config!
         whitelisted_config = [
             "max_jobs",
+            "max_memory"
             "greenlets",
             "processes",
             "queues",
+            "dequeue_strategy",
             "scheduler",
             "name",
-            "local_ip"
+            "local_ip",
+            "agent_id"
         ]
 
         io = None

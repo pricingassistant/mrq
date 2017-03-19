@@ -35,8 +35,8 @@ def test_orchestration_scenarios(worker):
     ], [
         {
             "_id": "worker1",
-            "available_cpu": 1024,
-            "available_memory": 1000
+            "total_cpu": 1024,
+            "total_memory": 1000
         }
     ]) == {
         "worker1": [
@@ -55,8 +55,8 @@ def test_orchestration_scenarios(worker):
     ], [
         {
             "_id": "worker1",
-            "available_cpu": 1024,
-            "available_memory": 1000
+            "total_cpu": 1024,
+            "total_memory": 1000
         }
     ]) == {
         "worker1": []
@@ -73,8 +73,8 @@ def test_orchestration_scenarios(worker):
     ], [
         {
             "_id": "worker1",
-            "available_cpu": 1024,
-            "available_memory": 1000
+            "total_cpu": 1024,
+            "total_memory": 1000
         }
     ]) == {
         "worker1": []
@@ -97,8 +97,8 @@ def test_orchestration_scenarios(worker):
     ], [
         {
             "_id": "worker1",
-            "available_cpu": 3,
-            "available_memory": 3,
+            "total_cpu": 3,
+            "total_memory": 3,
             "desired_workers": ["mrq-worker c", "mrq-worker b", "mrq-worker b"]
         }
     ]) == {
@@ -122,13 +122,13 @@ def test_orchestration_scenarios(worker):
     ], [
         {
             "_id": "worker1",
-            "available_cpu": 11,
-            "available_memory": 11,
+            "total_cpu": 11,
+            "total_memory": 11,
             "desired_workers": ["mrq-worker a", "mrq-worker a"]
         }, {
             "_id": "worker2",
-            "available_cpu": 5,
-            "available_memory": 5,
+            "total_cpu": 5,
+            "total_memory": 5,
             "desired_workers": ["mrq-worker a", "mrq-worker a"]
         }
     ]) == {
@@ -141,7 +141,7 @@ def test_orchestration_scenarios(worker):
 
 def test_agent_process(worker):
 
-    worker.start(agent=True, flags="--worker_group xxx --available_memory=500 --available_cpu=500 --orchestrate_interval=1 --report_interval=1")
+    worker.start(agent=True, flags="--worker_group xxx --total_memory=500 --total_cpu=500 --orchestrate_interval=1 --report_interval=1")
 
     time.sleep(3)
 
@@ -175,12 +175,12 @@ def test_agent_process(worker):
     w = connections.mongodb_jobs.mrq_workers.find_one()
     assert w["status"] == "stop"
 
-    assert connections.mongodb_jobs.mrq_agents.count() == 1
+    assert connections.mongodb_jobs.mrq_agents.count({"status": {"$ne": "stop"}}) == 1
 
     worker.stop(deps=False)
 
     time.sleep(2)
 
-    assert connections.mongodb_jobs.mrq_agents.count() == 0
+    assert connections.mongodb_jobs.mrq_agents.count({"status": {"$ne": "stop"}}) == 0
 
     worker.stop_deps()
