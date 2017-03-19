@@ -10,5 +10,5 @@ termcolor==1.1.0
 subprocess32==3.2.7; python_version < '3.2'
 supervisor==3.0; python_version < '3.0'
 git+git://github.com/Supervisor/supervisor.git@c18aecf1641d8953767e7010be8bae1924a133bf#egg=Supervisor; python_version >= '3.0'
-future==0.15.2
+future>=0.15.2
 importlib==1.0.3; python_version < '2.7'
