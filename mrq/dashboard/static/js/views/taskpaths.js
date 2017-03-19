@@ -105,7 +105,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"], functi
             _.each(self.filters, function (v, k) {
                 self.filters[k] = self.$(".js-datatable-filters-" + k).val();
             });
-
+            this.updateTableData();
             window.location = "/#taskpath?" + $.param(self.filters, true).replace(/\+/g, "%20");
         },
 

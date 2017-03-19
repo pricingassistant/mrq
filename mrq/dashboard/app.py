@@ -59,11 +59,11 @@ def api_task_exceptions():
     ]))
 
     stats.sort(key=lambda x: -x["jobs"])
-    start = int(request.args.get("iDisplayStart", 0))
-    end = int(request.args.get("iDisplayLength", 20)) + start
+    # start = int(request.args.get("iDisplayStart", 0))
+    # end = int(request.args.get("iDisplayLength", 20)) + start
 
     data = {
-        "aaData": stats[start:end],
+        "aaData": stats,
         "iTotalDisplayRecords": len(stats)
     }
 
@@ -266,11 +266,11 @@ def api_datatables(unit):
         if sort:
             cursor.sort(sort)
 
-        if skip is not None:
-            cursor.skip(skip)
-
-        if limit is not None:
-            cursor.limit(limit)
+        # if skip is not None:
+        #     cursor.skip(skip)
+        #
+        # if limit is not None:
+        #     cursor.limit(limit)
 
         data = {
             "aaData": list(cursor),

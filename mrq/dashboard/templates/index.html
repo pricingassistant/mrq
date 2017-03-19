@@ -216,19 +216,19 @@
             Filter by: &nbsp;
             <div class="form-group">
               <label class="sr-only" for="jobs-form-id">Name</label>
-              <input type="text" class="form-control input-sm js-datatable-filters-name" id="scheduledjobs-form-name" placeholder="Name" value="<%- filters.id %>">
+              <input type="text" class="form-control input-sm js-datatable-filters-name" id="scheduledjobs-form-name" placeholder="Name" value="<%- filters.name %>">
             </div>
             <div class="form-group">
               <label class="sr-only" for="jobs-form-queue">Interval</label>
-              <input type="text" class="form-control input-sm js-datatable-filters-interval" id="scheduledjobs-form-interval" placeholder="Interval" value="<%- filters.queue %>">
+              <input type="text" class="form-control input-sm js-datatable-filters-interval" id="scheduledjobs-form-interval" placeholder="Interval" value="<%- filters.interval %>">
             </div>
             <div class="form-group">
               <label class="sr-only" for="jobs-form-worker">Last Queued</label>
-              <input type="text" class="form-control input-sm js-datatable-filters-last_queued" id="scheduledjobs-form-last_queued" placeholder="Last Queued" value="<%- filters.worker %>">
+              <input type="text" class="form-control input-sm js-datatable-filters-last_queued" id="scheduledjobs-form-last_queued" placeholder="Last Queued" value="<%- filters.last_queued %>">
             </div>
             <div class="form-group">
               <label class="sr-only" for="jobs-form-path">Params</label>
-              <input type="text" class="form-control input-sm js-datatable-filters-params" id="scheduledjobs-form-params" placeholder="Params" value="<%- filters.path %>">
+              <input type="text" class="form-control input-sm js-datatable-filters-params" id="scheduledjobs-form-params" placeholder="Params" value="<%- filters.params %>">
             </div>
 
             <button type="submit" class="btn btn-default js-datatable-filters-submit input-sm" style="padding:5px">OK</button>
@@ -251,7 +251,7 @@
             Filter by: &nbsp;
             <div class="form-group">
               <label class="sr-only" for="jobs-form-id">Name</label>
-              <input type="text" class="form-control input-sm js-datatable-filters-name" id="taskpath-form-name" placeholder="Name">
+              <input type="text" class="form-control input-sm js-datatable-filters-name" id="taskpath-form-name" placeholder="Name" value="<%- filters.name %>">
             </div>
 
             <button type="submit" class="btn btn-default js-datatable-filters-submit input-sm" style="padding:5px">OK</button>

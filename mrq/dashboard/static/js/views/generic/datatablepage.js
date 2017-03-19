@@ -119,12 +119,12 @@ define(["views/generic/page", "underscore", "jquery"], function (Page, _, $) {
             this.dataTableRawData = [];
 
             // SEARCH - Add the placeholder for Search and Turn this into in-line form control
-            var search_input = this.dataTable.closest('.dataTables_wrapper').find('div[id$=_filter] input');
-            search_input.attr('placeholder', 'Search');
-            search_input.addClass('form-control input-sm');
-            // LENGTH - Inline-Form control
-            var length_sel = this.dataTable.closest('.dataTables_wrapper').find('div[id$=_length] select');
-            length_sel.addClass('form-control input-sm');
+            // var search_input = this.dataTable.closest('.dataTables_wrapper').find('div[id$=_filter] input');
+            // search_input.attr('placeholder', 'Search');
+            // search_input.addClass('form-control input-sm');
+            // // LENGTH - Inline-Form control
+            // var length_sel = this.dataTable.closest('.dataTables_wrapper').find('div[id$=_length] select');
+            // length_sel.addClass('form-control input-sm');
 
             if (this.col) {
                 this.col.on("remove", function (m, c, options) {
@@ -271,6 +271,8 @@ define(["views/generic/page", "underscore", "jquery"], function (Page, _, $) {
 
         setTableData: function (url, filterData) {
             var self = this;
+            filterData.iDisplayStart = self.dataTable.fnSettings()._iDisplayStart;
+            filterData.iDisplayLength = self.dataTable.fnSettings()._iDisplayLength;
             self.loading = true;
             $('.ox-loader').show();
             $.getJSON(url, filterData, function (json) {
@@ -284,7 +286,7 @@ define(["views/generic/page", "underscore", "jquery"], function (Page, _, $) {
             });
         },
 
-        updateTableData: function(){
+        updateTableData: function () {
             //overload me!
         }
 
