@@ -9,7 +9,9 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"], functi
         events: {
             "click .js-datatable-filters-submit": "filterschanged",
             "click .js-datatable .js-actions button": "row_jobaction",
-            "click button.js-jobs-groupaction": "groupaction"
+            "click button.js-jobs-groupaction": "groupaction",
+            "click .hide-time-filter": "hidetimefilter",
+            "click .show-time-filter": "showtimefilter",
         },
 
         initFilters: function () {
@@ -34,6 +36,33 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"], functi
             });
             $('.time-filter-tag').click(function () {
                 self.filterRequest(this);
+            });
+        },
+
+        hidetimefilter: function () {
+            $(".time-filter-container").css({"position": "relative"});
+            $(".time-filter-container").animate({
+                bottom: "+265",
+            }, {
+                duration: 300,
+                complete: function () {
+                    $('.hide-time-filter').hide();
+                    $('.show-time-filter').show();
+                }
+            });
+        },
+
+        showtimefilter: function () {
+            $(".time-filter-container").css({"position": "relative"});
+            $(".time-filter-container").animate({
+                bottom: "0",
+            }, {
+                duration: 300,
+                complete: function () {
+                    $('.hide-time-filter').show();
+                    $('.show-time-filter').hide();
+                    $(".time-filter-container").css({"position": "static"});
+                }
             });
         },
 
@@ -477,7 +506,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"], functi
             this.timeFilter.typeChanged();
         },
 
-        filterRequest: function(component){
+        filterRequest: function (component) {
             var result = this.timeFilter.filterRequest(component);
             this.filters.startTime = result[0];
             this.filters.endTime = result[1];
@@ -515,7 +544,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"], functi
                             dateStart.setHours(dateStart.getHours() - hours);
                         }
                     }
-                    if(criteria == 'today'){
+                    if (criteria == 'today') {
                         dateStart = this.getBeginingOfDay(dateStart);
                         dateEnd = this.getEndOfDay(dateEnd);
                     }
@@ -606,7 +635,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"], functi
                         dateStart.setFullYear(dateStart.getFullYear() - 5);
                         dateStart = this.getBeginingOfYear(dateStart);
                     }
-                    if(criteria == 'today_until_now'){
+                    if (criteria == 'today_until_now') {
                         dateStart = this.getBeginingOfDay(dateStart);
                     }
                     return [this.getISODate(dateStart), this.getISODate(dateEnd)];
@@ -626,12 +655,12 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"], functi
                 date.setMilliseconds(999);
                 return date;
             },
-            getBeginingOfMonth: function(date){
+            getBeginingOfMonth: function (date) {
                 date.setDate(1);
                 date = this.getBeginingOfDay(date);
                 return date;
             },
-            getEndOfMonth: function(date){
+            getEndOfMonth: function (date) {
                 date.setMonth(date.getMonth() + 1);
                 date = this.getBeginingOfMonth(date);
                 date.setMilliseconds(-1);
@@ -647,11 +676,11 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"], functi
                 date = this.getBeginingOfYear(date);
                 date.setMilliseconds(-1);
             },
-            getISODate: function(date){
-                return  date.getFullYear() + "-" + (date.getMonth() + 1) + "-" +
-                        date.getDate() + "T" + date.getHours() + ":" +
-                        date.getMinutes() + ":" + date.getSeconds() + "." +
-                        date.getMilliseconds();
+            getISODate: function (date) {
+                return date.getFullYear() + "-" + (date.getMonth() + 1) + "-" +
+                    date.getDate() + "T" + date.getHours() + ":" +
+                    date.getMinutes() + ":" + date.getSeconds() + "." +
+                    date.getMilliseconds();
             }
 
         }
