@@ -94,7 +94,6 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"], functi
         },
 
         filterschanged: function (evt) {
-            console.log('filters changes');
             var self = this;
 
             if (evt) {

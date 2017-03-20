@@ -11,7 +11,6 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"], functi
         },
 
         initFilters: function () {
-            console.log(this.options);
             this.filters = {
                 "name": this.options.params.name || "",
                 "interval": this.options.params.interval || "",
@@ -104,13 +103,17 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"], functi
             _.each(self.filters, function (v, k) {
                 self.filters[k] = self.$(".js-datatable-filters-" + k).val();
             });
-
+            this.updateTableData();
             window.location = "/#scheduled_jobs?" + $.param(self.filters, true).replace(/\+/g, "%20");
         },
 
         getFilterData: function () {
             return {
-                sEcho: 1
+                sEcho: 1,
+                name: $('#scheduledjobs-form-name').val(),
+                interval: $('#scheduledjobs-form-interval').val(),
+                last_queued: $('#scheduledjobs-form-last_queued').val(),
+                params: $('#scheduledjobs-form-params').val()
             };
         },
 

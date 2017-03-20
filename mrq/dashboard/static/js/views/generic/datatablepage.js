@@ -64,7 +64,6 @@ define(["views/generic/page", "underscore", "jquery"], function (Page, _, $) {
                 //"aLengthMenu": [[25, 50, 100], [25, 50, 100]],
                 "sDom": "iprtipl",
                 "oLanguage": {
-                    "sSearch": "",
                     "sInfo": "Showing _START_ to _END_ of _TOTAL_ " + unit_name,
                     "sEmptyTable": "No " + unit_name,
                     "sInfoEmpty": "Showing 0 " + unit_name,
@@ -118,7 +117,7 @@ define(["views/generic/page", "underscore", "jquery"], function (Page, _, $) {
 
             this.dataTableRawData = [];
 
-            // SEARCH - Add the placeholder for Search and Turn this into in-line form control
+            //SEARCH - Add the placeholder for Search and Turn this into in-line form control
             // var search_input = this.dataTable.closest('.dataTables_wrapper').find('div[id$=_filter] input');
             // search_input.attr('placeholder', 'Search');
             // search_input.addClass('form-control input-sm');
@@ -141,7 +140,7 @@ define(["views/generic/page", "underscore", "jquery"], function (Page, _, $) {
                 }, this);
             }
 
-            this.dataTable.fnSetFilteringDelay();
+            //this.dataTable.fnSetFilteringDelay();
 
             setTimeout(function () {
                 self.refreshDataTable(true);
@@ -278,7 +277,6 @@ define(["views/generic/page", "underscore", "jquery"], function (Page, _, $) {
             $.getJSON(url, filterData, function (json) {
                 self.dataTable.fnClearTable();
                 self.dataTable.fnAddData(json.aaData);
-                console.log(json);
             }).always(function () {
                 self.loading = false;
                 $('.ox-loader').hide();
