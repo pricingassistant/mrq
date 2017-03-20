@@ -9,13 +9,54 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models", "moment
         events: {
             "change .js-datatable-filters-showstopped": "filterschanged",
             "click .js-workers-io": "showworkerio",
+            "click .hide-time-filter": "hidetimefilter",
+            "click .show-time-filter": "showtimefilter",
         },
 
         initFilters: function () {
             this.filters = {
-                "showstopped": this.options.params.showstopped || ""
+                "showstopped": this.options.params.showstopped || "",
+                "startTime": this.options.params.startTime || "",
+                "endTime": this.options.params.endTime || ""
             };
+            this.initTimeFilter();
+        },
 
+        initTimeFilter: function () {
+            var self = this;
+            $('.time-filter-group').click(function () {
+                self.timeFilter.typeChanged(this);
+            });
+            $('.time-filter-tag').click(function () {
+                self.filterRequest(this);
+            });
+        },
+
+        hidetimefilter: function () {
+            $(".time-filter-container").css({"position": "relative"});
+            $(".time-filter-container").animate({
+                bottom: "+265",
+            }, {
+                duration: 300,
+                complete: function () {
+                    $('.hide-time-filter').hide();
+                    $('.show-time-filter').show();
+                }
+            });
+        },
+
+        showtimefilter: function () {
+            $(".time-filter-container").css({"position": "relative"});
+            $(".time-filter-container").animate({
+                bottom: "0",
+            }, {
+                duration: 300,
+                complete: function () {
+                    $('.hide-time-filter').show();
+                    $('.show-time-filter').hide();
+                    $(".time-filter-container").css({"position": "static"});
+                }
+            });
         },
 
         setOptions: function (options) {
@@ -45,6 +86,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models", "moment
         renderDatatable: function () {
 
             var self = this;
+            this.initFilters();
 
             var datatableConfig = self.getCommonDatatableConfig("workers");
 
@@ -86,7 +128,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models", "moment
                         "sWidth": "150px",
                         "mData": function (source, type/*, val*/) {
                             if (type == "display") {
-
+                                console.log(source);
                                 return "<small>" + (source.datereported ? moment.utc(source.datereported).fromNow() : "Never")
                                     + "<br/>"
                                     + "started " + moment.utc(source.datestarted).fromNow() + "</small>";
@@ -197,12 +239,205 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models", "moment
                 status: $('#jobs-form-status').val(),
                 params: $('#jobs-form-params').val(),
                 exceptiontype: $('#jobs-form-exceptiontype').val(),
+                startTime: this.filters.startTime,
+                endTime: this.filters.endTime,
                 sEcho: 1
             };
         },
 
+        timefiltergroupchanged: function () {
+            this.timeFilter.typeChanged();
+        },
+
+        filterRequest: function (component) {
+            var result = this.timeFilter.filterRequest(component);
+            this.filters.startTime = result[0];
+            this.filters.endTime = result[1];
+            this.updateTableData();
+        },
+
         updateTableData: function () {
             this.setTableData('/api/datatables/workers', this.getFilterData());
+        },
+
+        timeFilter: {
+            show: function () {
+
+            },
+            hide: function () {
+
+            },
+            typeChanged: function (component) {
+                $('.time-filter-group').removeClass('active');
+                $(component).addClass('active');
+
+            },
+            filterRequest: function (component) {
+                var criteria = $(component).attr('data-filter');
+                var dateStart = new Date();
+                var dateEnd = new Date();
+                if (criteria != '') {
+                    if (criteria.contains('last')) {
+                        if (criteria.contains('min')) {
+                            var mins = parseInt(criteria.split('_')[1]);
+                            dateStart.setMinutes(dateStart.getMinutes() - mins);
+                        }
+                        if (criteria.contains('days')) {
+                            var days = parseInt(criteria.split('_')[1]);
+                            dateStart.setDate(dateStart.getDate() - days);
+                        }
+                        if (criteria.contains('hours')) {
+                            var hours = parseInt(criteria.split('_')[1]);
+                            dateStart.setHours(dateStart.getHours() - hours);
+                        }
+                    }
+                    if (criteria == 'today') {
+                        dateStart = this.getBeginingOfDay(dateStart);
+                        dateEnd = this.getEndOfDay(dateEnd);
+                    }
+                    if (criteria == 'yesterday') {
+                        dateStart.setDate(dateStart.getDate() - 1);
+                        dateStart = this.getBeginingOfDay(dateStart);
+
+                        dateEnd.setDate(dateEnd.getDate() - 1);
+                        dateEnd = this.getEndOfDay(dateEnd);
+                    }
+                    if (criteria == '2_days_ago') {
+                        dateStart.setDate(dateStart.getDate() - 2);
+                        dateStart = this.getBeginingOfDay(dateStart);
+
+                        dateEnd.setDate(dateEnd.getDate() - 2);
+                        dateEnd = this.getEndOfDay(dateEnd);
+                    }
+                    if (criteria == '7_days_ago') {
+                        dateStart.setDate(dateStart.getDate() - 7);
+                        dateStart = this.getBeginingOfDay(dateStart);
+
+                        dateEnd.setDate(dateEnd.getDate() - 7);
+                        dateEnd = this.getEndOfDay(dateEnd);
+                    }
+                    if (criteria == 'this_week') {
+                        dateStart.setDate(dateStart.getDate() +
+                            (0 - dateStart.getDay()));
+                        dateStart = this.getBeginingOfDay(dateStart);
+
+                        dateEnd.setDate(dateEnd.getDate() + (6 - dateEnd.getDay()));
+                        dateEnd = this.getEndOfDay(dateEnd);
+                    }
+                    if (criteria == 'week_until_now') {
+                        dateStart.setDate(dateStart.getDate() +
+                            (0 - dateStart.getDay()));
+                        dateStart = this.getBeginingOfDay(dateStart);
+                    }
+                    if (criteria == 'prev_week') {
+                        dateStart.setDate(dateStart.getDate() - 7);
+                        dateStart.setDate(dateStart.getDate() +
+                            (0 - dateStart.getDay()));
+                        dateStart = this.getBeginingOfDay(dateStart);
+
+                        dateEnd.setDate(dateEnd.getDate() - 7);
+                        dateEnd.setDate(dateEnd.getDate() + (6 - dateEnd.getDay()));
+                        dateEnd = this.getEndOfDay(dateEnd);
+                    }
+                    if (criteria == 'this_month') {
+                        dateStart = this.getBeginingOfMonth(dateStart);
+
+                        dateEnd = this.getEndOfMonth(dateEnd);
+                    }
+                    if (criteria == 'month_until_now') {
+                        dateStart = this.getBeginingOfMonth(dateStart);
+                    }
+                    if (criteria == 'last_6_months') {
+                        dateStart.setMonth(dateStart.getMonth() - 6);
+                        dateStart = this.getBeginingOfMonth(dateStart);
+
+                        dateEnd = this.getEndOfMonth(dateEnd);
+                    }
+                    if (criteria == 'prev_month') {
+                        dateStart.setMonth(dateStart.getMonth() - 1);
+                        dateStart = this.getBeginingOfMonth(dateStart);
+
+                        dateEnd.setMonth(dateEnd.getMonth() - 1);
+                        dateEnd = this.getEndOfMonth(dateEnd);
+                    }
+                    if (criteria == 'prev_year') {
+                        dateStart.setFullYear(dateStart.getFullYear() - 1);
+                        dateStart = this.getBeginingOfYear(dateStart);
+
+                        dateEnd.setFullYear(dateEnd.getFullYear() - 1);
+                        dateEnd = this.getEndOfYear(dateEnd);
+                    }
+                    if (criteria == 'this_year') {
+                        dateStart = this.getBeginingOfYear(dateStart);
+
+                        dateEnd = this.getEndOfYear(dateEnd);
+                    }
+                    if (criteria == 'last_year') {
+                        dateStart.setFullYear(dateStart.getFullYear() - 1);
+                        dateStart = this.getBeginingOfYear(dateStart);
+                    }
+                    if (criteria == 'year_until_now') {
+                        dateStart = this.getBeginingOfYear(dateStart);
+                    }
+                    if (criteria == 'last_2_years') {
+                        dateStart.setFullYear(dateStart.getFullYear() - 2);
+                        dateStart = this.getBeginingOfYear(dateStart);
+                    }
+                    if (criteria == 'last_5_years') {
+                        dateStart.setFullYear(dateStart.getFullYear() - 5);
+                        dateStart = this.getBeginingOfYear(dateStart);
+                    }
+                    if (criteria == 'today_until_now') {
+                        dateStart = this.getBeginingOfDay(dateStart);
+                    }
+                    console.log(dateStart);
+                    console.log(dateEnd);
+                    return [this.getISODate(dateStart), this.getISODate(dateEnd)];
+                }
+            },
+            getBeginingOfDay: function (date) {
+                date.setHours(0);
+                date.setMinutes(0);
+                date.setSeconds(0);
+                date.setMilliseconds(0);
+                return date;
+            },
+            getEndOfDay: function (date) {
+                date.setHours(23);
+                date.setMinutes(59);
+                date.setSeconds(59);
+                date.setMilliseconds(999);
+                return date;
+            },
+            getBeginingOfMonth: function (date) {
+                date.setDate(1);
+                date = this.getBeginingOfDay(date);
+                return date;
+            },
+            getEndOfMonth: function (date) {
+                date.setMonth(date.getMonth() + 1);
+                date = this.getBeginingOfMonth(date);
+                date.setMilliseconds(-1);
+                return date;
+            },
+            getBeginingOfYear: function (date) {
+                date.setMonth(0);
+                date = this.getBeginingOfMonth(date);
+                return date;
+            },
+            getEndOfYear: function (date) {
+                date.setFullYear(date.getFullYear() + 1);
+                date = this.getBeginingOfYear(date);
+                date.setMilliseconds(-1);
+                return date;
+            },
+            getISODate: function (date) {
+                return date.getFullYear() + "-" + (date.getMonth() + 1) + "-" +
+                    date.getDate() + "T" + date.getHours() + ":" +
+                    date.getMinutes() + ":" + date.getSeconds() + "." +
+                    date.getMilliseconds();
+            }
+
         }
     });
 

@@ -196,29 +196,98 @@
                 </div>
             </div>
         </div>
-
-        <div class="container" style="margin-bottom:5px;">
-
-            <form class="form-inline js-datatable-filters pull-left" role="form">
-                <br/>
-                Filter by: &nbsp;
-
-                <div class="form-group">
-                    <div class="checkbox">
-                        <label>
-                            <input type="checkbox" class="js-datatable-filters-showstopped" <%=
-                            filters.showstopped?'checked="checked"':'' %>> Show stopped
-                        </label>
+        <div class="container time-filter-container">
+            <div class="container" style="margin-bottom: 5px;margin-top: 5px;padding-right: 0">
+                <div class="panel panel-default" style="height: 265px;">
+                    <div class="panel-heading">
+                        Time Filter
                     </div>
+                    <div class="panel-body">
+                        <div class="col-md-2">
+                            <ul class="nav nav-pills nav-stacked">
+                                <li role="presentation" class="active time-filter-group"><a
+                                        style="cursor: pointer">Quick</a></li>
+                            </ul>
+                        </div>
+                        <div class="col-md-10">
+                            <div class="time-filter-container" data-type="quick">
+                                <label data-filter="today" class="time-filter-tag">Today</label>
+                                <label data-filter="yesterday" class="time-filter-tag">Yesterday</label>
+                                <label data-filter="last_15_min" class="time-filter-tag">Last 15 Minutes</label>
+                                <label data-filter="last_30_days" class="time-filter-tag">Last 30 Days</label>
+                                <br>
+                                <label data-filter="this_week" class="time-filter-tag">This Week</label>
+                                <label data-filter="2_days_ago" class="time-filter-tag">Day Before Yesterday</label>
+                                <label data-filter="last_30_min" class="time-filter-tag">Last 30 Minutes</label>
+                                <label data-filter="last_60_days" class="time-filter-tag">Last 60 Days</label>
+                                <br>
+                                <label data-filter="this_month" class="time-filter-tag">This Month</label>
+                                <label data-filter="7_days_ago" class="time-filter-tag">This Day Last Week</label>
+                                <label data-filter="last_1_hours" class="time-filter-tag">Last 1 Hour</label>
+                                <label data-filter="last_90_days" class="time-filter-tag">Last 90 Days</label>
+                                <br>
+                                <label data-filter="this_year" class="time-filter-tag">This Year</label>
+                                <label data-filter="prev_week" class="time-filter-tag">Previous Week</label>
+                                <label data-filter="last_4_hours" class="time-filter-tag">Last 4 Hours</label>
+                                <label data-filter="last_6_months" class="time-filter-tag">Last 6 Months</label>
+                                <br>
+                                <label data-filter="today_until_now" class="time-filter-tag">The Day So Far</label>
+                                <label data-filter="prev_month" class="time-filter-tag">Previous Month</label>
+                                <label data-filter="last_12_hours" class="time-filter-tag">Last 12 Hours</label>
+                                <label data-filter="last_year" class="time-filter-tag">Last Year</label>
+                                <br>
+                                <label data-filter="week_until_now" class="time-filter-tag">Week To Date</label>
+                                <label data-filter="prev_year" class="time-filter-tag">Previous Year</label>
+                                <label data-filter="last_24_hours" class="time-filter-tag">Last 24 Hours</label>
+                                <label data-filter="last_2_years" class="time-filter-tag">Last 2 Years</label>
+                                <br>
+                                <label data-filter="month_until_now" class="time-filter-tag">Month To Date</label>
+                                <label class="time-filter-tag"></label>
+                                <label data-filter="last_7_days" class="time-filter-tag">Last 7 Days</label>
+                                <label data-filter="last_5_years" class="time-filter-tag">Last 5 Years</label>
+                                <br>
+                                <label data-filter="year_until_now" class="time-filter-tag">Year To Date</label>
+                            </div>
+                            <div class="time-filter-container" data-type="relative">
+
+                            </div>
+                            <div class="time-filter-container" data-type="absolute">
+
+                            </div>
+                        </div>
+                    </div>
+                    <button title="Hide Time Filter" class="btn btn-default btn-xs hide-time-filter"
+                            style="width: 100%;"><i
+                            class="glyphicon glyphicon-chevron-up"></i></button>
+                    <button title="Show Time Filter" class="btn btn-default btn-xs show-time-filter"
+                            style="width: 100%; display: none"><i
+                            class="glyphicon glyphicon-chevron-down"></i></button>
                 </div>
+            </div>
 
-            </form>
-        </div>
+            <div class="container" style="margin-bottom:5px;">
 
-        <div class="container">
-            <table cellpadding="0" cellspacing="0" border="0"
-                   class="datatable table table-striped table-bordered js-datatable">
-            </table>
+                <form class="form-inline js-datatable-filters pull-left" role="form">
+                    <br/>
+                    Filter by: &nbsp;
+
+                    <div class="form-group">
+                        <div class="checkbox">
+                            <label>
+                                <input type="checkbox" class="js-datatable-filters-showstopped" <%=
+                                filters.showstopped?'checked="checked"':'' %>> Show stopped
+                            </label>
+                        </div>
+                    </div>
+
+                </form>
+            </div>
+
+            <div class="container">
+                <table cellpadding="0" cellspacing="0" border="0"
+                       class="datatable table table-striped table-bordered js-datatable">
+                </table>
+            </div>
         </div>
     </script>
 

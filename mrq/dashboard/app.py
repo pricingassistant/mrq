@@ -179,9 +179,9 @@ def build_api_datatables_query(req):
             except Exception as e:  # pylint: disable=broad-except
                 print("Error will converting form JSON: %s" % e)
 
-        #time filter
+        # time filter
         filter_by_date = False
-        if(request.args.get("startTime")):
+        if (request.args.get("startTime")):
             filter_by_date = True
             datetime_arr = request.args.get("startTime").split("T")
             date_arr = datetime_arr[0].split("-")
@@ -207,9 +207,8 @@ def build_api_datatables_query(req):
 
             date_end = datetime.datetime(year, month, day, hours, minutes)
 
-        if(filter_by_date):
+        if (filter_by_date):
             query["datestarted"] = {"$gt": date_start, "$lt": date_end}
-
 
     return query
 
@@ -284,13 +283,45 @@ def api_datatables(unit):
         if request.args.get("showstopped"):
             query = {}
 
+        # time filter
+        filter_by_date = False
+        if (request.args.get("startTime")):
+            filter_by_date = True
+            datetime_arr = request.args.get("startTime").split("T")
+            date_arr = datetime_arr[0].split("-")
+            year = int(date_arr[0])
+            month = int(date_arr[1])
+            day = int(date_arr[2])
+            time_arr = datetime_arr[1].split(".")[0].split(":")
+            hours = int(time_arr[0])
+            minutes = int(time_arr[1])
+
+            date_start = datetime.datetime(year, month, day, hours, minutes)
+
+        if (request.args.get("endTime")):
+            filter_by_date = True
+            datetime_arr = request.args.get("endTime").split("T")
+            date_arr = datetime_arr[0].split("-")
+            year = int(date_arr[0])
+            month = int(date_arr[1])
+            day = int(date_arr[2])
+            time_arr = datetime_arr[1].split(".")[0].split(":")
+            hours = int(time_arr[0])
+            minutes = int(time_arr[1])
+
+            date_end = datetime.datetime(year, month, day, hours, minutes)
+
+        if (filter_by_date):
+            query["datereported"] = {"$gt": date_start, "$lt": date_end}
+
+
     elif unit == "scheduled_jobs":
         collection = connections.mongodb_jobs.mrq_scheduled_jobs
         fields = None
         query = {}
-        if(request.args.get("name")):
+        if (request.args.get("name")):
             query["path"] = request.args.get("name")
-        if(request.args.get("interval")):
+        if (request.args.get("interval")):
             query["interval"] = request.args.get("interval")
         if (request.args.get("params")):
             query["params"] = request.args.get("params")

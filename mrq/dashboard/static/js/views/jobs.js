@@ -620,6 +620,11 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"], functi
                         dateEnd.setFullYear(dateEnd.getFullYear() - 1);
                         dateEnd = this.getEndOfYear(dateEnd);
                     }
+                    if (criteria == 'this_year') {
+                        dateStart = this.getBeginingOfYear(dateStart);
+
+                        dateEnd = this.getEndOfYear(dateEnd);
+                    }
                     if (criteria == 'last_year') {
                         dateStart.setFullYear(dateStart.getFullYear() - 1);
                         dateStart = this.getBeginingOfYear(dateStart);
@@ -675,6 +680,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"], functi
                 date.setFullYear(date.getFullYear() + 1);
                 date = this.getBeginingOfYear(date);
                 date.setMilliseconds(-1);
+                return date;
             },
             getISODate: function (date) {
                 return date.getFullYear() + "-" + (date.getMonth() + 1) + "-" +
