@@ -60,6 +60,8 @@ class Worker(Process):
         self.greenlet = gevent.getcurrent()
         self.graceful_stop = None
 
+        self.work_lock = gevent.lock.Semaphore()
+
         self.id = ObjectId()
         if self.config.get("name"):
             self.name = self.config["name"]
@@ -372,33 +374,29 @@ class Worker(Process):
     def wait_for_idle(self):
         """ Waits until the worker has nothing more to do. Very useful in tests """
 
+        # Be mindful that this is being executed in a different greenlet than the work_* methods.
+
         while True:
 
-            # Wait until the pool is empty at least once.
-            # http://www.gevent.org/gevent.pool.html#gevent.pool.Pool.join
-            self.gevent_pool.join()
+            time.sleep(0.01)
 
-            if len(self.gevent_pool) > 0:
-                continue
+            with self.work_lock:
 
-            # Force a refresh of the current subqueues, one might just have been created.
-            self.refresh_queues()
+                if self.status != "wait":
+                    continue
 
-            # Wait until we are not dequeueing anything
-            while self.status != "wait":
-                time.sleep(0.01)
+                if len(self.gevent_pool) > 0:
+                    continue
 
-            if len(self.gevent_pool) > 0:
-                continue
+                # Force a refresh of the current subqueues, one might just have been created.
+                self.refresh_queues()
 
-            # We might be dequeueing a new subqueue. Double check that we don't have anything more to do
-            outcome, dequeue_jobs = self.work_once(free_pool_slots=1, max_jobs=None)
+                # We might be dequeueing a new subqueue. Double check that we don't have anything more to do
+                outcome, dequeue_jobs = self.work_once(free_pool_slots=1, max_jobs=None)
 
-            if len(self.gevent_pool) > 0:
-                continue
+                if outcome is "wait" and dequeue_jobs == 0:
+                    break
 
-            if outcome is "wait" and dequeue_jobs == 0:
-                break
 
     def work(self):
         """Starts the work loop.
@@ -478,7 +476,8 @@ class Worker(Process):
                     self.gevent_pool.wait_available(timeout=60)
 
                 self.status = "spawn"
-                outcome, dequeue_jobs = self.work_once(free_pool_slots=free_pool_slots, max_jobs=max_jobs)
+                with self.work_lock:
+                    outcome, dequeue_jobs = self.work_once(free_pool_slots=free_pool_slots, max_jobs=max_jobs)
                 self.status = "wait"
 
                 if outcome == "break":
