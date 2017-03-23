@@ -1,8 +1,10 @@
 from __future__ import print_function
 from future import standard_library
+
 standard_library.install_aliases()
 from future.utils import iteritems
 from gevent import monkey
+
 monkey.patch_all()
 
 from flask import Flask, request, render_template
@@ -14,6 +16,7 @@ import re
 from bson import ObjectId
 import json
 import argparse
+import datetime
 from werkzeug.serving import run_simple
 
 sys.path.insert(0, os.getcwd())
@@ -46,24 +49,32 @@ WHITELISTED_MRQ_CONFIG_KEYS = ["dashboard_autolink_repositories"]
 def root():
     return render_template("index.html", MRQ_CONFIG={
         k: v for k, v in iteritems(cfg) if k in WHITELISTED_MRQ_CONFIG_KEYS
-    })
+        })
 
 
 @app.route('/api/datatables/taskexceptions')
 @requires_auth
 def api_task_exceptions():
-    stats = list(connections.mongodb_jobs.mrq_jobs.aggregate([
-        {"$match": {"status": "failed"}},
-        {"$group": {"_id": {"path": "$path", "exceptiontype": "$exceptiontype"},
-                    "jobs": {"$sum": 1}}},
-    ]))
+    group_criteria = []
+    group_criteria.append({"$match": {"status": "failed"}})
+
+    if (request.args.get("name")):
+        group_criteria.append({"$match": {"path": request.args.get("name")}})
+
+    if (request.args.get("exception")):
+        group_criteria.append({"$match": {"exceptiontype": request.args.get("exception")}})
+
+    group_criteria.append({"$group": {"_id": {"path": "$path", "exceptiontype": "$exceptiontype"},
+                                      "jobs": {"$sum": 1}}})
+
+    stats = list(connections.mongodb_jobs.mrq_jobs.aggregate(group_criteria))
 
     stats.sort(key=lambda x: -x["jobs"])
-    start = int(request.args.get("iDisplayStart", 0))
-    end = int(request.args.get("iDisplayLength", 20)) + start
+    # start = int(request.args.get("iDisplayStart", 0))
+    # end = int(request.args.get("iDisplayLength", 20)) + start
 
     data = {
-        "aaData": stats[start:end],
+        "aaData": stats,
         "iTotalDisplayRecords": len(stats)
     }
 
@@ -96,10 +107,20 @@ def api_jobstatuses():
 @app.route('/api/datatables/taskpaths')
 @requires_auth
 def api_taskpaths():
-    stats = list(connections.mongodb_jobs.mrq_jobs.aggregate([
-        {"$sort": {"path": 1}},  # https://jira.mongodb.org/browse/SERVER-11447
-        {"$group": {"_id": "$path", "jobs": {"$sum": 1}}}
-    ]))
+    if request.args.get("name"):
+        name = request.args.get("name")
+        stats = list(connections.mongodb_jobs.mrq_jobs.aggregate([
+            {"$sort": {"path": 1}},  # https://jira.mongodb.org/browse/SERVER-11447
+            {"$match": {"path": name}},
+            {"$group": {"_id": "$path", "jobs": {"$sum": 1}}},
+
+        ]))
+    else:
+        stats = list(connections.mongodb_jobs.mrq_jobs.aggregate([
+            {"$sort": {"path": 1}},  # https://jira.mongodb.org/browse/SERVER-11447
+            {"$group": {"_id": "$path", "jobs": {"$sum": 1}}},
+
+        ]))
 
     stats.sort(key=lambda x: -x["jobs"])
 
@@ -158,13 +179,43 @@ def build_api_datatables_query(req):
             except Exception as e:  # pylint: disable=broad-except
                 print("Error will converting form JSON: %s" % e)
 
+        # time filter
+        filter_by_date = False
+        if (request.args.get("startTime")):
+            filter_by_date = True
+            datetime_arr = request.args.get("startTime").split("T")
+            date_arr = datetime_arr[0].split("-")
+            year = int(date_arr[0])
+            month = int(date_arr[1])
+            day = int(date_arr[2])
+            time_arr = datetime_arr[1].split(".")[0].split(":")
+            hours = int(time_arr[0])
+            minutes = int(time_arr[1])
+
+            date_start = datetime.datetime(year, month, day, hours, minutes)
+
+        if (request.args.get("endTime")):
+            filter_by_date = True
+            datetime_arr = request.args.get("endTime").split("T")
+            date_arr = datetime_arr[0].split("-")
+            year = int(date_arr[0])
+            month = int(date_arr[1])
+            day = int(date_arr[2])
+            time_arr = datetime_arr[1].split(".")[0].split(":")
+            hours = int(time_arr[0])
+            minutes = int(time_arr[1])
+
+            date_end = datetime.datetime(year, month, day, hours, minutes)
+
+        if (filter_by_date):
+            query["datestarted"] = {"$gt": date_start, "$lt": date_end}
+
     return query
 
 
 @app.route('/api/datatables/<unit>')
 @requires_auth
 def api_datatables(unit):
-
     # import time
     # time.sleep(5)
 
@@ -232,10 +283,51 @@ def api_datatables(unit):
         if request.args.get("showstopped"):
             query = {}
 
+        # time filter
+        filter_by_date = False
+        if (request.args.get("startTime")):
+            filter_by_date = True
+            datetime_arr = request.args.get("startTime").split("T")
+            date_arr = datetime_arr[0].split("-")
+            year = int(date_arr[0])
+            month = int(date_arr[1])
+            day = int(date_arr[2])
+            time_arr = datetime_arr[1].split(".")[0].split(":")
+            hours = int(time_arr[0])
+            minutes = int(time_arr[1])
+
+            date_start = datetime.datetime(year, month, day, hours, minutes)
+
+        if (request.args.get("endTime")):
+            filter_by_date = True
+            datetime_arr = request.args.get("endTime").split("T")
+            date_arr = datetime_arr[0].split("-")
+            year = int(date_arr[0])
+            month = int(date_arr[1])
+            day = int(date_arr[2])
+            time_arr = datetime_arr[1].split(".")[0].split(":")
+            hours = int(time_arr[0])
+            minutes = int(time_arr[1])
+
+            date_end = datetime.datetime(year, month, day, hours, minutes)
+
+        if (filter_by_date):
+            query["datereported"] = {"$gt": date_start, "$lt": date_end}
+
+
     elif unit == "scheduled_jobs":
         collection = connections.mongodb_jobs.mrq_scheduled_jobs
         fields = None
         query = {}
+        if (request.args.get("name")):
+            query["path"] = request.args.get("name")
+        if (request.args.get("interval")):
+            query["interval"] = request.args.get("interval")
+        if (request.args.get("params")):
+            query["params"] = request.args.get("params")
+
+    # elif unit == "ops":
+    #     collection = connections.mongodb_jobs.mrq_jobs
 
     elif unit == "jobs":
 
@@ -256,11 +348,11 @@ def api_datatables(unit):
         if sort:
             cursor.sort(sort)
 
-        if skip is not None:
-            cursor.skip(skip)
-
-        if limit is not None:
-            cursor.limit(limit)
+        # if skip is not None:
+        #     cursor.skip(skip)
+        #
+        # if limit is not None:
+        #     cursor.limit(limit)
 
         data = {
             "aaData": list(cursor),

@@ -95,3 +95,15 @@ div.dataTables_info {
     transform: rotate(360deg);
   }
 }
+
+label.time-filter-tag{
+  cursor: pointer;
+  color: #4d7dff;
+  transition: all 0.3s ease-in-out;
+  width: 150px;
+  font-size: 12px;
+}
+
+label.time-filter-tag:hover{
+  color: #002da5;
+}

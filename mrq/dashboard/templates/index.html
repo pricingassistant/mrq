@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
+<head>
     <meta charset="utf-8">
     <title>MRQ Dashboard</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,100 +8,105 @@
     <link rel="stylesheet" href="/static/css/bootstrap-theme.min.css" media="screen">
     <link rel="stylesheet" href="/static/css/datatables.css" media="screen">
     <link rel="stylesheet" href="/static/css/mrq-dashboard.css" media="screen">
-    <link rel="icon" href="/static/images/favicon.ico" type="image/x-icon" />
+    <link rel="icon" href="/static/images/favicon.ico" type="image/x-icon"/>
 
     <script>
-      window.MRQ_CONFIG = {{ MRQ_CONFIG|safe }};
+        window.MRQ_CONFIG = {
+        {
+            MRQ_CONFIG | safe
+        }
+        }
+        ;
     </script>
-  </head>
-  <body>
+</head>
+<body>
 
-    <div class="navbar navbar-default navbar-fixed-top">
-      <div class="container">
+<div class="navbar navbar-default navbar-fixed-top">
+    <div class="container">
         <div class="navbar-header">
-          <a href="/#" class="navbar-brand">MRQ Dashboard</a>
-          <button class="navbar-toggle" type="button" data-toggle="collapse" data-target="#navbar-main">
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-          </button>
+            <a href="/#" class="navbar-brand">MRQ Dashboard</a>
+            <button class="navbar-toggle" type="button" data-toggle="collapse" data-target="#navbar-main">
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
         </div>
         <div class="navbar-collapse collapse" id="navbar-main">
-          <ul class="nav navbar-nav">
+            <ul class="nav navbar-nav">
 
-            <li class="js-nav-status">
-              <a href="/#status">Statuses</a>
-            </li>
-            <li class="js-nav-queues">
-              <a href="/#queues">Queues</a>
-            </li>
-            <li class="js-nav-workers">
-              <a href="/#workers">Workers</a>
-            </li>
-            <li class="js-nav-taskpaths">
-              <a href="/#taskpaths">Paths</a>
-            </li>
-            <li class="js-nav-taskexceptions">
-              <a href="/#taskexceptions">Exceptions</a>
-            </li>
-            <li class="js-nav-jobs">
-              <a href="/#jobs">Jobs</a>
-            </li>
-            <li class="js-nav-scheduledjobs">
-              <a href="/#scheduledjobs">Scheduled Jobs</a>
-            </li>
-            <li class="js-nav-scheduledjobs">
-              <a href="/#io">I/O</a>
-            </li>
+                <li class="js-nav-status">
+                    <a href="/#status">Statuses</a>
+                </li>
+                <li class="js-nav-queues">
+                    <a href="/#queues">Queues</a>
+                </li>
+                <li class="js-nav-workers">
+                    <a href="/#workers">Workers</a>
+                </li>
+                <li class="js-nav-taskpaths">
+                    <a href="/#taskpaths">Paths</a>
+                </li>
+                <li class="js-nav-taskexceptions">
+                    <a href="/#taskexceptions">Exceptions</a>
+                </li>
+                <li class="js-nav-jobs">
+                    <a href="/#jobs">Jobs</a>
+                </li>
+                <li class="js-nav-scheduledjobs">
+                    <a href="/#scheduledjobs">Scheduled Jobs</a>
+                </li>
+                <li class="js-nav-scheduledjobs">
+                    <a href="/#io">I/O</a>
+                </li>
 
-            <!--
-            <li class="dropdown">
-              <a class="dropdown-toggle" data-toggle="dropdown" href="#" id="download">Download <span class="caret"></span></a>
-              <ul class="dropdown-menu" aria-labelledby="download">
-                <li><a href="./bootstrap.min.css">bootstrap.min.css</a></li>
-                <li><a href="./bootstrap.css">bootstrap.css</a></li>
-                <li class="divider"></li>
-                <li><a href="./variables.less">variables.less</a></li>
-                <li><a href="./bootswatch.less">bootswatch.less</a></li>
-              </ul>
-            </li>
-            -->
-          </ul>
+                <!--
+                <li class="dropdown">
+                  <a class="dropdown-toggle" data-toggle="dropdown" href="#" id="download">Download <span class="caret"></span></a>
+                  <ul class="dropdown-menu" aria-labelledby="download">
+                    <li><a href="./bootstrap.min.css">bootstrap.min.css</a></li>
+                    <li><a href="./bootstrap.css">bootstrap.css</a></li>
+                    <li class="divider"></li>
+                    <li><a href="./variables.less">variables.less</a></li>
+                    <li><a href="./bootswatch.less">bootswatch.less</a></li>
+                  </ul>
+                </li>
+                -->
+            </ul>
 
-          <ul class="nav navbar-nav navbar-right">
-            <li><a>Autorefresh <select class="js-autorefresh">
-              <option value="1">1s</option>
-              <option value="3">3s</option>
-              <option selected="selected" value="5">5s</option>
-              <option value="10">10s</option>
-              <option value="20">20s</option>
-              <option value="60">1m</option>
-              <option value="300">5m</option>
-              <option value="600">10m</option>
-              <option value="-1">Disabled</option>
-            </select></a>
-            </li>
+            <ul class="nav navbar-nav navbar-right">
+                <li><a>Autorefresh <select class="js-autorefresh">
+                    <option value="1">1s</option>
+                    <option value="3">3s</option>
+                    <option selected="selected" value="5">5s</option>
+                    <option value="10">10s</option>
+                    <option value="20">20s</option>
+                    <option value="60">1m</option>
+                    <option value="300">5m</option>
+                    <option value="600">10m</option>
+                    <option value="-1">Disabled</option>
+                </select></a>
+                </li>
 
-            <li><a href="https://github.com/pricingassistant/mrq" target="_blank">Github</a></li>
-          </ul>
+                <li><a href="https://github.com/pricingassistant/mrq" target="_blank">Github</a></li>
+            </ul>
 
         </div>
-      </div>
     </div>
+</div>
 
 
-    <div class="container" style="margin-top:52px;">
+<div class="container" style="margin-top:52px;">
 
-      <div id="app-container">
+    <div id="app-container">
 
         <div class="ox-loader">
             Loading...
         </div>
 
-      </div>
+    </div>
 
 
-      <script id="tpl-page-root" type="text/template">
+    <script id="tpl-page-root" type="text/template">
 
 
         <div class="js-page-queues"></div>
@@ -116,273 +121,511 @@
         <div class="js-page-io"></div>
 
 
-      </script>
+    </script>
 
 
-      <script id="tpl-page-queues" type="text/template">
-
-        <div class="container">
-          <table cellpadding="0" cellspacing="0" border="0" class="datatable table table-striped table-bordered js-datatable">
-          </table>
-        </div>
-      </script>
-
-
-      <script id="tpl-modal-workers-io" type="text/template">
+    <script id="tpl-page-queues" type="text/template">
 
         <div class="container">
+            <table cellpadding="0" cellspacing="0" border="0"
+                   class="datatable table table-striped table-bordered js-datatable">
+            </table>
+        </div>
+    </script>
 
-          <div class="row-fluid">
-            <div class="col-xs-6">
-              <table class="table-striped table table-bordered" style="width:100%">
-                <tr><th>Task</th><th class="time">I/O time</th></tr>
-                <% _.each(worker.io.tasks, function(row) { %>
-                  <tr>
-                    <td>
-                      <%= row[0] %>
-                    </td>
-                    <td class="time">
-                      <%= Math.round(row[1]*100)/100 %>s
-                    </td>
-                  </tr>
-                <% }) %>
-              </table>
-            </div>
 
-            <div class="col-xs-6">
-              <table class="table-striped table table-bordered">
-                <tr><th>I/O type</th><th class="time">I/O time</th></tr>
-                <% _.each(worker.io.types, function(row) { %>
-                  <tr>
-                    <td>
-                      <%= row[0] %>
-                    </td>
-                    <td class="time">
-                      <%= Math.round(row[1]*100)/100 %>s
-                    </td>
-                  </tr>
-                <% }) %>
-              </table>
+    <script id="tpl-modal-workers-io" type="text/template">
+
+        <div class="container">
+
+            <div class="row-fluid">
+                <div class="col-xs-6">
+                    <table class="table-striped table table-bordered" style="width:100%">
+                        <tr>
+                            <th>Task</th>
+                            <th class="time">I/O time</th>
+                        </tr>
+                        <% _.each(worker.io.tasks, function(row) { %>
+                        <tr>
+                            <td>
+                                <%= row[0] %>
+                            </td>
+                            <td class="time">
+                                <%= Math.round(row[1]*100)/100 %>s
+                            </td>
+                        </tr>
+                        <% }) %>
+                    </table>
+                </div>
+
+                <div class="col-xs-6">
+                    <table class="table-striped table table-bordered">
+                        <tr>
+                            <th>I/O type</th>
+                            <th class="time">I/O time</th>
+                        </tr>
+                        <% _.each(worker.io.types, function(row) { %>
+                        <tr>
+                            <td>
+                                <%= row[0] %>
+                            </td>
+                            <td class="time">
+                                <%= Math.round(row[1]*100)/100 %>s
+                            </td>
+                        </tr>
+                        <% }) %>
+                    </table>
+                </div>
             </div>
-          </div>
         </div>
 
-      </script>
+    </script>
 
-      <script id="tpl-page-workers" type="text/template">
+    <script id="tpl-page-workers" type="text/template">
 
         <div class="modal js-workers-modal" tabindex="-1" role="dialog">
-          <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-              <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-                <h4 class="modal-title"></h4>
-              </div>
-              <div class="modal-body">
-                <div class="js-workers-modal-content"></div>
-              </div>
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                        <h4 class="modal-title"></h4>
+                    </div>
+                    <div class="modal-body">
+                        <div class="js-workers-modal-content"></div>
+                    </div>
+                </div>
             </div>
-          </div>
         </div>
+        <div class="container time-filter-container">
+            <div class="container" style="margin-bottom: 5px;margin-top: 5px;padding-right: 0">
+                <div class="panel panel-default" style="height: 265px;">
+                    <div class="panel-heading">
+                        Time Filter
+                    </div>
+                    <div class="panel-body">
+                        <div class="col-md-2">
+                            <ul class="nav nav-pills nav-stacked">
+                                <li role="presentation" class="active time-filter-group"><a
+                                        style="cursor: pointer">Quick</a></li>
+                            </ul>
+                        </div>
+                        <div class="col-md-10">
+                            <div class="time-filter-container" data-type="quick">
+                                <label data-filter="today" class="time-filter-tag">Today</label>
+                                <label data-filter="yesterday" class="time-filter-tag">Yesterday</label>
+                                <label data-filter="last_15_min" class="time-filter-tag">Last 15 Minutes</label>
+                                <label data-filter="last_30_days" class="time-filter-tag">Last 30 Days</label>
+                                <br>
+                                <label data-filter="this_week" class="time-filter-tag">This Week</label>
+                                <label data-filter="2_days_ago" class="time-filter-tag">Day Before Yesterday</label>
+                                <label data-filter="last_30_min" class="time-filter-tag">Last 30 Minutes</label>
+                                <label data-filter="last_60_days" class="time-filter-tag">Last 60 Days</label>
+                                <br>
+                                <label data-filter="this_month" class="time-filter-tag">This Month</label>
+                                <label data-filter="7_days_ago" class="time-filter-tag">This Day Last Week</label>
+                                <label data-filter="last_1_hours" class="time-filter-tag">Last 1 Hour</label>
+                                <label data-filter="last_90_days" class="time-filter-tag">Last 90 Days</label>
+                                <br>
+                                <label data-filter="this_year" class="time-filter-tag">This Year</label>
+                                <label data-filter="prev_week" class="time-filter-tag">Previous Week</label>
+                                <label data-filter="last_4_hours" class="time-filter-tag">Last 4 Hours</label>
+                                <label data-filter="last_6_months" class="time-filter-tag">Last 6 Months</label>
+                                <br>
+                                <label data-filter="today_until_now" class="time-filter-tag">The Day So Far</label>
+                                <label data-filter="prev_month" class="time-filter-tag">Previous Month</label>
+                                <label data-filter="last_12_hours" class="time-filter-tag">Last 12 Hours</label>
+                                <label data-filter="last_year" class="time-filter-tag">Last Year</label>
+                                <br>
+                                <label data-filter="week_until_now" class="time-filter-tag">Week To Date</label>
+                                <label data-filter="prev_year" class="time-filter-tag">Previous Year</label>
+                                <label data-filter="last_24_hours" class="time-filter-tag">Last 24 Hours</label>
+                                <label data-filter="last_2_years" class="time-filter-tag">Last 2 Years</label>
+                                <br>
+                                <label data-filter="month_until_now" class="time-filter-tag">Month To Date</label>
+                                <label class="time-filter-tag"></label>
+                                <label data-filter="last_7_days" class="time-filter-tag">Last 7 Days</label>
+                                <label data-filter="last_5_years" class="time-filter-tag">Last 5 Years</label>
+                                <br>
+                                <label data-filter="year_until_now" class="time-filter-tag">Year To Date</label>
+                            </div>
+                            <div class="time-filter-container" data-type="relative">
 
-        <div class="container" style="margin-bottom:5px;">
+                            </div>
+                            <div class="time-filter-container" data-type="absolute">
 
-          <form class="form-inline js-datatable-filters pull-left" role="form">
-            <br/>
-            Filter by: &nbsp;
-
-            <div class="form-group">
-              <div class="checkbox">
-                <label>
-                  <input type="checkbox" class="js-datatable-filters-showstopped" <%= filters.showstopped?'checked="checked"':'' %>> Show stopped
-                </label>
-              </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button title="Hide Time Filter" class="btn btn-default btn-xs hide-time-filter"
+                            style="width: 100%;"><i
+                            class="glyphicon glyphicon-chevron-up"></i></button>
+                    <button title="Show Time Filter" class="btn btn-default btn-xs show-time-filter"
+                            style="width: 100%; display: none"><i
+                            class="glyphicon glyphicon-chevron-down"></i></button>
+                </div>
             </div>
 
-          </form>
+            <div class="container" style="margin-bottom:5px;">
+
+                <form class="form-inline js-datatable-filters pull-left" role="form">
+                    <br/>
+                    Filter by: &nbsp;
+
+                    <div class="form-group">
+                        <div class="checkbox">
+                            <label>
+                                <input type="checkbox" class="js-datatable-filters-showstopped" <%=
+                                filters.showstopped?'checked="checked"':'' %>> Show stopped
+                            </label>
+                        </div>
+                    </div>
+
+                </form>
+            </div>
+
+            <div class="container">
+                <table cellpadding="0" cellspacing="0" border="0"
+                       class="datatable table table-striped table-bordered js-datatable">
+                </table>
+            </div>
         </div>
+    </script>
+
+    <script id="tpl-page-scheduledjobs" type="text/template">
 
         <div class="container">
-          <table cellpadding="0" cellspacing="0" border="0" class="datatable table table-striped table-bordered js-datatable">
-          </table>
+            <form class="form-inline js-datatable-filters pull-left" role="form">
+                <br/>
+                Filter by: &nbsp;
+                <div class="form-group">
+                    <label class="sr-only" for="scheduledjobs-form-name">Name</label>
+                    <input type="text" class="form-control input-sm js-datatable-filters-name"
+                           id="scheduledjobs-form-name" placeholder="Name" value="<%- filters.name %>">
+                </div>
+                <div class="form-group">
+                    <label class="sr-only" for="scheduledjobs-form-interval">Interval</label>
+                    <input type="text" class="form-control input-sm js-datatable-filters-interval"
+                           id="scheduledjobs-form-interval" placeholder="Interval" value="<%- filters.interval %>">
+                </div>
+                <div class="form-group">
+                    <label class="sr-only" for="scheduledjobs-form-params">Params</label>
+                    <input type="text" class="form-control input-sm js-datatable-filters-params"
+                           id="scheduledjobs-form-params" placeholder="Params" value="<%- filters.params %>">
+                </div>
+
+                <button type="submit" class="btn btn-default js-datatable-filters-submit input-sm" style="padding:5px">
+                    OK
+                </button>
+
+            </form>
         </div>
-      </script>
-
-      <script id="tpl-page-scheduledjobs" type="text/template">
-
         <div class="container">
-          <table cellpadding="0" cellspacing="0" border="0" class="datatable table table-striped table-bordered js-datatable">
-          </table>
+            <table cellpadding="0" cellspacing="0" border="0"
+                   class="datatable table table-striped table-bordered js-datatable">
+            </table>
         </div>
-      </script>
+    </script>
 
-      <script id="tpl-page-taskpaths" type="text/template">
+    <script id="tpl-page-taskpaths" type="text/template">
 
         <h3>Jobs by task path</h3>
 
         <div class="container">
-          <table cellpadding="0" cellspacing="0" border="0" class="datatable table table-striped table-bordered js-datatable">
-          </table>
-        </div>
-      </script>
+            <form class="form-inline js-datatable-filters pull-left" role="form">
+                <br/>
+                Filter by: &nbsp;
+                <div class="form-group">
+                    <label class="sr-only" for="taskpath-form-name">Name</label>
+                    <input type="text" class="form-control input-sm js-datatable-filters-name" id="taskpath-form-name"
+                           placeholder="Name" value="<%- filters.name %>">
+                </div>
 
-      <script id="tpl-page-taskexceptions" type="text/template">
+                <button type="submit" class="btn btn-default js-datatable-filters-submit input-sm" style="padding:5px">
+                    OK
+                </button>
+
+            </form>
+        </div>
+
+        <div class="container">
+            <table cellpadding="0" cellspacing="0" border="0"
+                   class="datatable table table-striped table-bordered js-datatable">
+            </table>
+        </div>
+    </script>
+
+    <script id="tpl-page-taskexceptions" type="text/template">
 
         <h3>Tasks by exceptions</h3>
 
         <div class="container">
-          <table cellpadding="0" cellspacing="0" border="0" class="datatable table table-striped table-bordered js-datatable">
-          </table>
-        </div>
-      </script>
+            <form class="form-inline js-datatable-filters pull-left" role="form">
+                <br/>
+                Filter by: &nbsp;
+                <div class="form-group">
+                    <label class="sr-only" for="taskexceptions-form-name">Name</label>
+                    <input type="text" class="form-control input-sm js-datatable-filters-name"
+                           id="taskexceptions-form-name" placeholder="Name" value="<%- filters.name %>">
+                </div>
+                <div class="form-group">
+                    <label class="sr-only" for="taskexceptions-form-exception">Exception</label>
+                    <input type="text" class="form-control input-sm js-datatable-filters-exception"
+                           id="taskexceptions-form-exception" placeholder="Exception" value="<%- filters.exception %>">
+                </div>
 
-      <script id="tpl-page-io" type="text/template">
+                <button type="submit" class="btn btn-default js-datatable-filters-submit input-sm" style="padding:5px">
+                    OK
+                </button>
+
+            </form>
+        </div>
+
+        <div class="container">
+            <table cellpadding="0" cellspacing="0" border="0"
+                   class="datatable table table-striped table-bordered js-datatable">
+            </table>
+        </div>
+    </script>
+
+    <script id="tpl-page-io" type="text/template">
 
         <h3>Current I/O operations</h3>
 
         <div class="container">
-          <table cellpadding="0" cellspacing="0" border="0" class="datatable table table-striped table-bordered js-datatable">
-          </table>
+            <table cellpadding="0" cellspacing="0" border="0"
+                   class="datatable table table-striped table-bordered js-datatable">
+            </table>
         </div>
-      </script>
+    </script>
 
-      <script id="tpl-page-index" type="text/template">
+    <script id="tpl-page-index" type="text/template">
 
         <h3>Overall</h3>
         <div class="container">
-          <div class="row">
-            <div class="row-fluid js-circle-row">
+            <div class="row">
+                <div class="row-fluid js-circle-row">
+                </div>
             </div>
-          </div>
         </div>
-      </script>
+    </script>
 
-      <script id="tpl-page-status" type="text/template">
+    <script id="tpl-page-status" type="text/template">
 
         <h3>Jobs by status</h3>
 
         <div class="container">
-          <table cellpadding="0" cellspacing="0" border="0" class="datatable table table-striped table-bordered js-datatable">
-          </table>
+            <table cellpadding="0" cellspacing="0" border="0"
+                   class="datatable table table-striped table-bordered js-datatable">
+            </table>
         </div>
-      </script>
+    </script>
 
-      <script id="tpl-page-jobs" type="text/template">
+    <script id="tpl-page-jobs" type="text/template">
 
         <div class="modal js-jobs-modal" tabindex="-1" role="dialog">
-          <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-              <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-                <h4 class="modal-title"></h4>
-              </div>
-              <div class="modal-body">
-                <div class="alert alert-danger js-jobs-modal-callstack-outdated" role="alert" style="display:none">Current call stack unavailable. This is an outdated version.</div>
-                <pre class="js-oxpre js-jobs-modal-content"></pre>
-              </div>
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                        <h4 class="modal-title"></h4>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-danger js-jobs-modal-callstack-outdated" role="alert"
+                             style="display:none">Current call stack unavailable. This is an outdated version.
+                        </div>
+                        <pre class="js-oxpre js-jobs-modal-content"></pre>
+                    </div>
+                </div>
             </div>
-          </div>
         </div>
+        <div class="container time-filter-container">
+            <div class="container" style="margin-bottom: 5px;margin-top: 5px;padding-right: 0">
+                <div class="panel panel-default" style="height: 265px;">
+                    <div class="panel-heading">
+                        Time Filter
+                    </div>
+                    <div class="panel-body">
+                        <div class="col-md-2">
+                            <ul class="nav nav-pills nav-stacked">
+                                <li role="presentation" class="active time-filter-group"><a
+                                        style="cursor: pointer">Quick</a></li>
+                            </ul>
+                        </div>
+                        <div class="col-md-10">
+                            <div class="time-filter-container" data-type="quick">
+                                <label data-filter="today" class="time-filter-tag">Today</label>
+                                <label data-filter="yesterday" class="time-filter-tag">Yesterday</label>
+                                <label data-filter="last_15_min" class="time-filter-tag">Last 15 Minutes</label>
+                                <label data-filter="last_30_days" class="time-filter-tag">Last 30 Days</label>
+                                <br>
+                                <label data-filter="this_week" class="time-filter-tag">This Week</label>
+                                <label data-filter="2_days_ago" class="time-filter-tag">Day Before Yesterday</label>
+                                <label data-filter="last_30_min" class="time-filter-tag">Last 30 Minutes</label>
+                                <label data-filter="last_60_days" class="time-filter-tag">Last 60 Days</label>
+                                <br>
+                                <label data-filter="this_month" class="time-filter-tag">This Month</label>
+                                <label data-filter="7_days_ago" class="time-filter-tag">This Day Last Week</label>
+                                <label data-filter="last_1_hours" class="time-filter-tag">Last 1 Hour</label>
+                                <label data-filter="last_90_days" class="time-filter-tag">Last 90 Days</label>
+                                <br>
+                                <label data-filter="this_year" class="time-filter-tag">This Year</label>
+                                <label data-filter="prev_week" class="time-filter-tag">Previous Week</label>
+                                <label data-filter="last_4_hours" class="time-filter-tag">Last 4 Hours</label>
+                                <label data-filter="last_6_months" class="time-filter-tag">Last 6 Months</label>
+                                <br>
+                                <label data-filter="today_until_now" class="time-filter-tag">The Day So Far</label>
+                                <label data-filter="prev_month" class="time-filter-tag">Previous Month</label>
+                                <label data-filter="last_12_hours" class="time-filter-tag">Last 12 Hours</label>
+                                <label data-filter="last_year" class="time-filter-tag">Last Year</label>
+                                <br>
+                                <label data-filter="week_until_now" class="time-filter-tag">Week To Date</label>
+                                <label data-filter="prev_year" class="time-filter-tag">Previous Year</label>
+                                <label data-filter="last_24_hours" class="time-filter-tag">Last 24 Hours</label>
+                                <label data-filter="last_2_years" class="time-filter-tag">Last 2 Years</label>
+                                <br>
+                                <label data-filter="month_until_now" class="time-filter-tag">Month To Date</label>
+                                <label class="time-filter-tag"></label>
+                                <label data-filter="last_7_days" class="time-filter-tag">Last 7 Days</label>
+                                <label data-filter="last_5_years" class="time-filter-tag">Last 5 Years</label>
+                                <br>
+                                <label data-filter="year_until_now" class="time-filter-tag">Year To Date</label>
+                            </div>
+                            <div class="time-filter-container" data-type="relative">
 
-        <div class="container" style="margin-bottom:5px;">
+                            </div>
+                            <div class="time-filter-container" data-type="absolute">
 
-          <form class="form-inline js-datatable-filters pull-left" role="form">
-            <br/>
-            Filter by: &nbsp;
-            <div class="form-group">
-              <label class="sr-only" for="jobs-form-id">ID</label>
-              <input type="text" class="form-control input-sm js-datatable-filters-id" id="jobs-form-id" placeholder="Job ID" value="<%- filters.id %>">
+                            </div>
+                        </div>
+                    </div>
+                    <button title="Hide Time Filter" class="btn btn-default btn-xs hide-time-filter"
+                            style="width: 100%;"><i
+                            class="glyphicon glyphicon-chevron-up"></i></button>
+                    <button title="Show Time Filter" class="btn btn-default btn-xs show-time-filter"
+                            style="width: 100%; display: none"><i
+                            class="glyphicon glyphicon-chevron-down"></i></button>
+                </div>
             </div>
-            <div class="form-group">
-              <label class="sr-only" for="jobs-form-queue">Queue</label>
-              <input type="text" class="form-control input-sm js-datatable-filters-queue" id="jobs-form-queue" placeholder="Queue" value="<%- filters.queue %>">
-            </div>
-            <div class="form-group">
-              <label class="sr-only" for="jobs-form-worker">Worker</label>
-              <input type="text" class="form-control input-sm js-datatable-filters-worker" id="jobs-form-worker" placeholder="Worker" value="<%- filters.worker %>">
-            </div>
-            <div class="form-group">
-              <label class="sr-only" for="jobs-form-path">Task</label>
-              <input type="text" class="form-control input-sm js-datatable-filters-path" id="jobs-form-path" placeholder="Task" value="<%- filters.path %>">
+            <div class="container" style="margin-bottom:5px;margin-top:20px;position: relative">
+
+                <form class="form-inline js-datatable-filters pull-left" role="form">
+                    <br/>
+                    Filter by: &nbsp;
+                    <div class="form-group">
+                        <label class="sr-only" for="jobs-form-id">ID</label>
+                        <input type="text" class="form-control input-sm js-datatable-filters-id" id="jobs-form-id"
+                               placeholder="Job ID" value="<%- filters.id %>">
+                    </div>
+                    <div class="form-group">
+                        <label class="sr-only" for="jobs-form-queue">Queue</label>
+                        <input type="text" class="form-control input-sm js-datatable-filters-queue" id="jobs-form-queue"
+                               placeholder="Queue" value="<%- filters.queue %>">
+                    </div>
+                    <div class="form-group">
+                        <label class="sr-only" for="jobs-form-worker">Worker</label>
+                        <input type="text" class="form-control input-sm js-datatable-filters-worker"
+                               id="jobs-form-worker"
+                               placeholder="Worker" value="<%- filters.worker %>">
+                    </div>
+                    <div class="form-group">
+                        <label class="sr-only" for="jobs-form-path">Task</label>
+                        <input type="text" class="form-control input-sm js-datatable-filters-path" id="jobs-form-path"
+                               placeholder="Task" value="<%- filters.path %>">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="sr-only" for="jobs-form-exceptiontype">Exception Type</label>
+                        <input type="text" class="form-control input-sm js-datatable-filters-exceptiontype"
+                               id="jobs-form-exceptiontype" placeholder="Exception Type"
+                               value="<%- filters.exceptiontype %>">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="sr-only" for="jobs-form-params">Task</label>
+                        <input type="text" class="form-control input-sm js-datatable-filters-params"
+                               id="jobs-form-params"
+                               placeholder="Params" value="<%- filters.params %>">
+                    </div>
+                    <div class="form-group">
+                        <select class="form-control input-sm js-datatable-filters-status" id="jobs-form-status">
+                            <option
+                            <%= filters.status==""?"selected='selected'":"" %> value="">-statuses-</option>
+                            <% _.each({
+                            "queued": "queued",
+                            "started": "started",
+                            "success": "success",
+                            "failed": "failed",
+                            "retry": "retry",
+                            "maxretries": "maxretries",
+                            "timeout": "timeout",
+                            "interrupt": "interrupt",
+                            "cancel": "cancel",
+                            "abort": "abort",
+                            "queued-started-success": "{OK}",
+                            "failed-retry-maxretries-timeout-interrupt-cancel-abort": "{NOT OK}",
+                            "failed-maxretries-timeout-abort": "{ERROR}"
+                            }, function(k, i) { %>
+                            <option
+                            <%= filters.status==i?"selected='selected'":"" %> value="<%= i %>"><%= k %></option>
+                            <% }) %>
+                        </select>
+                    </div>
+                    <!--
+                    <div class="checkbox">
+                      <label>
+                        <input type="checkbox"> Remember me
+                      </label>
+                    </div
+                    -->
+                    <button type="submit" class="btn btn-default js-datatable-filters-submit input-sm"
+                            style="padding:5px">
+                        OK
+                    </button>
+
+                </form>
+
+                <div class="pull-right js-jobs-groupactions">
+                    <br/>
+                    <button type="submit" class="btn btn-warning input-sm js-jobs-groupaction" data-action="requeue"
+                            style="padding:5px"><span class='glyphicon glyphicon-refresh'></span> Requeue these jobs
+                    </button>
+                    &nbsp;
+                    <button type="submit" class="btn btn-danger input-sm js-jobs-groupaction" data-action="cancel"
+                            style="padding:5px"><span class='glyphicon glyphicon-remove-circle'></span> Cancel these
+                        jobs
+                    </button>
+                </div>
+
             </div>
 
-            <div class="form-group">
-              <label class="sr-only" for="jobs-form-exceptiontype">Exception Type</label>
-              <input type="text" class="form-control input-sm js-datatable-filters-exceptiontype" id="jobs-form-exceptiontype" placeholder="Exception Type" value="<%- filters.exceptiontype %>">
+            <div class="container">
+
+
+                <table cellpadding="0" cellspacing="0" border="0"
+                       class="datatable table table-striped table-bordered js-datatable">
+                </table>
             </div>
-
-            <div class="form-group">
-              <label class="sr-only" for="jobs-form-params">Task</label>
-              <input type="text" class="form-control input-sm js-datatable-filters-params" id="jobs-form-params" placeholder="Params" value="<%- filters.params %>">
-            </div>
-            <div class="form-group">
-              <select class="form-control input-sm js-datatable-filters-status" id="jobs-form-status">
-                <option <%= filters.status==""?"selected='selected'":"" %> value="">-statuses-</option>
-                <% _.each({
-                    "queued": "queued",
-                    "started": "started",
-                    "success": "success",
-                    "failed": "failed",
-                    "retry": "retry",
-                    "maxretries": "maxretries",
-                    "timeout": "timeout",
-                    "interrupt": "interrupt",
-                    "cancel": "cancel",
-                    "abort": "abort",
-                    "queued-started-success": "{OK}",
-                    "failed-retry-maxretries-timeout-interrupt-cancel-abort": "{NOT OK}",
-                    "failed-maxretries-timeout-abort": "{ERROR}"
-                  }, function(k, i) { %>
-                  <option <%= filters.status==i?"selected='selected'":"" %> value="<%= i %>"><%= k %></option>
-                <% }) %>
-              </select>
-            </div>
-            <!--
-            <div class="checkbox">
-              <label>
-                <input type="checkbox"> Remember me
-              </label>
-            </div
-            -->
-            <button type="submit" class="btn btn-default js-datatable-filters-submit input-sm" style="padding:5px">OK</button>
-
-          </form>
-
-          <div class="pull-right js-jobs-groupactions">
-            <br/>
-            <button type="submit" class="btn btn-warning input-sm js-jobs-groupaction" data-action="requeue" style="padding:5px"><span class='glyphicon glyphicon-refresh'></span> Requeue these jobs</button>
-            &nbsp;
-            <button type="submit" class="btn btn-danger input-sm js-jobs-groupaction" data-action="cancel" style="padding:5px"><span class='glyphicon glyphicon-remove-circle'></span> Cancel these jobs</button>
-          </div>
-
         </div>
-
-        <div class="container">
-
-
-          <table cellpadding="0" cellspacing="0" border="0" class="datatable table table-striped table-bordered js-datatable">
-          </table>
-        </div>
-      </script>
+    </script>
 
 
-      <footer>
+    <footer>
         <div class="row">
-          <div class="col-lg-12">
+            <div class="col-lg-12">
 
-          </div>
+            </div>
         </div>
 
-      </footer>
+    </footer>
 
 
-    </div>
+</div>
 
 
-    <!-- build:js scripts/amd-app.js -->
-    <script data-main="/static/js/config" src="/static/js/vendor/require.js"></script>
-    <!-- endbuild -->
+<!-- build:js scripts/amd-app.js -->
+<script data-main="/static/js/config" src="/static/js/vendor/require.js"></script>
+<!-- endbuild -->
 
 
-  </body>
+</body>
 </html>
