@@ -20,7 +20,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
 
           {
             "sTitle": "Type",
-            "sClass": "col-type",
+            "sClass": "col-type sorted-by-type",
             "sType": "string",
             "sWidth":"150px",
             "mData":function(source, type, val) {
@@ -132,7 +132,16 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
       };
 
       this.initDataTable(datatableConfig);
-    }
+    },
+      getFilterData: function(){
+          return {
+              sEcho: 1
+          };
+      },
+
+      updateTableData: function(){
+          this.setTableData('/api/datatables/ops', this.getFilterData());
+      }
   });
 
 });
