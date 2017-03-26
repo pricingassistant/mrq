@@ -41,6 +41,7 @@ class ProcessFixture(object):
         self.wait_port = wait_port
         self.quiet = quiet
         self.stopped = False
+        self.started = False
 
         self.request.addfinalizer(self.stop)
 
@@ -88,12 +89,15 @@ class ProcessFixture(object):
         if self.wait_port:
             wait_for_net_service("127.0.0.1", int(self.wait_port), poll_interval=0.01)
 
+        self.started = True
+
     def stop(self, force=False, timeout=None, block=True, sig=15):
 
         # Call this only one time.
         if self.stopped and not force:
             return
         self.stopped = True
+        self.started = False
 
         if self.process is not None:
 
@@ -270,6 +274,70 @@ class MongoFixture(ProcessFixture):
                     if not c.startswith("system."):
                         mongodb.drop_collection(c)
 
+class ApiFixture(ProcessFixture):
+
+    def __init__(self, *args, **kwargs):
+
+        ProcessFixture.__init__(self, *args, **kwargs)
+
+        self.wait_port = 5555
+        self.host = "127.0.0.1"
+        self.url = "http://%s:%s" % (self.host, self.wait_port)
+        self.cmdline = "python mrq/dashboard/app.py"
+
+    def start(self, *args, **kwargs):
+
+        kwargs["env"] = os.environ
+
+        ProcessFixture.start(self, *args, **kwargs)
+
+    def _login(self, user):
+        import requests
+
+        res = requests.post(self.url + "/api/auth/login", data={
+            "userEmail": user["email"],
+            "userPassword": user["password"]
+        })
+
+        assert res.status_code == 200
+
+        return {
+            "cookies": res.cookies
+        }
+
+    def _request(self, method, path, key="local", user=None, assert_200=True, **kwargs):
+
+        if not self.started:
+            self.start()
+
+        import requests
+
+        if user:
+            auth = self._login(user)
+            kwargs["cookies"] = auth["cookies"]
+
+        res = getattr(requests, method)(self.url + path, **kwargs)
+
+        if assert_200 and res.status_code != 200:
+            raise Exception(res.status_code)
+
+        try:
+            js = json.loads(res.text)
+        except:
+            print("Couldn't json parse", repr(res.text)[0:100])
+            js = None
+
+        return js, res
+
+    def GET(self, *args, **kwargs):
+        return self._request("get", *args, **kwargs)
+
+    def POST(self, *args, **kwargs):
+        return self._request("post", *args, **kwargs)
+
+    def DELETE(self, *args, **kwargs):
+        return self._request("delete", *args, **kwargs)
+
 
 @pytest.fixture(scope="function")
 def httpstatic(request):
@@ -310,3 +378,9 @@ def worker(request, mongodb, redis):
 def worker_mongodb_with_journal(request, mongodb_with_journal, redis):
 
     return WorkerFixture(request, mongodb=mongodb_with_journal, redis=redis)
+
+
+@pytest.fixture(scope="function")
+def api(request, mongodb, redis):
+
+    return ApiFixture(request)
