@@ -81,7 +81,7 @@ class Queue(object):
         """ Return the queue type, currently determined only by its suffix. """
 
         for queue_type in ("timed_set", "sorted_set", "set", "raw"):
-            if "_%s" % queue_type in queue_id:
+            if queue_id.split("/")[0].endswith("_%s" % queue_type):
                 return queue_type
 
         return "regular"
@@ -131,6 +131,15 @@ class Queue(object):
         context.connections.redis.zrem(Queue.redis_key_known_queues(), self.id)
         Queue.known_queues.pop(self.id, None)
 
+    def get_known_subqueues(self):
+        """ Yields all known subqueues """
+        if not self.id.endswith("/"):
+            return
+
+        for q in Queue.known_queues:
+            if q.startswith(self.id):
+                yield q
+
     @classmethod
     def redis_known_queues(cls):
         """
@@ -147,19 +156,19 @@ class Queue(object):
         """ Returns the set of currently paused queues """
         return context.connections.redis.smembers(cls.redis_key_paused_queues())
 
-    def redis_known_subqueues(self):
-        """ Return the known subqueues of this queue as Queue objects. """
+    @classmethod
+    def instanciate_queues(cls, queue_list, with_subqueues=True, refresh_known_queues=True, add_to_known_queues=True):
 
-        queues = []
+        if refresh_known_queues:
+            # Update the process-local list of known queues
+            Queue.known_queues = Queue.redis_known_queues()
 
-        if not self.id.endswith("/"):
-            return queues
-
-        for key in Queue.known_queues:
-            if key.startswith(self.id) and not key.endswith("/"):
-                queues.append(Queue(key, add_to_known_queues=True))
-
-        return queues
+        for queue in queue_list:
+            yield Queue(queue, add_to_known_queues=add_to_known_queues)
+            if with_subqueues and queue.endswith("/"):
+                for key in Queue.known_queues:
+                    if key.startswith(queue) and not key.endswith("/"):
+                        yield Queue(key, add_to_known_queues=add_to_known_queues)
 
     def serialize_job_ids(self, job_ids):
         """ Returns job_ids serialized for storage in Redis """

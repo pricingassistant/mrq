@@ -25,14 +25,14 @@ def test_orchestration_scenarios(worker):
     worker.start()
 
     # Simplest scenario
-    assert scenario([
-        {
+    assert scenario({
+        "a": {
             "command": "mrq-worker a",
             "memory": 1000,
             "cpu": 1024,
             "min_count": 1
         }
-    ], [
+    }, [
         {
             "_id": "worker1",
             "total_cpu": 1024,
@@ -45,14 +45,14 @@ def test_orchestration_scenarios(worker):
     }
 
     # Not enough memory
-    assert scenario([
-        {
+    assert scenario({
+        "a": {
             "command": "mrq-worker a",
             "memory": 1001,
             "cpu": 1024,
             "min_count": 1
         }
-    ], [
+    }, [
         {
             "_id": "worker1",
             "total_cpu": 1024,
@@ -63,14 +63,14 @@ def test_orchestration_scenarios(worker):
     }
 
     # Not enough CPU
-    assert scenario([
-        {
+    assert scenario({
+        "a": {
             "command": "mrq-worker a",
             "memory": 1000,
             "cpu": 1025,
             "min_count": 1
         }
-    ], [
+    }, [
         {
             "_id": "worker1",
             "total_cpu": 1024,
@@ -81,20 +81,20 @@ def test_orchestration_scenarios(worker):
     }
 
     # Remove & add workers
-    assert scenario([
-        {
+    assert scenario({
+        "a": {
             "command": "mrq-worker a",
             "memory": 1,
             "cpu": 1,
             "min_count": 2
         },
-        {
+        "b": {
             "command": "mrq-worker b",
             "memory": 1,
             "cpu": 1,
             "min_count": 1
         }
-    ], [
+    }, [
         {
             "_id": "worker1",
             "total_cpu": 3,
@@ -106,20 +106,20 @@ def test_orchestration_scenarios(worker):
     }
 
     # Worker removal & add priority
-    assert scenario([
-        {
+    assert scenario({
+        "a": {
             "command": "mrq-worker a",
             "memory": 1,
             "cpu": 1,
             "min_count": 3
         },
-        {
+        "b": {
             "command": "mrq-worker b",
             "memory": 1,
             "cpu": 1,
             "min_count": 1
         }
-    ], [
+    }, [
         {
             "_id": "worker1",
             "total_cpu": 11,
@@ -151,14 +151,14 @@ def test_agent_process(worker):
 
     assert connections.mongodb_jobs.mrq_workers.count() == 0
 
-    connections.mongodb_jobs.mrq_workergroups.insert_one({"_id": "xxx", "profiles": [
-        {
+    connections.mongodb_jobs.mrq_workergroups.insert_one({"_id": "xxx", "profiles": {
+        "a": {
             "command": "mrq-worker a --report_interval=1",
             "memory": 100,
             "cpu": 100,
             "min_count": 1
         }
-    ]})
+    }})
 
     time.sleep(7)
 
@@ -166,9 +166,7 @@ def test_agent_process(worker):
     w = connections.mongodb_jobs.mrq_workers.find_one()
     assert w["status"] in ("spawn", "wait")
 
-    connections.mongodb_jobs.mrq_workergroups.update_one({"_id": "xxx"}, {"$set": {"profiles": [
-
-    ]}})
+    connections.mongodb_jobs.mrq_workergroups.update_one({"_id": "xxx"}, {"$set": {"profiles": {}}})
 
     time.sleep(4)
 
@@ -184,3 +182,60 @@ def test_agent_process(worker):
     assert connections.mongodb_jobs.mrq_agents.count({"status": {"$ne": "stop"}}) == 0
 
     worker.stop_deps()
+
+
+def test_agent_autoscaling(worker):
+
+    worker.start(agent=True, flags="--worker_group xxx --total_memory=500 --total_cpu=500 --orchestrate_interval=1 --report_interval=1")
+
+    connections.mongodb_jobs.mrq_workergroups.insert_one({"_id": "xxx", "profiles": {
+        "a": {
+            "command": "mrq-worker default --report_interval=1 --greenlets 2",
+            "memory": 100,
+            "cpu": 100,
+            "min_count": 1,
+            "max_count": 3,
+            "max_eta": 10,
+            "warmup": 5
+        }
+    }})
+
+    time.sleep(5)
+
+    assert connections.mongodb_jobs.mrq_workers.count({"status": {"$in": ["wait", "spawn"]}}) == 1
+    assert connections.mongodb_jobs.mrq_workers.count() == 1
+
+    # Send 2 tasks with sleep(1) each second. That should not trigger an autoscale
+    for i in range(10):
+        worker.send_tasks(
+            "tests.tasks.general.Add", [{"a": 41, "b": i, "sleep": 1} for _ in range(2)], block=False)
+        time.sleep(1)
+
+    assert connections.mongodb_jobs.mrq_workers.count() == 1
+
+    # Now send 4 of them
+    for i in range(10):
+        worker.send_tasks(
+            "tests.tasks.general.Add", [{"a": 41, "b": i, "sleep": 1} for _ in range(4)], block=False)
+        time.sleep(1)
+
+    # Should have scaled to 2
+    assert connections.mongodb_jobs.mrq_workers.count() == 2
+    assert connections.mongodb_jobs.mrq_workers.count({"status": {"$in": ["wait", "spawn", "full"]}}) == 2
+
+    # Now send 10 of them - this should be too much but we should obey the max of 3 workers.
+    for i in range(10):
+        worker.send_tasks(
+            "tests.tasks.general.Add", [{"a": 41, "b": i, "sleep": 1} for _ in range(10)], block=False)
+        time.sleep(1)
+
+    assert connections.mongodb_jobs.mrq_workers.count() == 3
+    assert connections.mongodb_jobs.mrq_workers.count({"status": {"$in": ["wait", "spawn", "full"]}}) == 3
+
+    # Kill all jobs
+    assert connections.mongodb_jobs.mrq_jobs.update_many({}, {"$set": {"status": "cancel"}})
+
+    time.sleep(40)
+
+    # We should be back to 1 or 2
+    assert connections.mongodb_jobs.mrq_workers.count({"status": {"$in": ["wait", "spawn", "full"]}}) < 3

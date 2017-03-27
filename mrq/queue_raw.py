@@ -26,6 +26,10 @@ class QueueRaw(Queue):
     def size(self):
         """ Returns the total number of queued jobs on the queue """
 
+        if self.id.endswith("/"):
+            queues = Queue.instanciate_queues([self.id])
+            return sum(q.size() for q in queues if not q.id.endswith("/"))
+
         # ZSET
         if self.is_sorted:
             return context.connections.redis.zcard(self.redis_key)

@@ -87,7 +87,16 @@ class ProcessPool(object):
         env["MRQ_IS_SUBPROCESS"] = "1"
         env.update(self.extra_env or {})
 
-        p = subprocess.Popen(shlex.split(command), shell=False, close_fds=True, env=env, cwd=os.getcwd())
+        # Extract env variables from shell commands.
+        parts = shlex.split(command)
+        for p in list(parts):
+            if "=" in p:
+                env[p.split("=")[0]] = p[len(p.split("=")[0]) + 1:]
+                parts.pop(0)
+            else:
+                break
+
+        p = subprocess.Popen(parts, shell=False, close_fds=True, env=env, cwd=os.getcwd())
 
         self.processes.append({
             "subprocess": p,

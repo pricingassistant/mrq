@@ -13,7 +13,14 @@ class QueueRegular(Queue):
     def size(self):
         """ Returns the total number of queued jobs on the queue """
 
-        return self.collection.count({"status": "queued", "queue": self.id})
+        if self.id.endswith("/"):
+            subqueues = list(self.get_known_subqueues())
+            if len(subqueues) == 0:
+                return 0
+            else:
+                return self.collection.count({"status": "queued", "queue": {"$in": subqueues}})
+        else:
+            return self.collection.count({"status": "queued", "queue": self.id})
 
     def list_job_ids(self, skip=0, limit=20):
         """ Returns a list of job ids on a queue """

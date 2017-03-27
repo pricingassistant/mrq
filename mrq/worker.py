@@ -62,7 +62,11 @@ class Worker(Process):
 
         self.work_lock = gevent.lock.Semaphore()
 
-        self.id = ObjectId()
+        if self.config.get("worker_id"):
+            self.id = ObjectId(self.config["worker_id"])
+        else:
+            self.id = ObjectId()
+
         if self.config.get("name"):
             self.name = self.config["name"]
         else:
@@ -76,8 +80,8 @@ class Worker(Process):
         self.log_handler = LogHandler(quiet=self.config["quiet"])
         self.log = self.log_handler.get_logger(worker=self.id)
 
-        self.refresh_queues()
-        self.queues_with_notify = list(set([q.redis_key_notify() for q in self.queues if q.use_notify()]))
+        self.refresh_queues(fatal=True)
+        self.queues_with_notify = list({q.redis_key_notify() for q in self.queues if q.use_notify()})
         self.has_subqueues = any([queue.endswith("/") for queue in self.config["queues"]])
 
         self.log.info(
@@ -169,26 +173,15 @@ class Worker(Process):
             self.refresh_queues()
             time.sleep(self.config["subqueues_refresh_interval"])
 
-    def refresh_queues(self):
+    def refresh_queues(self, fatal=False):
         """ Updates the list of currently known queues and subqueues """
 
-        # Update the process-local list of known queues
-        Queue.known_queues = Queue.redis_known_queues()
-
-        queues = []
         try:
-            for queue in self.config["queues"]:
-                if queue.endswith("/"):
-                    q = Queue(queue, add_to_known_queues=True)
-                    queues.append(q)
-                    queues += q.redis_known_subqueues()
-                else:
-                    queues.append(Queue(queue, add_to_known_queues=True))
-
+            self.queues = list(Queue.instanciate_queues(self.config["queues"]))
         except Exception as e:  # pylint: disable=broad-except
             self.log.error("When refreshing subqueues: %s", e)
-        else:
-            self.queues = queues
+            if fatal:
+                raise
 
     def greenlet_paused_queues(self):
 
@@ -267,7 +260,9 @@ class Worker(Process):
             "scheduler",
             "name",
             "local_ip",
-            "agent_id"
+            "agent_id",
+            "worker_group",
+            "worker_profile"
         ]
 
         io = None
@@ -279,13 +274,14 @@ class Worker(Process):
                 else:
                     io[k] = sorted(list(v.items()), reverse=True, key=lambda x: x[1])
 
-        used_pool_slots = self.pool_size - self.gevent_pool.free_count()
+        used_pool_slots = len(self.gevent_pool)
+        used_avg = self.pool_usage_average.next(used_pool_slots)
 
         return {
             "status": self.status,
             "config": {k: v for k, v in iteritems(self.config) if k in whitelisted_config},
             "done_jobs": self.done_jobs,
-            "pool_usage_average": self.pool_usage_average.next(used_pool_slots),
+            "usage_avg": used_avg / self.pool_size,
             "datestarted": self.datestarted,
             "datereported": datetime.datetime.utcnow(),
             "name": self.name,

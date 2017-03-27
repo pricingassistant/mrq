@@ -7,7 +7,6 @@ import time
 import math
 import json
 import datetime
-import argparse
 from collections import deque
 from bson import ObjectId
 
@@ -200,3 +199,64 @@ class MovingAverage(object):
         self.__sum += val
         self.__q.append(val)
         return 1.0 * self.__sum / len(self.__q)
+
+
+class MovingETA(object):
+
+    def __init__(self, size):
+        self.__size = size
+        self.__q = deque([])
+        self.__t = deque([])
+
+    def next(self, val, t=None):
+
+        if t is None:
+            t = time.time()
+
+        if len(self.__q) == self.__size:
+            self.__q.popleft()
+            self.__t.popleft()
+        self.__q.append(val)
+        self.__t.append(t)
+
+        if len(self.__q) == 1:
+            return None
+
+        mean_q = sum(self.__q) / len(self.__q)
+        mean_t = sum(self.__t) / len(self.__t)
+
+        def std(lst, m):
+            return math.sqrt(sum((pow(x - m, 2) for x in lst)) / (len(lst) - 1))
+
+        def pearson_r(list_t, list_q):
+
+            sum_xy = 0
+            sum_sq_v_x = 0
+            sum_sq_v_y = 0
+
+            for (x, y) in zip(list_t, list_q):
+                var_x = x - mean_t
+                var_y = y - mean_q
+                sum_xy += var_x * var_y
+                sum_sq_v_x += pow(var_x, 2)
+                sum_sq_v_y += pow(var_y, 2)
+
+            if sum_sq_v_x * sum_sq_v_y == 0:
+                return None
+
+            return sum_xy / math.sqrt(sum_sq_v_x * sum_sq_v_y)
+
+        r = pearson_r(self.__t, self.__q)
+
+        if r is None:
+            return None
+
+        # ax + b
+        a = r * (std(self.__q, mean_q) / std(self.__t, mean_t))
+        b = mean_q - a * mean_t
+
+        # ETA is ax + b = 0
+        if a == 0:
+            return None
+
+        return (-b / a) - t
