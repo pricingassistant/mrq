@@ -1,7 +1,7 @@
 import time
 import datetime
 from builtins import str
-from mrq.job import Job
+from mrq.job import Job, get_job_result
 from mrq.queue import Queue
 from bson import ObjectId
 import pytest
@@ -320,6 +320,25 @@ def test_interrupt_maxjobs(worker):
     time.sleep(2)
 
     assert Queue("default").size() == 7
+
+
+def test_worker_interrupt_after_max_time(worker):
+    worker.start(flags="--greenlets=2 --max_time=2", queues="test1 default")
+
+    task_ids = worker.send_tasks("tests.tasks.general.Add", [{"a": i, "b": 1, "sleep": 3} for i in range(5)],
+                                 block=False)
+
+    time.sleep(5)
+
+    results = [get_job_result(task_id) for task_id in task_ids]
+
+    queued_tasks = [result for result in results if result['status'] == "queued"]
+    successful_tasks = [(i, result) for i, result in enumerate(results) if result['status'] == "success"]
+
+    assert len(queued_tasks) == 3
+    assert len(successful_tasks) == 2
+    for i, result in successful_tasks:
+        assert result['result'] == i + 1
 
 
 def test_interrupt_maxconcurrency(worker):

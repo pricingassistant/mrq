@@ -43,7 +43,7 @@ setup(
     author_email="contact@pricingassistant.com",
     url="http://github.com/pricingassistant/mrq",
     # download_url="http://chardet.feedparser.org/download/python3-chardet-1.0.1.tgz",
-    keywords=["worker", "task", "distributed", "queue", "asynchronous", "redis", "mongodb", "job", "processing"],
+    keywords=["worker", "task", "distributed", "queue", "asynchronous", "redis", "mongodb", "job", "processing", "gevent"],
     platforms='any',
     entry_points={
         'console_scripts': [
@@ -63,11 +63,12 @@ setup(
         "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3.4",
         "Programming Language :: Python :: 3.5",
+        "Programming Language :: Python :: 3.6",
         #'Development Status :: 1 - Planning',
         #'Development Status :: 2 - Pre-Alpha',
         #'Development Status :: 3 - Alpha',
-        'Development Status :: 4 - Beta',
-        #'Development Status :: 5 - Production/Stable',
+        #'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
         #'Development Status :: 6 - Mature',
         #'Development Status :: 7 - Inactive',
         "Environment :: Other Environment",

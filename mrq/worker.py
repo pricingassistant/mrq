@@ -14,7 +14,6 @@ import psutil
 import sys
 import json as json_stdlib
 import ujson as json
-import http.server
 from bson import ObjectId
 from redis.lock import LuaLock
 from collections import defaultdict
@@ -53,6 +52,7 @@ class Worker(Process):
 
         self.done_jobs = 0
         self.max_jobs = self.config["max_jobs"]
+        self.max_time = datetime.timedelta(seconds=self.config["max_time"]) or None
 
         self.connected = False  # MongoDB + Redis
 
@@ -393,14 +393,13 @@ class Worker(Process):
                 if outcome is "wait" and dequeue_jobs == 0:
                     break
 
-
     def work(self):
         """Starts the work loop.
 
         """
         self.work_init()
 
-        self.work_loop(max_jobs=self.max_jobs)
+        self.work_loop(max_jobs=self.max_jobs, max_time=self.max_time)
 
         self.work_stop()
 
@@ -436,13 +435,15 @@ class Worker(Process):
 
         self.install_signal_handlers()
 
-    def work_loop(self, max_jobs=None):
+    def work_loop(self, max_jobs=None, max_time=None):
 
         self.done_jobs = 0
         self.datestarted_work_loop = datetime.datetime.utcnow()
         self.queue_offset = 0
 
         try:
+
+            max_time_reached = False
 
             while True:
 
@@ -456,6 +457,12 @@ class Worker(Process):
 
                 while True:
 
+                    # we put this here to make sure we have a strict limit on max_time
+                    if max_time and datetime.datetime.utcnow() - self.datestarted >= max_time:
+                        self.log.info("Reached max_time=%s" % max_time.seconds)
+                        max_time_reached = True
+                        break
+
                     free_pool_slots = self.gevent_pool.free_count()
 
                     if max_jobs:
@@ -465,11 +472,13 @@ class Worker(Process):
                             break
 
                     if free_pool_slots > 0:
-
                         break
 
                     self.status = "full"
                     self.gevent_pool.wait_available(timeout=60)
+
+                if max_time_reached:
+                    break
 
                 self.status = "spawn"
                 with self.work_lock:

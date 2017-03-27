@@ -152,11 +152,29 @@ class RaiseException(Task):
         raise Exception(params.get("message", ""))
 
 
+class InAbortException(BaseException):
+    pass
+
+
 class Abort(Task):
 
     def run(self, params):
 
         abort_current_job()
+
+
+class AbortOnFailed(Task):
+    def run(self, params):
+
+        log.info("Will abort this task")
+
+        connections.mongodb_jobs.tests_inserts.insert(params)
+        try:
+            raise InAbortException
+        except InAbortException:
+            abort_current_job()
+
+        raise Exception("Should not be reached")
 
 
 class ReturnParams(Task):

@@ -31,6 +31,10 @@ set_current_config(get_config(sources=("env")))
 
 os.system("rm -rf dump.rdb")
 
+PYTHON_BIN = "python"
+if os.environ.get("PYTHON_BIN"):
+    PYTHON_BIN = os.environ["PYTHON_BIN"]
+
 
 class ProcessFixture(object):
 
@@ -41,6 +45,7 @@ class ProcessFixture(object):
         self.wait_port = wait_port
         self.quiet = quiet
         self.stopped = False
+        self.started = False
 
         self.request.addfinalizer(self.stop)
 
@@ -88,12 +93,15 @@ class ProcessFixture(object):
         if self.wait_port:
             wait_for_net_service("127.0.0.1", int(self.wait_port), poll_interval=0.01)
 
+        self.started = True
+
     def stop(self, force=False, timeout=None, block=True, sig=15):
 
         # Call this only one time.
         if self.stopped and not force:
             return
         self.stopped = True
+        self.started = False
 
         if self.process is not None and self.process.returncode is None:
 
@@ -133,13 +141,9 @@ class WorkerFixture(ProcessFixture):
 
         processes = 0
 
-        python_bin = "python"
-        if os.environ.get("PYTHON_BIN"):
-            python_bin = os.environ["PYTHON_BIN"]
-
         if agent:
 
-            cmdline = "%s mrq/bin/mrq_agent.py %s" % (python_bin, kwargs.get("flags", ""))
+            cmdline = "%s mrq/bin/mrq_agent.py %s" % (PYTHON_BIN, kwargs.get("flags", ""))
 
         else:
 
@@ -148,7 +152,7 @@ class WorkerFixture(ProcessFixture):
                 processes = int(m.group(1))
 
             cmdline = "%s mrq/bin/mrq_worker.py --mongodb_logs_size 0 %s %s %s %s" % (
-                python_bin,
+                PYTHON_BIN,
                 "--admin_port %s" % self.admin_port if (processes <= 1) else "",
                 "--trace_io --trace_greenlets" if trace else "",
                 kwargs.get("flags", ""),
@@ -237,7 +241,7 @@ class WorkerFixture(ProcessFixture):
 
     def send_task_cli(self, path, params, queue=None, **kwargs):
 
-        cli = ["python", "mrq/bin/mrq_run.py", "--quiet"]
+        cli = [PYTHON_BIN, "mrq/bin/mrq_run.py", "--quiet"]
         if queue:
             cli += ["--queue", queue]
         cli += [path, json.dumps(params)]
@@ -293,6 +297,71 @@ class MongoFixture(ProcessFixture):
                         mongodb.drop_collection(c)
 
 
+class ApiFixture(ProcessFixture):
+
+    def __init__(self, *args, **kwargs):
+
+        ProcessFixture.__init__(self, *args, **kwargs)
+
+        self.wait_port = 5555
+        self.host = "127.0.0.1"
+        self.url = "http://%s:%s" % (self.host, self.wait_port)
+        self.cmdline = "%s mrq/dashboard/app.py" % PYTHON_BIN
+
+    def start(self, *args, **kwargs):
+
+        kwargs["env"] = os.environ
+
+        ProcessFixture.start(self, *args, **kwargs)
+
+    def _login(self, user):
+        import requests
+
+        res = requests.post(self.url + "/api/auth/login", data={
+            "userEmail": user["email"],
+            "userPassword": user["password"]
+        })
+
+        assert res.status_code == 200
+
+        return {
+            "cookies": res.cookies
+        }
+
+    def _request(self, method, path, key="local", user=None, assert_200=True, **kwargs):
+
+        if not self.started:
+            self.start()
+
+        import requests
+
+        if user:
+            auth = self._login(user)
+            kwargs["cookies"] = auth["cookies"]
+
+        res = getattr(requests, method)(self.url + path, **kwargs)
+
+        if assert_200 and res.status_code != 200:
+            raise Exception(res.status_code)
+
+        try:
+            js = json.loads(res.text)
+        except:
+            print("Couldn't json parse", repr(res.text)[0:100])
+            js = None
+
+        return js, res
+
+    def GET(self, *args, **kwargs):
+        return self._request("get", *args, **kwargs)
+
+    def POST(self, *args, **kwargs):
+        return self._request("post", *args, **kwargs)
+
+    def DELETE(self, *args, **kwargs):
+        return self._request("delete", *args, **kwargs)
+
+
 @pytest.fixture(scope="function")
 def httpstatic(request):
     return ProcessFixture(request, "/usr/sbin/nginx -c /app/tests/fixtures/httpstatic/nginx.conf", wait_port=8081)
@@ -336,3 +405,9 @@ def worker2(request, mongodb, redis):
 def worker_mongodb_with_journal(request, mongodb_with_journal, redis):
 
     return WorkerFixture(request, mongodb=mongodb_with_journal, redis=redis, admin_port=20022)
+
+
+@pytest.fixture(scope="function")
+def api(request, mongodb, redis):
+
+    return ApiFixture(request)
