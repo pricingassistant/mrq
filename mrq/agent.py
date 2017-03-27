@@ -294,7 +294,7 @@ class Agent(Process):
                     if total_jobs > total_greenlets and report_count == current_desired_count:
                         desired_count = current_desired_count + 1
 
-            final_count = min(max(desired_count, profile["min_count"]), profile["max_count"])
+            final_count = min(max(desired_count, profile.get("min_count", 0)), profile.get("max_count", 100))
 
             if final_count != current_desired_count:
                 log.debug("Autoscaling: Changing worker profile %s count from %s to %s" % (
@@ -397,7 +397,7 @@ class Agent(Process):
         definition = connections.mongodb_jobs.mrq_workergroups.find_one({"_id": self.worker_group})
 
         # Prepend all commands by their worker profile.
-        for profileid, profile in definition.get("profiles", {}).items():
+        for profileid, profile in (definition or {}).get("profiles", {}).items():
             profile["command"] = "MRQ_WORKER_PROFILE=%s %s" % (profileid, profile["command"])
 
         return definition

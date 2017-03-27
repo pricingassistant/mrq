@@ -158,6 +158,11 @@ class WorkerFixture(ProcessFixture):
         env = kwargs.get("env") or {}
         env.setdefault("MRQ_MAX_LATENCY", "0.1")
 
+        # Pass coverage-related environment variables
+        for k, v in os.environ.items():
+            if k.startswith("COV_"):
+                env[k] = v
+
         print(cmdline)
         ProcessFixture.start(self, cmdline=cmdline, env=env, expected_children=processes)
 

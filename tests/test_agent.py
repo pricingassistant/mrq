@@ -40,7 +40,7 @@ def test_orchestration_scenarios(worker):
         }
     ]) == {
         "worker1": [
-            "mrq-worker a"
+            "MRQ_WORKER_PROFILE=a mrq-worker a"
         ]
     }
 
@@ -102,7 +102,11 @@ def test_orchestration_scenarios(worker):
             "desired_workers": ["mrq-worker c", "mrq-worker b", "mrq-worker b"]
         }
     ]) == {
-        "worker1": ["mrq-worker a", "mrq-worker a", "mrq-worker b"]
+        "worker1": [
+            "MRQ_WORKER_PROFILE=a mrq-worker a",
+            "MRQ_WORKER_PROFILE=a mrq-worker a",
+            "MRQ_WORKER_PROFILE=b mrq-worker b"
+        ]
     }
 
     # Worker removal & add priority
@@ -132,8 +136,12 @@ def test_orchestration_scenarios(worker):
             "desired_workers": ["mrq-worker a", "mrq-worker a"]
         }
     ]) == {
-        "worker1": ["mrq-worker a", "mrq-worker a", "mrq-worker b"],
-        "worker2": ["mrq-worker a"]
+        "worker1": [
+            "MRQ_WORKER_PROFILE=a mrq-worker a",
+            "MRQ_WORKER_PROFILE=a mrq-worker a",
+            "MRQ_WORKER_PROFILE=b mrq-worker b"
+        ],
+        "worker2": ["MRQ_WORKER_PROFILE=a mrq-worker a"]
     }
 
     worker.stop()
