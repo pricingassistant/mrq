@@ -18,7 +18,7 @@ def use_package(package):
 
 def get_requirements():
     reqs = []
-    for filename in ["requirements-base.txt", "requirements-dashboard.txt", "requirements-setuptools.txt"]:
+    for filename in ["requirements-base.txt", "requirements-dashboard.txt"]:
         with open(filename, "r") as f:
             reqs += [x.strip().split(";")[0] for x in f.readlines() if use_package(x.strip())]
     return reqs
