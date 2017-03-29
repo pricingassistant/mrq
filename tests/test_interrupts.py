@@ -7,6 +7,7 @@ from bson import ObjectId
 import pytest
 from mrq.context import connections
 import json
+import os
 
 
 PROCESS_CONFIGS = [
@@ -32,13 +33,13 @@ def test_interrupt_worker_gracefully(worker, p_flags):
     assert job["status"] == "started"
 
     # Stop the worker gracefully. first job should still finish!
-    worker.stop(block=False, deps=False)
+    os.kill(worker.process.pid, 2)
 
     time.sleep(1)
 
     # Should not be accepting new jobs!
     job_id2 = worker.send_task(
-        "tests.tasks.general.Add", {"a": 42, "b": 1, "sleep": 4}, block=False)
+        "tests.tasks.general.Add", {"a": 42, "b": 1, "sleep": 4}, block=False, start=False)
 
     time.sleep(1)
 
@@ -53,8 +54,6 @@ def test_interrupt_worker_gracefully(worker, p_flags):
 
     job = Job(job_id2).fetch().data
     assert job.get("status") == "queued"
-
-    worker.stop_deps()
 
 
 @pytest.mark.parametrize(["p_flags"], PROCESS_CONFIGS)
@@ -75,13 +74,13 @@ def test_interrupt_worker_double_sigint(worker, p_flags):
     assert job["status"] == "started"
 
     # Stop the worker gracefully. first job should still finish!
-    worker.stop(block=False, deps=False)
+    os.kill(worker.process.pid, 2)
 
     time.sleep(1)
 
     # Should not be accepting new jobs!
     job_id2 = worker.send_task(
-        "tests.tasks.general.Add", {"a": 42, "b": 1, "sleep": 20}, block=False)
+        "tests.tasks.general.Add", {"a": 42, "b": 1, "sleep": 20}, block=False, start=False)
 
     time.sleep(1)
 
@@ -92,7 +91,7 @@ def test_interrupt_worker_double_sigint(worker, p_flags):
     assert job["status"] == "started"
 
     # Sending a second kill -2 should make it stop
-    worker.stop(block=True, deps=False, force=True)
+    os.kill(worker.process.pid, 2)
 
     while Job(job_id).fetch().data["status"] == "started":
         time.sleep(0.1)
@@ -356,8 +355,10 @@ def test_interrupt_maxconcurrency(worker):
     assert set(job_statuses) == set(["success", "maxconcurrency"])
 
     # the job concurrency key must be equal to 0
-    last_job_id = worker.send_task("tests.tasks.concurrency.LockedAdd",
-        {"a": 1, "b": 1, "sleep": 2}, block=False
+    last_job_id = worker.send_task(
+        "tests.tasks.concurrency.LockedAdd",
+        {"a": 1, "b": 1, "sleep": 2},
+        block=False
     )
 
     last_job = Job(last_job_id).wait(poll_interval=0.01)

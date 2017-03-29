@@ -22,7 +22,7 @@ from .job import Job
 from .exceptions import (TimeoutInterrupt, StopRequested, JobInterrupt, AbortInterrupt,
                          RetryInterrupt, MaxRetriesInterrupt, MaxConcurrencyInterrupt)
 from .context import (set_current_worker, set_current_job, get_current_job, get_current_config,
-                      connections, enable_greenlet_tracing)
+                      connections, enable_greenlet_tracing, run_task)
 from .queue import Queue
 from .utils import MongoJSONEncoder, MovingAverage
 from .processes import Process
@@ -100,6 +100,9 @@ class Worker(Process):
             "tasks": defaultdict(float),
             "total": 0
         }
+
+        if self.config["ensure_indexes"]:
+            run_task("mrq.basetasks.indexes.EnsureIndexes", {})
 
     @property
     def config(self):

@@ -144,8 +144,6 @@ def test_orchestration_scenarios(worker):
         "worker2": ["MRQ_WORKER_PROFILE=a mrq-worker a"]
     }
 
-    worker.stop()
-
 
 def test_agent_process(worker):
 

@@ -100,6 +100,7 @@ class ProcessFixture(object):
         # Call this only one time.
         if self.stopped and not force:
             return
+
         self.stopped = True
         self.started = False
 

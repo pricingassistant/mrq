@@ -338,6 +338,12 @@ def add_parser_args(parser, config_type):
             help='Run the scheduler')
 
         parser.add_argument(
+            '--ensure_indexes',
+            default=False,
+            action='store_true',
+            help='Ensures the internal MongoDB indexes of MRQ are built, or does so in the background')
+
+        parser.add_argument(
             '--scheduler_interval',
             default=60,
             action='store',

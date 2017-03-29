@@ -29,8 +29,6 @@ def test_max_memory_restart(worker):
     # We must have been restarted at least once.
     assert worker.mongodb_jobs.mrq_workers.find().count() > 1
 
-    worker.stop()
-
 
 def get_diff_after_jobs(worker, n_tasks, leak, sleep=0):
 

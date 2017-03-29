@@ -21,5 +21,3 @@ def test_progress(worker, p_save):
     time.sleep(7)
 
     assert worker.mongodb_jobs.mrq_jobs.find()[0]["progress"] == 1
-
-    worker.stop()
