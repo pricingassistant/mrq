@@ -67,14 +67,20 @@ def test_scheduler_simple(worker, p_flags):
 @pytest.mark.parametrize(["p_flags"], PROCESS_CONFIGS)
 def test_scheduler_dailytime(worker, p_flags):
 
+    now = time.time()
+
     # Task is scheduled in 3 seconds
-    worker.start(
-        flags="--scheduler --config tests/fixtures/config-scheduler3.py %s" % p_flags,
-        env={
-            # We need to pass this in the environment so that each worker has the
-            # exact same hash
-            "MRQ_TEST_SCHEDULER_TIME": str(time.time() + 10)
-        })
+    def _start(deps=True):
+        worker.start(
+            flags="--scheduler --config tests/fixtures/config-scheduler3.py %s" % p_flags,
+            deps=deps,
+            env={
+                # We need to pass this in the environment so that each worker has the
+                # exact same hash
+                "MRQ_TEST_SCHEDULER_TIME": str(now + 10)
+            })
+
+    _start(deps=True)
 
     collection = worker.mongodb_jobs.tests_inserts
 
@@ -92,6 +98,18 @@ def test_scheduler_dailytime(worker, p_flags):
 
     # Nothing more should happen today
     time.sleep(5)
+    assert collection.find().count() == 2
+    assert collection.find({"params.b": "test"}).count() == 1
+
+    # .. even if we restart
+    worker.stop(deps=False)
+
+    time.sleep(1)
+
+    _start(deps=False)
+
+    time.sleep(5)
+
     assert collection.find().count() == 2
     assert collection.find({"params.b": "test"}).count() == 1
 
