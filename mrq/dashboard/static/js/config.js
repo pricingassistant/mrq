@@ -19,8 +19,7 @@ require.config({
     sparkline: "/static/js/vendor/jquery.sparkline.min"
   },
 
-  urlArgs: "bust=" +  (new Date()).getTime(),
-
+  // urlArgs: "bust=" +  (new Date()).getTime(),
 
   shim: {
 
