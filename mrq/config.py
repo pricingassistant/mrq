@@ -268,6 +268,13 @@ def add_parser_args(parser, config_type):
                  ' Temp workaround for memory leaks')
 
         parser.add_argument(
+            '--max_time',
+            default=0.0,
+            type=float,
+            action='store',
+            help='Max time a worker should run before quitting.')
+
+        parser.add_argument(
             '--max_memory',
             default=0,
             type=int,

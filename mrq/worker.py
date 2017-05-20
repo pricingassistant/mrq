@@ -15,7 +15,6 @@ import psutil
 import sys
 import json as json_stdlib
 import ujson as json
-import http.server
 from bson import ObjectId
 from collections import defaultdict
 
@@ -53,6 +52,7 @@ class Worker(object):
 
         self.done_jobs = 0
         self.max_jobs = self.config["max_jobs"]
+        self.max_time = datetime.timedelta(seconds=self.config["max_time"]) or None
 
         self.connected = False  # MongoDB + Redis
 
@@ -419,7 +419,7 @@ class Worker(object):
         """
         self.work_init()
 
-        self.work_loop(max_jobs=self.max_jobs)
+        self.work_loop(max_jobs=self.max_jobs, max_time=self.max_time)
 
         return self.work_stop()
 
@@ -449,7 +449,7 @@ class Worker(object):
 
         self.install_signal_handlers()
 
-    def work_loop(self, max_jobs=None):
+    def work_loop(self, max_jobs=None, max_time=None):
 
         self.done_jobs = 0
         self.idle_wait_count = 0
@@ -459,6 +459,7 @@ class Worker(object):
         try:
 
             queue_offset = 0
+            max_time_reached = False
 
             while True:
 
@@ -471,6 +472,12 @@ class Worker(object):
                     break
 
                 while True:
+
+                    # we put this here to make sure we have a strict limit on max_time
+                    if max_time and datetime.datetime.utcnow() - self.datestarted >= max_time:
+                        self.log.info("Reached max_time=%s" % max_time.seconds)
+                        max_time_reached = True
+                        break
 
                     free_pool_slots = self.gevent_pool.free_count()
 
@@ -486,6 +493,9 @@ class Worker(object):
                         break
                     self.status = "full"
                     gevent.sleep(0.01)
+
+                if max_time_reached:
+                    break
 
                 jobs = []
 
@@ -561,7 +571,6 @@ class Worker(object):
 
                 self.log.debug("Joining the greenlet pool...")
                 self.status = "join"
-
                 self.gevent_pool.join(timeout=None, raise_error=False)
                 self.log.debug("Joined.")
 

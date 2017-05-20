@@ -290,7 +290,7 @@ def api_job_result(job_id):
 @app.route('/api/job/<job_id>/traceback')
 @requires_auth
 def api_job_traceback(job_id):
-    collection = connections.mongodb_jobs.mrq_jobss
+    collection = connections.mongodb_jobs.mrq_jobs
     if get_current_config().get("save_traceback_history"):
 
         field_sent = "traceback_history"
