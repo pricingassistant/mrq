@@ -44,7 +44,7 @@ def test_scheduler_simple(worker, p_flags):
 
     collection.remove({})
 
-    scheduled_jobs.update_many({}, {"$set": {"datelastqueued": datetime.datetime.utcnow()}})
+    scheduled_jobs.update_many({}, {"$set": {"datelastqueued": datetime.datetime.utcnow() + timedelta(seconds=10)}})
 
     # Start with new config
     worker.start(
@@ -112,6 +112,26 @@ def test_scheduler_dailytime(worker, p_flags):
 
     assert collection.find().count() == 2
     assert collection.find({"params.b": "test"}).count() == 1
+
+
+def test_scheduler_dailytime_with_datelastqueued(worker):
+    now = time.time()
+    worker.start(
+        flags="--scheduler --config tests/fixtures/config-scheduler3.py",
+        env={
+            # We need to pass this in the environment so that each worker has the
+            # exact same hash
+            "MRQ_TEST_SCHEDULER_TIME": str(now - 100 - 3600 * 24)
+        })
+    time.sleep(7)
+    print(list(worker.mongodb_jobs.tests_inserts.find()))
+    assert len(list(worker.mongodb_jobs.tests_inserts.find())) == 2
+    # pretend first run was yesterday at time(now) + 200s
+    datelastqueued = datetime.datetime.fromtimestamp(now - 3600*24 + 200)
+    worker.mongodb_jobs.mrq_scheduled_jobs.update({"params.b": "test"}, {"$set": {'datelastqueued': datelastqueued}})
+    time.sleep(3)
+    # task is ran
+    assert len(list(worker.mongodb_jobs.tests_inserts.find())) == 3
 
 
 def test_scheduler_weekday_dailytime(worker):
