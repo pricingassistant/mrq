@@ -91,7 +91,8 @@ class Scheduler(object):
 
             interval = datetime.timedelta(seconds=task["interval"])
 
-            last_time = now - interval
+            if task["datelastqueued"] >= now:
+                continue
 
             if task.get("monthday", current_monthday) != current_monthday:
                 continue
@@ -103,19 +104,22 @@ class Scheduler(object):
                 if task["datelastqueued"].date() == now.date() or now.time() < task["dailytime"].time():
                     continue
 
-            if task["datelastqueued"] <= last_time:
+            # if we only have "interval" key
+            if all(k not in task for k in ["monthday", "weekday", "dailytime"]):
+                if now - task["datelastqueued"] < interval:
+                    continue
 
-                queue_job(
-                    task["path"],
-                    task.get("params") or {},
-                    queue=task.get("queue")
-                )
+            queue_job(
+                task["path"],
+                task.get("params") or {},
+                queue=task.get("queue")
+            )
 
-                self.collection.update({"_id": task["_id"]}, {"$set": {
-                    "datelastqueued": now
-                }})
+            self.collection.update({"_id": task["_id"]}, {"$set": {
+                "datelastqueued": now
+            }})
 
-                log.debug("Scheduler: queued %s" % _hash_task(task))
+            log.debug("Scheduler: queued %s" % _hash_task(task))
 
         # Make sure we never again execute a scheduler with the same exact second.
         time.sleep(1)
