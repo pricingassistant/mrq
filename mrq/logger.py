@@ -115,7 +115,10 @@ class LogHandler(object):
             self.collection.insert(inserts, w=w)
         except Exception as e:  # pylint: disable=broad-except
             from mrq.context import get_current_worker
-            self.log("debug", "Log insert failed: %s" % e, worker=get_current_worker())
+            worker = get_current_worker()
+            if not worker is None:
+                worker = worker.id
+            self.log("debug", "Log insert failed: %s" % e, worker=worker)
 
 
 class Logger(object):
