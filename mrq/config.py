@@ -288,6 +288,13 @@ def add_parser_args(parser, config_type):
             type=float,
             help='Seconds between agent reports to MongoDB')
 
+        parser.add_argument(
+            '--autoscaling_taskpath',
+            default=None,
+            action='store',
+            type=str,
+            help='Path to a task that can perform autoscaling actions during orchestration')
+
     # Worker-specific args
     elif config_type == "worker":
 

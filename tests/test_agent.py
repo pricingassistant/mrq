@@ -144,6 +144,34 @@ def test_orchestration_scenarios(worker):
         "worker2": ["MRQ_WORKER_PROFILE=a mrq-worker a"]
     }
 
+    # Worker diversity enforced under constraints
+    assert scenario({
+        "a": {
+            "command": "mrq-worker a",
+            "memory": 1,
+            "cpu": 1,
+            "min_count": 3
+        },
+        "b": {
+            "command": "mrq-worker b",
+            "memory": 1,
+            "cpu": 1,
+            "min_count": 1
+        }
+    }, [
+        {
+            "_id": "worker1",
+            "total_cpu": 2,
+            "total_memory": 2,
+            "desired_workers": ["mrq-worker a", "mrq-worker a"]
+        }
+    ]) == {
+        "worker1": [
+            "MRQ_WORKER_PROFILE=a mrq-worker a",
+            "MRQ_WORKER_PROFILE=b mrq-worker b"
+        ]
+    }
+
 
 def test_agent_process(worker):
 
@@ -192,7 +220,7 @@ def test_agent_process(worker):
 
 def test_agent_autoscaling(worker):
 
-    worker.start(agent=True, flags="--worker_group xxx --total_memory=500 --total_cpu=500 --orchestrate_interval=1 --report_interval=1")
+    worker.start(agent=True, flags="--worker_group xxx --total_memory=500 --total_cpu=500 --orchestrate_interval=1 --report_interval=1  --autoscaling_taskpath tests.tasks.agent.Autoscale")
 
     connections.mongodb_jobs.mrq_workergroups.insert_one({"_id": "xxx", "profiles": {
         "a": {
@@ -210,6 +238,9 @@ def test_agent_autoscaling(worker):
 
     assert connections.mongodb_jobs.mrq_workers.count({"status": {"$in": ["wait", "spawn"]}}) == 1
     assert connections.mongodb_jobs.mrq_workers.count() == 1
+
+    # Inserted by the autoscaling task
+    assert connections.mongodb_jobs.tests_inserts.count() > 0
 
     # Send 2 tasks with sleep(1) each second. That should not trigger an autoscale
     for i in range(10):

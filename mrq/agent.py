@@ -1,4 +1,4 @@
-from .context import get_current_config, connections, log
+from .context import get_current_config, connections, log, run_task
 import time
 import datetime
 import gevent
@@ -109,10 +109,17 @@ class Agent(Process):
     def greenlet_orchestrate(self):
 
         while True:
+
+            orchestrated = False
+
             with LuaLock(connections.redis, self.redis_orchestrator_lock_key,
-                         timeout=self.config["orchestrate_interval"] + 10, thread_local=False, blocking=False):
+                         timeout=self.config["orchestrate_interval"] * 2 + 10, thread_local=False, blocking=False):
                 self.orchestrate()
-            time.sleep(self.config["orchestrate_interval"])
+                orchestrated = True
+                time.sleep(self.config["orchestrate_interval"])
+
+            if not orchestrated:
+                time.sleep(self.config["orchestrate_interval"])
 
     @property
     def redis_orchestrator_lock_key(self):
@@ -204,13 +211,66 @@ class Agent(Process):
                     needs_new_agents = True
                     break
 
+        # Worker diversity enforcement: if we are under-scaled, make sure that at least one worker
+        # of each profile is launched. if not, make space forcefully on other workers.
+        if needs_new_agents:
+
+            all_profiles = defaultdict(int)
+            for agent in agents:
+                for w in agent["new_desired_workers"]:
+                    all_profiles[w] += 1
+
+            removable = sorted([list(x) for x in all_profiles.iteritems() if x[1] > 1], key=lambda item: item[1], reverse=True)
+
+            for profile in desired_workers:
+                if desired_workers[profile]["desired_count"] == 0:
+                    continue
+                if profile not in all_profiles:
+                    found = False
+                    # This profile is not currently represented in the workers. Make some space for it.
+                    for rem in removable:
+                        for agent in agents:
+                            for i in range(len(agent["new_desired_workers"])):
+                                if agent["new_desired_workers"][i] == rem[0] and rem[1] > 1:
+                                    agent["new_desired_workers"][i] = None
+                                    agent["free_cpu"] += desired_workers[rem[0]]["cpu"]
+                                    agent["free_memory"] += desired_workers[rem[0]]["memory"]
+                                    rem[1] -= 1
+                                if desired_workers[profile]["cpu"] <= agent["free_cpu"] and desired_workers[profile]["memory"] <= agent["free_memory"]:
+                                    log.debug("Orchestration: enforcing worker diversity with %s => %s" % (rem[0], profile))
+                                    agent["new_desired_workers"].append(profile)
+                                    agent["free_cpu"] -= desired_workers[profile]["cpu"]
+                                    agent["free_memory"] -= desired_workers[profile]["memory"]
+                                    found = True
+                                    break
+
+                            agent["new_desired_workers"] = [x for x in agent["new_desired_workers"] if x is not None]
+                            if found:
+                                break
+
+                        if found:
+                            break
+
+                    if not found:
+                        log.debug("Orchestration couldn't enforce worker diversity for profile '%s'" % profile)
+
+        # User-provided autoscaling task
+        if self.config.get("autoscaling_taskpath"):
+            result = run_task(self.config["autoscaling_taskpath"], {
+                "agents": agents,
+                "needs_new_agents": needs_new_agents,
+                "worker_group": self.worker_group
+            })
+            needs_new_agents = result["needs_new_agents"]
+            agents = result["agents"]
+
+        # Save the new values in the DB. They will be applied by each agent process.
         connections.mongodb_jobs.worker_groups.update_one({"_id": self.worker_group}, {"$set": {
             "needs_new_agents": needs_new_agents
         }})
 
         for agent in agents:
             if sorted(agent["new_desired_workers"]) != sorted(agent.get("desired_workers", [])):
-                # Commit the changes in DB
                 connections.mongodb_jobs.mrq_agents.update_one({"_id": agent["_id"]}, {"$set": {
                     "desired_workers": agent["new_desired_workers"],
                     "free_cpu": agent["free_cpu"],
