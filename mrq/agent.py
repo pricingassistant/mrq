@@ -7,6 +7,7 @@ import shlex
 import random
 import math
 import re
+import traceback
 from collections import defaultdict
 from bson import ObjectId
 from redis.lock import LuaLock
@@ -114,7 +115,13 @@ class Agent(Process):
 
             with LuaLock(connections.redis, self.redis_orchestrator_lock_key,
                          timeout=self.config["orchestrate_interval"] * 2 + 10, thread_local=False, blocking=False):
-                self.orchestrate()
+
+                try:
+                    self.orchestrate()
+                except Exception, e:
+                    log.error("Orchestration error! %s" % e)
+                    traceback.print_exc()
+
                 orchestrated = True
                 time.sleep(self.config["orchestrate_interval"])
 
