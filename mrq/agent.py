@@ -92,7 +92,10 @@ class Agent(Process):
 
         # If the desired_workers was changed by an orchestrator, apply the changes locally
         if self.status != "stop" and sorted(db.get("desired_workers", [])) != sorted(self.pool.desired_commands):
-            self.pool.set_commands(db.get("desired_workers", []))
+
+            group = self.fetch_worker_group_definition()
+            process_termination_timeout = float(group.get("process_termination_timeout") or 60)
+            self.pool.set_commands(db.get("desired_workers", []), timeout=process_termination_timeout)
 
     def get_agent_report(self):
         report = {
