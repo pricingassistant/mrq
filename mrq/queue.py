@@ -1,6 +1,6 @@
 from __future__ import division
 
-from future.builtins import str, object
+from future.builtins import bytes, str, object
 
 import time
 from bson import ObjectId
@@ -9,7 +9,6 @@ from . import job as jobmodule
 import binascii
 
 import sys
-from future.builtins import bytes
 from future import standard_library
 
 PY3 = sys.version_info > (3,)
@@ -147,14 +146,14 @@ class Queue(object):
             with an accuracy of ~1 day
         """
         return {
-            str(value): int(score)
+            value.decode("utf-8"): int(score)
             for value, score in context.connections.redis.zrange(cls.redis_key_known_queues(), 0, -1, withscores=True)
         }
 
     @classmethod
     def redis_paused_queues(cls):
         """ Returns the set of currently paused queues """
-        return {str(q) for q in context.connections.redis.smembers(cls.redis_key_paused_queues())}
+        return {q.decode("utf-8") for q in context.connections.redis.smembers(cls.redis_key_paused_queues())}
 
     @classmethod
     def instanciate_queues(cls, queue_list, with_subqueues=True, refresh_known_queues=True, add_to_known_queues=True):
