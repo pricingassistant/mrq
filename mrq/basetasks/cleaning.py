@@ -210,7 +210,7 @@ class MigrateKnownQueues(Task):
     def run(self, params):
         key = "%s:known_queues" % get_current_config()["redis_prefix"]
         for queue in connections.redis.smembers(key):
-            Queue(queue).add_to_known_queues()
+            Queue(str(queue)).add_to_known_queues()
 
 
 class CleanKnownQueues(Task):

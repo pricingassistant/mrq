@@ -44,7 +44,7 @@ def test_scheduler_simple(worker, p_flags):
 
     collection.remove({})
 
-    scheduled_jobs.update_many({}, {"$set": {"datelastqueued": datetime.datetime.utcnow() + timedelta(seconds=10)}})
+    scheduled_jobs.update_many({}, {"$set": {"datelastqueued": datetime.datetime.utcnow() + datetime.timedelta(seconds=10)}})
 
     # Start with new config
     worker.start(

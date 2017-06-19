@@ -1,6 +1,6 @@
 from __future__ import division
 
-from future.builtins import range, object
+from future.builtins import str, object
 
 import time
 from bson import ObjectId
@@ -147,14 +147,14 @@ class Queue(object):
             with an accuracy of ~1 day
         """
         return {
-            value: int(score)
+            str(value): int(score)
             for value, score in context.connections.redis.zrange(cls.redis_key_known_queues(), 0, -1, withscores=True)
         }
 
     @classmethod
     def redis_paused_queues(cls):
         """ Returns the set of currently paused queues """
-        return context.connections.redis.smembers(cls.redis_key_paused_queues())
+        return {str(q) for q in context.connections.redis.smembers(cls.redis_key_paused_queues())}
 
     @classmethod
     def instanciate_queues(cls, queue_list, with_subqueues=True, refresh_known_queues=True, add_to_known_queues=True):
@@ -224,11 +224,11 @@ class Queue(object):
 
     @classmethod
     def all_active(cls):
-        """ List active queues, based on their lengths in Redis. """
+        """ List active queues, based on their lengths in Redis. Warning, uses the unscalable KEYS redis command """
 
         prefix = context.get_current_config()["redis_prefix"]
         queues = []
-        for key in context.connections.redis:
+        for key in context.connections.redis.keys():
             if key.startswith(prefix):
                 queues.append(Queue(key[len(prefix) + 3:]))
 

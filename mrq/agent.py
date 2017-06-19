@@ -121,7 +121,7 @@ class Agent(Process):
 
                 try:
                     self.orchestrate()
-                except Exception, e:
+                except Exception as e:
                     log.error("Orchestration error! %s" % e)
                     traceback.print_exc()
 
@@ -230,7 +230,7 @@ class Agent(Process):
                 for w in agent["new_desired_workers"]:
                     all_profiles[w] += 1
 
-            removable = sorted([list(x) for x in all_profiles.iteritems() if x[1] > 1], key=lambda item: item[1], reverse=True)
+            removable = sorted([list(x) for x in all_profiles.items() if x[1] > 1], key=lambda item: item[1], reverse=True)
 
             for profile in desired_workers:
                 if desired_workers[profile]["desired_count"] == 0:
