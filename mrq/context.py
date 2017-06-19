@@ -129,7 +129,7 @@ def _connections_factory(attr):
                 password=redis_url.password,
                 max_connections=int(config.get("redis_max_connections")),
                 timeout=int(config.get("redis_timeout")),
-                decode_responses=True
+                decode_responses=False
             )
             return pyredis.StrictRedis(connection_pool=redis_pool)
 

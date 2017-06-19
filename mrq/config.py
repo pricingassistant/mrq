@@ -318,8 +318,8 @@ def add_parser_args(parser, config_type):
             default=0,
             type=int,
             action='store',
-            help='Max memory (in Mb) after which the process will be shut down. Use with --processes [1-N]' +
-                 'to have supervisord automatically respawn the worker when this happens')
+            help='Max memory (in Mb) after which the process will be shut down. Use with mrq-agent' +
+                 'to automatically respawn the worker when this happens')
 
         parser.add_argument(
             '--greenlets',
