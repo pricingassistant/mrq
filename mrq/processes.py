@@ -151,8 +151,13 @@ class ProcessPool(object):
             if status in ("zombie", "dead"):
                 process["dead"] = True
             elif process.get("terminate_at"):
-                if time.time() > process["terminate_at"]:
+                if time.time() > (process["terminate_at"] + 5):
+                    log.warning("Process %s had to be sent SIGKILL" % (process["pid"], ))
+                    process["subprocess"].send_signal(signal.SIGKILL)
+                elif time.time() > process["terminate_at"]:
+                    log.warning("Process %s had to be sent SIGTERM" % (process["pid"], ))
                     process["subprocess"].send_signal(signal.SIGTERM)
+
         else:
             if status in ("zombie", "dead"):
                 # Restart a new process right away (TODO: sleep a bit? max retries?)

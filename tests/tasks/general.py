@@ -8,6 +8,7 @@ from mrq.job import queue_job
 import urllib.request, urllib.error, urllib.parse
 import json
 import time
+import random
 import copy
 from mrq.utils import MongoJSONEncoder
 
@@ -73,6 +74,13 @@ class Leak(Task):
             time.sleep(params.get("sleep", 0))
 
         return params.get("return")
+
+
+# Dangerous task! Will block a CPU forever. Must be interrupted by force.
+class CPULoop(Task):
+    def run(self, params):
+        while True:
+            pass
 
 
 class Retry(Task):

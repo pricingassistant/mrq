@@ -31,10 +31,15 @@ class Agent(Process):
         self.config = get_current_config()
         self.status = "started"
 
+        self.dateorchestrated = None
+
     def work(self):
 
         self.install_signal_handlers()
         self.datestarted = datetime.datetime.utcnow()
+
+        self.pool.start()
+        self.manage()
 
         self.greenlets["orchestrate"] = gevent.spawn(self.greenlet_orchestrate)
         self.greenlets["orchestrate"].start()
@@ -44,8 +49,6 @@ class Agent(Process):
 
         self.greenlets["queuestats"] = gevent.spawn(self.greenlet_queuestats)
         self.greenlets["queuestats"].start()
-
-        self.pool.start()
 
         try:
             self.pool.wait()
@@ -104,6 +107,7 @@ class Agent(Process):
             "total_memory": get_current_config()["total_memory"],
             "worker_group": self.worker_group,
             "status": self.status,
+            "dateorchestrated": self.dateorchestrated,
             "datestarted": self.datestarted,
             "datereported": datetime.datetime.utcnow(),
             "dateexpires": datetime.datetime.utcnow() + datetime.timedelta(seconds=(self.config["report_interval"] * 3) + 5)
@@ -286,6 +290,9 @@ class Agent(Process):
                     "free_cpu": agent["free_cpu"],
                     "free_memory": agent["free_memory"]
                 }})
+
+        # Remember the date of the last successful orchestration (will be reported)
+        self.dateorchestrated = datetime.datetime.utcnow()
 
         log.debug("Orchestration finished.")
 

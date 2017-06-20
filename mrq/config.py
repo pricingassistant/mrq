@@ -400,6 +400,20 @@ def add_parser_args(parser, config_type):
             help='Worker profile used by the agent to launch this worker')
 
         parser.add_argument(
+            '--task_whitelist',
+            default="",
+            action='store',
+            type=str,
+            help='Comma-separated list of task paths to do exclusively on this worker. Only for regular queues.')
+
+        parser.add_argument(
+            '--task_blacklist',
+            default="",
+            action='store',
+            type=str,
+            help='Comma-separated list of task paths to do exclude from this worker. Only for regular queues.')
+
+        parser.add_argument(
             'queues',
             nargs='*',
             default=["default"],

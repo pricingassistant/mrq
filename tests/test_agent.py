@@ -1,6 +1,8 @@
 from mrq.agent import Agent
 from mrq.context import connections
 import time
+from mrq.job import Job, get_job_result
+import psutil
 
 
 def scenario(profiles, agents):
@@ -276,3 +278,79 @@ def test_agent_autoscaling(worker):
 
     # We should be back to 1 or 2
     assert connections.mongodb_jobs.mrq_workers.count({"status": {"$in": ["wait", "spawn", "full"]}}) < 3
+
+
+def test_agent_force_terminate(worker):
+
+    worker.start(agent=True, flags="--worker_group xxx --total_memory=500 --total_cpu=500 --orchestrate_interval=1 --report_interval=1")
+
+    #
+    # First, test interrupting a worker doing only a sleeping process.
+    #
+
+    connections.mongodb_jobs.mrq_workergroups.insert_one({"_id": "xxx", "profiles": {
+        "a": {
+            "command": "mrq-worker default --report_interval=60",
+            "memory": 100,
+            "cpu": 100,
+            "min_count": 1
+        }
+    }, "process_termination_timeout": 1})
+
+    time.sleep(5)
+
+    job1 = worker.send_task("tests.tasks.general.Add", {"a": 41, "b": 2, "sleep": 100}, block=False)
+
+    time.sleep(3)
+
+    res1 = get_job_result(job1)
+    assert res1["status"] == "started"
+
+    connections.mongodb_jobs.mrq_workergroups.update_one({"_id": "xxx"}, {"$set": {"profiles": {
+        "a": {
+            "command": "mrq-worker otherqueue --report_interval=60",
+            "memory": 100,
+            "cpu": 100,
+            "min_count": 1
+        }
+    }, "process_termination_timeout": 1}})
+
+    time.sleep(5)
+
+    res1 = get_job_result(job1)
+    assert res1["status"] == "interrupt"
+
+    #
+    # Then, test interrupting an infinite-looping task
+    #
+
+    job2 = worker.send_task("tests.tasks.general.CPULoop", {}, block=False, queue="otherqueue")
+
+    time.sleep(3)
+
+    res2 = get_job_result(job2)
+    assert res2["status"] == "started"
+
+    pids_before_sigkill = psutil.pids()
+
+    connections.mongodb_jobs.mrq_workergroups.update_one({"_id": "xxx"}, {"$set": {"profiles": {
+        "a": {
+            "command": "mrq-worker otherqueue2 --report_interval=60",
+            "memory": 100,
+            "cpu": 100,
+            "min_count": 1
+        }
+    }, "process_termination_timeout": 1}})
+
+    # SIGKILL is sent after 5 seconds
+    time.sleep(10)
+
+    # Because we are SIGKILLing, the job won't even be marked as interrupt!
+    res2 = get_job_result(job2)
+    assert res2["status"] == "started"
+
+    # However, we make sure there is no leftover process and that the worker was replaced.
+    pids_after_sigkill = psutil.pids()
+
+    assert len(pids_after_sigkill) == len(pids_before_sigkill)
+    assert set(pids_after_sigkill) != set(pids_before_sigkill)

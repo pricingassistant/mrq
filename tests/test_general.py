@@ -5,6 +5,7 @@ from bson import ObjectId
 import urllib.request, urllib.error, urllib.parse
 import json
 import time
+from mrq.job import Job, get_job_result
 
 
 def test_general_simple_task_one(worker):
@@ -190,3 +191,41 @@ def test_general_exception_status(worker):
     assert job1["status"] == "failed"
     assert "raise" in job1["traceback"]
     assert "xyz" in job1["traceback"]
+
+
+def test_general_task_whitelist(worker):
+
+    worker.start(queues="default", flags="--task_whitelist tests.tasks.general.Add,tests.tasks.general.Square")
+
+    job1 = worker.send_task("tests.tasks.general.Add", {"a": 41, "b": 1}, block=False)
+    job2 = worker.send_task("tests.tasks.general.Square", {"n": 41}, block=False)
+    job3 = worker.send_task("tests.tasks.general.GetTime", {}, block=False)
+
+    time.sleep(3)
+
+    res1 = get_job_result(job1)
+    res2 = get_job_result(job2)
+    res3 = get_job_result(job3)
+
+    assert res1["status"] == "success"
+    assert res2["status"] == "success"
+    assert res3["status"] == "queued"
+
+
+def test_general_task_blacklist(worker):
+
+    worker.start(queues="default", flags="--task_blacklist tests.tasks.general.Add,tests.tasks.general.Square")
+
+    job1 = worker.send_task("tests.tasks.general.Add", {"a": 41, "b": 1}, block=False)
+    job2 = worker.send_task("tests.tasks.general.Square", {"n": 41}, block=False)
+    job3 = worker.send_task("tests.tasks.general.GetTime", {}, block=False)
+
+    time.sleep(3)
+
+    res1 = get_job_result(job1)
+    res2 = get_job_result(job2)
+    res3 = get_job_result(job3)
+
+    assert res1["status"] == "queued"
+    assert res2["status"] == "queued"
+    assert res3["status"] == "success"

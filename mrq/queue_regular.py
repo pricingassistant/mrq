@@ -1,10 +1,27 @@
 from .queue import Queue
 from . import context
 import datetime
+import copy
 from pymongo.collection import ReturnDocument
 
 
 class QueueRegular(Queue):
+
+    def __init__(self, *args, **kwargs):
+        Queue.__init__(self, *args, **kwargs)
+
+        self.base_dequeue_query = {
+            "status": "queued",
+            "queue": self.id
+        }
+
+        whitelist = context.get_current_config().get("task_whitelist", "").strip()
+        blacklist = context.get_current_config().get("task_blacklist", "").strip()
+
+        if whitelist:
+            self.base_dequeue_query["path"] = {"$in": [x.strip() for x in whitelist.split(",")]}
+        elif blacklist:
+            self.base_dequeue_query["path"] = {"$nin": [x.strip() for x in blacklist.split(",")]}
 
     @property
     def collection(self):
@@ -49,10 +66,7 @@ class QueueRegular(Queue):
         # Some jobs may have been stolen by another worker in the meantime but it's a balance (should we over-fetch?)
         if max_jobs > 5:
             job_ids = [x["_id"] for x in self.collection.find(
-                {
-                    "status": "queued",
-                    "queue": self.id
-                },
+                self.base_dequeue_query,
                 limit=max_jobs,
                 sort=sort_order,
                 projection={"_id": 1}
@@ -63,15 +77,13 @@ class QueueRegular(Queue):
 
         for i in range(max_jobs if job_ids is None else len(job_ids)):
 
-            query = {
-                "status": "queued",
-                "queue": self.id
-            }
             if job_ids is not None:
                 query = {
                     "status": "queued",
                     "_id": job_ids[i]
                 }
+            else:
+                query = self.base_dequeue_query
 
             job_data = self.collection.find_one_and_update(
                 query,
