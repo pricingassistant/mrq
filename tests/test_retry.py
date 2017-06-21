@@ -164,7 +164,7 @@ def test_retry_max_retries_zero(worker):
 
 def test_retry_traceback_history(worker):
 
-    worker.start(flags="--config tests/fixtures/config-tracebackhistory.py")
+    worker.start()
     # delay = 0 should requeue right away.
 
     worker.send_task(

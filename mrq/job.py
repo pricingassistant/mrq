@@ -469,9 +469,7 @@ class Job(object):
             exc = sys.exc_info()[0]
             db_updates["exceptiontype"] = exc.__name__
 
-            if context.get_current_config().get("save_traceback_history"):
-
-                self._save_traceback_history(status, trace, exc)
+            self._save_traceback_history(status, trace, exc)
 
         # In the most common case, we allow an optimization on Mongo writes
         if status == "success":
