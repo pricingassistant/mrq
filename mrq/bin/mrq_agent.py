@@ -1,16 +1,17 @@
 #!/usr/bin/env python
 import os
+import sys
+is_pypy = '__pypy__' in sys.builtin_module_names
 
 # Needed to make getaddrinfo() work in pymongo on Mac OS X
 # Docs mention it's a better choice for Linux as well.
 # This must be done asap in the worker
-if "GEVENT_RESOLVER" not in os.environ:
+if "GEVENT_RESOLVER" not in os.environ and not is_pypy:
     os.environ["GEVENT_RESOLVER"] = "ares"
 
 from gevent import monkey
-monkey.patch_all(subprocess=False)
+monkey.patch_all()
 
-import sys
 import argparse
 
 sys.path.insert(0, os.getcwd())

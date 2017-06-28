@@ -64,16 +64,16 @@ class QueueRegular(Queue):
 
         # MongoDB optimization: with many jobs it's faster to fetch the IDs first and do the atomic update second
         # Some jobs may have been stolen by another worker in the meantime but it's a balance (should we over-fetch?)
-        if max_jobs > 5:
-            job_ids = [x["_id"] for x in self.collection.find(
-                self.base_dequeue_query,
-                limit=max_jobs,
-                sort=sort_order,
-                projection={"_id": 1}
-            )]
+        # if max_jobs > 5:
+        #     job_ids = [x["_id"] for x in self.collection.find(
+        #         self.base_dequeue_query,
+        #         limit=max_jobs,
+        #         sort=sort_order,
+        #         projection={"_id": 1}
+        #     )]
 
-            if len(job_ids) == 0:
-                return
+        #     if len(job_ids) == 0:
+        #         return
 
         for i in range(max_jobs if job_ids is None else len(job_ids)):
 
@@ -82,6 +82,7 @@ class QueueRegular(Queue):
                     "status": "queued",
                     "_id": job_ids[i]
                 }
+                sort_order = None
             else:
                 query = self.base_dequeue_query
 

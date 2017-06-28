@@ -24,15 +24,20 @@ RUN apt-get update && \
     			make \
     			git \
     			vim \
+    			bzip2 \
 				mongodb-org \
 				nginx redis-server \
 	&& \
 	apt-get clean -y && \
 	rm -rf /var/lib/apt/lists/*
 
+# Download pypy
+RUN curl -sL 'https://bitbucket.org/squeaky/portable-pypy/downloads/pypy-5.8-1-linux_x86_64-portable.tar.bz2' > /pypy.tar.bz2 && tar jxvf /pypy.tar.bz2 && rm -rf /pypy.tar.bz2 && mv /pypy-* /pypy
+
 # Upgrade pip
 RUN pip install --upgrade --ignore-installed pip
 RUN pip3 install --upgrade --ignore-installed pip
+RUN /pypy/bin/pypy -m ensurepip
 
 ADD requirements-heroku.txt /app/requirements-heroku.txt
 ADD requirements-base.txt /app/requirements-base.txt
@@ -49,6 +54,12 @@ RUN pip install -r /app/requirements-heroku.txt && \
 	pip install -r /app/requirements-base.txt && \
 	pip install -r /app/requirements-dev.txt && \
 	pip install -r /app/requirements-dashboard.txt && \
+	rm -rf ~/.cache
+
+RUN /pypy/bin/pip install -r /app/requirements-heroku.txt && \
+	/pypy/bin/pip install -r /app/requirements-base.txt && \
+	/pypy/bin/pip install -r /app/requirements-dev.txt && \
+	/pypy/bin/pip install -r /app/requirements-dashboard.txt && \
 	rm -rf ~/.cache
 
 RUN mkdir -p /data/db

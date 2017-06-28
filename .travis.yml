@@ -6,6 +6,7 @@ services:
 env:
   - PYTHON_BIN=python
   - PYTHON_BIN=python3
+  - PYTHON_BIN=/pypy/bin/pypy
 
 before_install:
   - docker ps

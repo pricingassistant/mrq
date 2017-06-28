@@ -112,7 +112,7 @@ def benchmark_task(worker, taskpath, taskparams, tasks=1000, greenlets=50, proce
     return result, total_time
 
 
-@pytest.mark.parametrize(["p_processes"], [[0], [2]])
+@pytest.mark.parametrize(["p_processes"], [[0], [5]])
 def test_performance_simpleadds_regular(worker, p_processes):
 
     n_tasks = 10000
@@ -125,6 +125,7 @@ def test_performance_simpleadds_regular(worker, p_processes):
                                         [{"a": i, "b": 0, "sleep": 0}
                                             for i in range(n_tasks)],
                                         tasks=n_tasks,
+                                        profile=False,
                                         greenlets=n_greenlets,
                                         processes=n_processes,
                                         max_seconds=max_seconds)

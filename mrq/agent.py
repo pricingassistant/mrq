@@ -47,8 +47,9 @@ class Agent(Process):
         self.greenlets["manage"] = gevent.spawn(self.greenlet_manage)
         self.greenlets["manage"].start()
 
-        self.greenlets["queuestats"] = gevent.spawn(self.greenlet_queuestats)
-        self.greenlets["queuestats"].start()
+        # Disabled for now
+        # self.greenlets["queuestats"] = gevent.spawn(self.greenlet_queuestats)
+        # self.greenlets["queuestats"].start()
 
         try:
             self.pool.wait()

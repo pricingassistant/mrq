@@ -2,18 +2,20 @@
 from __future__ import print_function
 
 import os
+import sys
+is_pypy = '__pypy__' in sys.builtin_module_names
 
 # Needed to make getaddrinfo() work in pymongo on Mac OS X
 # Docs mention it's a better choice for Linux as well.
 # This must be done asap in the worker
-if "GEVENT_RESOLVER" not in os.environ:
+
+if "GEVENT_RESOLVER" not in os.environ and not is_pypy:
     os.environ["GEVENT_RESOLVER"] = "ares"
 
 # We must still monkey-patch the methods for job sub-pools.
 from gevent import monkey
 monkey.patch_all()
 
-import sys
 import argparse
 import ujson as json
 import json as json_stdlib
