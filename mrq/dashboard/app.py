@@ -270,7 +270,7 @@ def api_datatables(unit):
 
         fields = None
         query = build_api_datatables_query(request)
-        sort = [("_id", 1)]
+        sort = None  # TODO [("_id", 1)]
 
         # We can't search easily params because we store it as decoded JSON in mongo :(
         # Add a string index?
