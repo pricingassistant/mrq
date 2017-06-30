@@ -132,17 +132,19 @@ class WorkerFixture(ProcessFixture):
         self.admin_port = kwargs.get("admin_port")
 
         self.started = False
+        self.agent = False
 
     def start(self, flush=True, deps=True, trace=True, agent=False, **kwargs):
 
         self.started = True
+        self.agent = agent
 
         if deps:
             self.start_deps(flush=flush)
 
         processes = 0
 
-        if agent:
+        if self.agent:
 
             cmdline = "%s mrq/bin/mrq_agent.py %s" % (PYTHON_BIN, kwargs.get("flags", ""))
 
@@ -171,7 +173,7 @@ class WorkerFixture(ProcessFixture):
         print(cmdline)
         ProcessFixture.start(self, cmdline=cmdline, env=env, expected_children=processes)
 
-        if not agent and not kwargs.get("block") is False:
+        if kwargs.get("block") is False:
             self.wait_for_idle()
 
     def start_deps(self, flush=True):
@@ -263,6 +265,10 @@ class WorkerFixture(ProcessFixture):
 
         if "--processes" in self.cmdline:
             print("Warning: wait_for_idle() doesn't support multiprocess workers yet")
+            return False
+
+        if self.agent:
+            print("Warning: wait_for_idle() doesn't support agent yet")
             return False
 
         if self.process.returncode is not None:

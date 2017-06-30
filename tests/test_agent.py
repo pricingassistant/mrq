@@ -189,7 +189,7 @@ def test_agent_process(worker):
 
     connections.mongodb_jobs.mrq_workergroups.insert_one({"_id": "xxx", "profiles": {
         "a": {
-            "command": "mrq-worker a --report_interval=1",
+            "command": "TEST_ENVVAR='&42' mrq-worker a --report_interval=1",
             "memory": 100,
             "cpu": 100,
             "min_count": 1
@@ -201,6 +201,10 @@ def test_agent_process(worker):
     assert connections.mongodb_jobs.mrq_workers.count() == 1
     w = connections.mongodb_jobs.mrq_workers.find_one()
     assert w["status"] in ("spawn", "wait")
+
+    ctx = worker.send_task("tests.tasks.context.GetContext", {}, queue="a")
+
+    assert ctx["environ"].get("TEST_ENVVAR") == "&42"
 
     connections.mongodb_jobs.mrq_workergroups.update_one({"_id": "xxx"}, {"$set": {"profiles": {}}})
 
