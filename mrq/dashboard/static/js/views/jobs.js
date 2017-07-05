@@ -105,6 +105,10 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
       var action = $(evt.target).data("action");
       var data = _.clone(this.filters);
 
+      if (action == "move") {
+        data["destination_queue"] = prompt("Enter destination queue");
+      }
+
       data["action"] = action;
       self.jobaction(evt, data);
 
