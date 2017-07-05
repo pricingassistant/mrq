@@ -225,7 +225,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
 
       } else if (action == "move") {
 
-        var queue = prompt("Test");
+        var queue = prompt("Enter destination queue");
         if (queue != null && queue != "")
         {
           self.jobaction(evt, {
