@@ -5,7 +5,7 @@ import datetime
 from bson import ObjectId
 from redis.exceptions import LockError
 import time
-from .exceptions import RetryInterrupt, MaxRetriesInterrupt, AbortInterrupt, MaxConcurrencyInterrupt, MovedInterrupt
+from .exceptions import RetryInterrupt, MaxRetriesInterrupt, AbortInterrupt, MaxConcurrencyInterrupt
 from .utils import load_class_by_path, group_iter
 import gevent
 import objgraph
