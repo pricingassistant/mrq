@@ -226,11 +226,14 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
       } else if (action == "move") {
 
         var queue = prompt("Test");
-        self.jobaction(evt, {
-          "id": job_id,
-          "action": action,
-          "destination_queue": queue
-        });
+        if (queue != null && queue != "")
+        {
+          self.jobaction(evt, {
+            "id": job_id,
+            "action": action,
+            "destination_queue": queue
+          });
+        }
 
       } else {
 
