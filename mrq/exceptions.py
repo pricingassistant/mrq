@@ -27,10 +27,6 @@ class AbortInterrupt(_MrqInterrupt):
     pass
 
 
-class MovedInterrupt(_MrqInterrupt):
-    pass
-
-
 class RetryInterrupt(_MrqInterrupt):
     delay = None
     queue = None

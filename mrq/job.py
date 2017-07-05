@@ -270,13 +270,6 @@ class Job(object):
             "retry_count": retry_count
         })
 
-    def move(self, queue=None, retry_count=0):
-        """ Cancel and requeues the current job in an other queue."""
-        exc = MovedInterrupt()
-        self._attach_original_exception(exc)
-        self.requeue(queue, retry_count)
-        raise exc
-
     def perform(self):
         """ Loads and starts the main task for this job, the saves the result. """
 
