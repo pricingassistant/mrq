@@ -355,6 +355,10 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
                   display.push("cputime "+String(source.time).substring(0,6)+"s ("+source.switches+" switches)");
                 }
 
+                if (source.retry_count) {
+                  display.push("retried " + String(source.retry_count) + " times");
+                }
+
                 return "<small>" + display.join("<br/>") + "</small>";
 
               } else {
