@@ -223,6 +223,15 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
         });
         self.refreshCallStack(job_id);
 
+      } else if (action == "move") {
+
+        var queue = prompt("Test");
+        self.jobaction(evt, {
+          "id": job_id,
+          "action": action,
+          "destination_queue": queue
+        });
+
       } else {
 
         self.jobaction(evt, {
@@ -392,6 +401,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
                   "<br/><br/>"+
                   "<button class='btn btn-xs btn-danger pull-right' data-action='cancel'><span class='glyphicon glyphicon-remove-circle'></span> Cancel</button>"+
                   "<button class='btn btn-xs btn-warning' data-action='requeue'><span class='glyphicon glyphicon-refresh'></span> Requeue</button>"+
+                  "<button class='btn btn-xs btn-warning' data-action='move'><span class='glyphicon glyphicon-refresh'></span> Move to...</button>"+
                 "</div>";
               }
               return "";

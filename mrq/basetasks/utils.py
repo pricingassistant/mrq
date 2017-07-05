@@ -98,6 +98,29 @@ class JobAction(Task):
             if list(query.keys()) == ["queue"]:
                 Queue(query["queue"]).empty()
 
+        elif action == "move":
+            cursor = self.collection.find(query, projection=["_id", "queue"])
+            fetched_jobs = list(cursor)
+            for jobs in group_iter(fetched_jobs, n=1000):
+                jobs_by_queue = defaultdict(list)
+                for job in jobs:
+                    jobs_by_queue[job["queue"]].append(job["_id"])
+                    stats["requeued"] += 1
+
+                for queue in jobs_by_queue:
+
+                    updates = {
+                        "status": "queued",
+                        "datequeued": datetime.datetime.utcnow(),
+                        "dateupdated": datetime.datetime.utcnow(),
+                        "queue": destination_queue,
+                        "retry_count": 0
+                    }
+
+                    self.collection.update({
+                        "_id": {"$in": jobs_by_queue[queue]}
+                    }, {"$set": updates}, multi=True)
+
         elif action in ("requeue", "requeue_retry"):
 
             # Requeue task by groups of maximum 1k items (if all in the same
