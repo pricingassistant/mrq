@@ -16,29 +16,34 @@ define(["jquery", "underscore", "models", "views/generic/page", "quicksettings"]
       self.$("button")[0].setAttribute('style', 'top:80px;left:10px;');
       self.workers_panel = []
 
-      self.command_panel = QuickSettings.create(50, 80, "Actions", self.$(_this.el)[0])
+      self.command_panel = QuickSettings.create(25, 80, "Actions", self.$(_this.el)[0])
+                                        .addButton("Add a Worker Group")
                                         .addButton("Save")
                                         .addButton("Reload")
-                                        .setWidth(100);
+                                        .setDraggable(false)
+                                        .setWidth(150);
 
       $.get("/api/workergroups").done(function(data) {
         var i = 0;
         _.forEach(data["workergroups"], function(workgroup, workgroup_name) {
-          var worker_panel = QuickSettings.create(200 + i * 350, 80, "Worker group configuration", self.$(_this.el)[0])
+          var worker_panel = QuickSettings.create(225 + i * 350, 80, "Worker group configuration", self.$(_this.el)[0])
                                           .addText("Workgroup Name", workgroup_name)
                                           .hideTitle("Workgroup Name")
+                                          .addButton("Remove this Worker Group")
+                                          .addText("Process Termination Timeout", workgroup["process_termination_timeout"])
                                           .setDraggable(false)
                                           .setHeight(850)
                                           .setWidth(300);
           _.forEach(workgroup["profiles"], function(profile, profile_name) {
-            worker_panel.addHTML("separator", "")
-                         .hideTitle("separator")
-                         .addText("Profile Name", profile_name)
-                         .addText("Memory", profile["memory"])
-                         .addRange("MinCount", 0, 100, profile["min_count"], 1)
-                         .addRange("MaxCount", 0, 100, profile["max_count"], 1)
-                         .addRange("CPU", 0, 1000, profile["cpu"], 100)
-                         .addTextArea("Command", profile["command"])
+            worker_panel.addHTML("separator", "<br>")
+                        .hideTitle("separator")
+                        .addText("Profile Name", profile_name)
+                        .addText("Memory", profile["memory"])
+                        .addText("CPU", profile["cpu"])
+                        .addRange("MinCount", 0, 100, profile["min_count"], 1)
+                        .addRange("MaxCount", 0, 100, profile["max_count"], 1)
+                        .addTextArea("Command", profile["command"])
+                        .addButton("Remove this Profile");
           });
           self.workers_panel.push(worker_panel);
           console.log(workgroup_name, workgroup);
