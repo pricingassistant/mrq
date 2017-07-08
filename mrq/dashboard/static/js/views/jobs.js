@@ -56,12 +56,12 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
       $.ajax("/api/job/"+jobId+"/traceback", {
         "type": "GET",
         "success": function(data) {
-          if (data["traceback"]) {
-            var stack = self.format_traceback(data["traceback"]);
+          if (data["traceback_history"]) {
+            var stack = self.format_traceback_history(data["traceback_history"]);
             self.$(".js-jobs-modal .js-jobs-modal-content").html(stack);
           }
           else {
-            var stack = self.format_traceback_history(data["traceback_history"]);
+            var stack = self.format_traceback(data["traceback"]);
             self.$(".js-jobs-modal .js-jobs-modal-content").html(stack);
           }
           self.$(".js-jobs-modal h4").html("Stack Trace");
