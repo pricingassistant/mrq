@@ -95,7 +95,7 @@ define(["jquery", "underscore", "models", "views/generic/page", "quicksettings"]
 
       data = {};
       _.forEach(this.workergroupPanels, function(panel) {
-        if (panel != null && panel != undefined )
+        if (panel != null && panel != undefined)
         {
           panelJSON = panel.getValuesAsJSON();
           workergroup = {
@@ -103,20 +103,23 @@ define(["jquery", "underscore", "models", "views/generic/page", "quicksettings"]
             "process_termination_timeout": parseInt(panelJSON["Process Termination Timeout"], 10)
           }
           _.forEach(_.range(1, panel.profilesNumber + 1), function(index) {
-            profile = {};
             header = "Profile " + String(index) + " - ";
-            profile["memory"] = parseInt(panelJSON[header + "Memory"], 10);
-            profile["cpu"] = parseInt(panelJSON[header + "CPU"], 10);
-            profile["min_count"] = parseInt(panelJSON[header + "MinCount"], 10);
-            profile["max_count"] = parseInt(panelJSON[header + "MaxCount"], 10);
-            profile["command"] = panelJSON[header + "Command"];
-            workergroup["profiles"][panelJSON[header + "Profile Name"]] = profile;
+            console.log(panelJSON[header + "Profile Name"])
+            if (panelJSON[header + "Profile Name"] != null && panelJSON[header + "Profile Name"] != "")
+            {
+              profile = {};
+              profile["memory"] = parseInt(panelJSON[header + "Memory"], 10);
+              profile["cpu"] = parseInt(panelJSON[header + "CPU"], 10);
+              profile["min_count"] = parseInt(panelJSON[header + "MinCount"], 10);
+              profile["max_count"] = parseInt(panelJSON[header + "MaxCount"], 10);
+              profile["command"] = panelJSON[header + "Command"];
+              workergroup["profiles"][panelJSON[header + "Profile Name"]] = profile;
+            }
           })
           data[panelJSON["Workgroup Name"]] = workergroup;
         }
       })
       console.log(data)
-      console.log(JSON.stringify(data))
 
       $.post("/api/workergroups", {"workergroups": JSON.stringify(data)}).done(function(result) {
         if (result.status != "ok") {
