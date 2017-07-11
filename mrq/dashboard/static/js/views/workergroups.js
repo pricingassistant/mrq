@@ -90,33 +90,38 @@ define(["jquery", "underscore", "models", "views/generic/page", "quicksettings"]
       }
     },
 
+    // Check for "continue" usage instead of nested ifs
     save: function() {
       this.commandPanel._controls["Status"].setValue("<font color=\"orange\">Saving...</font>");
 
       data = {};
       _.forEach(this.workergroupPanels, function(panel) {
-        if (panel != null && panel != undefined)
+        // Equivalent of python's "not in"
+        if ($.inArray(panel, [null, undefined]) == -1)
         {
           panelJSON = panel.getValuesAsJSON();
-          workergroup = {
-            "profiles" : {},
-            "process_termination_timeout": parseInt(panelJSON["Process Termination Timeout"], 10)
-          }
-          _.forEach(_.range(1, panel.profilesNumber + 1), function(index) {
-            header = "Profile " + String(index) + " - ";
-            console.log(panelJSON[header + "Profile Name"])
-            if (panelJSON[header + "Profile Name"] != null && panelJSON[header + "Profile Name"] != "")
-            {
-              profile = {};
-              profile["memory"] = parseInt(panelJSON[header + "Memory"], 10);
-              profile["cpu"] = parseInt(panelJSON[header + "CPU"], 10);
-              profile["min_count"] = parseInt(panelJSON[header + "MinCount"], 10);
-              profile["max_count"] = parseInt(panelJSON[header + "MaxCount"], 10);
-              profile["command"] = panelJSON[header + "Command"];
-              workergroup["profiles"][panelJSON[header + "Profile Name"]] = profile;
+          if ($.inArray(panelJSON["Workgroup Name"], [null, ""]) == -1)
+          {
+            workergroup = {
+              "profiles" : {},
+              "process_termination_timeout": parseInt(panelJSON["Process Termination Timeout"], 10)
             }
-          })
-          data[panelJSON["Workgroup Name"]] = workergroup;
+            _.forEach(_.range(1, panel.profilesNumber + 1), function(index) {
+              header = "Profile " + String(index) + " - ";
+              console.log(panelJSON[header + "Profile Name"])
+              if ($.inArray(panelJSON[header + "Profile Name"], [null, ""]) == -1)
+              {
+                profile = {};
+                profile["memory"] = parseInt(panelJSON[header + "Memory"], 10);
+                profile["cpu"] = parseInt(panelJSON[header + "CPU"], 10);
+                profile["min_count"] = parseInt(panelJSON[header + "MinCount"], 10);
+                profile["max_count"] = parseInt(panelJSON[header + "MaxCount"], 10);
+                profile["command"] = panelJSON[header + "Command"];
+                workergroup["profiles"][panelJSON[header + "Profile Name"]] = profile;
+              }
+            })
+            data[panelJSON["Workgroup Name"]] = workergroup;
+          }
         }
       })
       console.log(data)
