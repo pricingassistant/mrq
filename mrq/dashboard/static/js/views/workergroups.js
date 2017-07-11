@@ -56,6 +56,7 @@ define(["jquery", "underscore", "models", "views/generic/page", "quicksettings"]
       this.workergroupPanels.push(workerPanel);
       if (workergroup != null)
       {
+        this.serials[workergroupName] = workergroup["serial"]
         _.forEach(workergroup["profiles"], function(profile, profileName) {
           this.addProfileToPanel(workerPanel, profile, profileName);
         }, this);
@@ -79,10 +80,10 @@ define(["jquery", "underscore", "models", "views/generic/page", "quicksettings"]
     remove_profile: function() {
     },
 
-    reload: function() {
-      if (confirm('It will discard every changes that hasn\'t be saved. Are you sure?')) {
+    reload: function(force = false) {
+      if (force || confirm('It will discard every changes that hasn\'t be saved. Are you sure?')) {
         _.forEach(this.workergroupPanels, function(panel) {
-          if (panel != null && panel != undefined)
+          if (panel !== null && panel !== undefined)
             panel.destroy();
             delete panel;
         })
@@ -90,8 +91,10 @@ define(["jquery", "underscore", "models", "views/generic/page", "quicksettings"]
       }
     },
 
+
     // Check for "continue" usage instead of nested ifs
     save: function() {
+      var _this = this;
       this.commandPanel._controls["Status"].setValue("<font color=\"orange\">Saving...</font>");
 
       data = {};
@@ -106,9 +109,12 @@ define(["jquery", "underscore", "models", "views/generic/page", "quicksettings"]
               "profiles" : {},
               "process_termination_timeout": parseInt(panelJSON["Process Termination Timeout"], 10)
             }
+
+            if (panelJSON["Workgroup Name"] in _this.serials)
+              workergroup["serial"] = _this.serials[panelJSON["Workgroup Name"]];
+
             _.forEach(_.range(1, panel.profilesNumber + 1), function(index) {
               header = "Profile " + String(index) + " - ";
-              console.log(panelJSON[header + "Profile Name"])
               if ($.inArray(panelJSON[header + "Profile Name"], [null, ""]) == -1)
               {
                 profile = {};
@@ -124,14 +130,27 @@ define(["jquery", "underscore", "models", "views/generic/page", "quicksettings"]
           }
         }
       })
-      console.log(data)
 
       $.post("/api/workergroups", {"workergroups": JSON.stringify(data)}).done(function(result) {
-        if (result.status != "ok") {
+        if (result.status === "ok")
+        {
+          _this.commandPanel._controls["Status"].setValue("<font color=\"green\">Saved</font>");
+          _this.reload(true);
+        }
+        else if (result.status === "outdated")
+        {
+          string = "";
+          _.forEach(result.outdated_wgcs, function(wgc) {
+            string += "- " + wgc + "<br>";
+          })
+          _this.commandPanel._controls["Status"].setValue("<font color=\"red\">These configurations were outdated and were not saved:<br>" + string + "</font><br>The others were saved.");
+        }
+        else
+        {
+          _this.commandPanel._controls["Status"].setValue("<font color=\"red\">FAILED</font>");
           return alert("There was an error while saving!");
         }
       });
-      this.commandPanel._controls["Status"].setValue("<font color=\"green\">Saved</font>");
     },
 
     render: function() {
@@ -139,6 +158,7 @@ define(["jquery", "underscore", "models", "views/generic/page", "quicksettings"]
 
       this.workergroupPanels = [];
       this.addCommandPanel();
+      this.serials = {};
 
       $.get("/api/workergroups").done(function(data) {
         _.forEach(data["workergroups"], function(workergroup, workergroupName) {

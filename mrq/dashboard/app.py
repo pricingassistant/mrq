@@ -129,6 +129,9 @@ def get_workers():
 def get_workergroups():
     collection = connections.mongodb_jobs.mrq_workergroups
     data = {"workergroups": {str(row.pop("_id")): row for row in collection.find(sort=[("_id", 1)])}}
+    for workergroup_id in data["workergroups"]:
+        if "serial" not in data["workergroups"][workergroup_id]:
+            data["workergroups"][workergroup_id]["serial"] = str(int(time.time()))
     return jsonify(data)
 
 
@@ -144,9 +147,16 @@ def post_workergroups():
     for workergroup_id in workergroup_to_delete_list:
         connections.mongodb_jobs.mrq_workergroups.delete_one({"_id": workergroup_id})
 
+    outdated_wgcs = []
     for k, v in workergroups.iteritems():
-        connections.mongodb_jobs.mrq_workergroups.update_one({"_id": k}, {"$set": v}, upsert=True)
-    return jsonify({"status": "ok"})
+        if ("serial" not in v or v["serial"] == connections.mongodb_jobs.mrq_workergroups.find_one({"_id": k})["serial"]):
+            v["serial"] = str(int(time.time()))
+            connections.mongodb_jobs.mrq_workergroups.update_one({"_id": k}, {"$set": v}, upsert=True)
+        else:
+            outdated_wgcs.append(k)
+
+    return jsonify({"status": "outdated" if len(outdated_wgcs) else "ok",
+                    "outdated_wgcs": outdated_wgcs})
 
 
 def build_api_datatables_query(req):
