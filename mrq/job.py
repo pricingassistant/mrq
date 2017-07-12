@@ -249,6 +249,14 @@ class Job(object):
         self._attach_original_exception(exc)
         raise exc
 
+    def kill(self):
+        """ Kill the current job """
+        context.connections.redis.rpush("{}:wcmd:{}".format(context.get_current_config()["redis_prefix"],
+                                                            context.get_current_worker()),
+                                        "kill {}".format(self.id))
+        self._save_status("killed")
+        pass
+
     def cancel(self):
         """ Markes the current job as cancelled. Doesn't interrupt it. """
         self._save_status("cancel")
@@ -321,15 +329,15 @@ class Job(object):
             # pylint: disable=protected-access
 
             gevent.sleep(0)
-            current_greenlet = gevent.getcurrent()
+            self.current_greenlet = gevent.getcurrent()
             t = (datetime.datetime.utcnow() - self.datestarted).total_seconds()
 
             context.log.debug(
                 "Job %s success: %0.6fs total, %0.6fs in greenlet, %s switches" %
                 (self.id,
                  t,
-                 current_greenlet._trace_time,
-                 current_greenlet._trace_switches - 1)
+                 self.current_greenlet._trace_time,
+                 self.current_greenlet._trace_switches - 1)
             )
 
         else:
@@ -454,13 +462,13 @@ class Job(object):
             db_updates["totaltime"] = (now - self.datestarted).total_seconds()
 
         if context.get_current_config().get("trace_greenlets"):
-            current_greenlet = gevent.getcurrent()
+            self.current_greenlet = gevent.getcurrent()
 
             # TODO are we sure the current job is doing the save_status() on itself?
-            if hasattr(current_greenlet, "_trace_time"):
+            if hasattr(self.current_greenlet, "_trace_time"):
                 # pylint: disable=protected-access
-                db_updates["time"] = current_greenlet._trace_time
-                db_updates["switches"] = current_greenlet._trace_switches
+                db_updates["time"] = self.current_greenlet._trace_time
+                db_updates["switches"] = self.current_greenlet._trace_switches
 
         if exception:
             trace = traceback.format_exc()
