@@ -148,7 +148,7 @@ def post_workergroups():
         connections.mongodb_jobs.mrq_workergroups.delete_one({"_id": workergroup_id})
 
     outdated_wgcs = []
-    for k, v in workergroups.iteritems():
+    for k, v in iteritems(workergroups):
         if ("serial" not in v or v["serial"] == connections.mongodb_jobs.mrq_workergroups.find_one({"_id": k})["serial"]):
             v["serial"] = str(int(time.time()))
             connections.mongodb_jobs.mrq_workergroups.update_one({"_id": k}, {"$set": v}, upsert=True)
