@@ -147,5 +147,14 @@ RAW_QUEUES = {
                 "sleep": float(rawparam.split(" ")[1])
             }
         }
+    },
+    "test_factory_params_raw": {
+        "job_factory": lambda rawparam, queue: {
+            "path": "tests.tasks.general.MongoInsert",
+            "params": {
+                "queue": queue,
+                "sleep": float(rawparam)
+            }
+        }
     }
 }

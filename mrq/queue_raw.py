@@ -195,7 +195,7 @@ class QueueRaw(Queue):
         if worker:
             worker.status = "spawn"
 
-        job_data = [job_factory(p) for p in params]
+        job_data = [job_factory(*p) for p in self.get_job_factory_params(job_factory, params)]
         for j in job_data:
             j["status"] = "started"
             j["queue"] = retry_queue
@@ -205,6 +205,22 @@ class QueueRaw(Queue):
 
         for job in job_class.insert(job_data, statuses_no_storage=statuses_no_storage):
             yield job
+
+    def get_job_factory_params(self, job_factory, params):
+        args_count = job_factory.__code__.co_argcount
+
+        if args_count == 0:
+            raise Exception("Job factory must take at least 1 argument!")
+
+        if args_count == 1:
+            # just expecting raw params
+            return ([p] for p in params)
+
+        if args_count == 2:
+            # expecting raw queue name as second argument
+            return ([p, self.id] for p in params)
+
+        raise Exception("Job factory expecting too many arguments!")
 
     def get_sorted_graph(
             self,

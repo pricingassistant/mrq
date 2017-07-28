@@ -360,3 +360,26 @@ def test_raw_no_storage(worker):
     time.sleep(2)
 
     assert jobs_collection.count({"status": "retry"}) == 1
+
+
+def test_raw_factory_params(worker):
+
+    p_queue = "test_factory_params_raw"
+
+    worker.start(
+        flags="--greenlets 10 --config tests/fixtures/config-raw1.py", queues=p_queue)
+
+    jobs_collection = worker.mongodb_jobs.mrq_jobs
+    tests_collection = worker.mongodb_jobs.tests_inserts
+
+    assert jobs_collection.count() == 0
+    assert tests_collection.count() == 0
+    assert Queue(p_queue).size() == 0
+
+    worker.send_raw_tasks(p_queue, [0], block=True)
+
+    assert Queue(p_queue).size() == 0
+    assert jobs_collection.count() == 1
+    assert jobs_collection.count({"status": "success"}) == 1
+    assert tests_collection.count() == 1
+    assert tests_collection.count({"params.queue": p_queue, "params.sleep": 0.0}) == 1
