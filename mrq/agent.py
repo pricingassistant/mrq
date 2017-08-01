@@ -464,7 +464,7 @@ class Agent(Process):
         log.debug("... done queue stats in %0.4fs" % (time.time() - start_time))
 
     def fetch_worker_group_agents(self):
-        return list(connections.mongodb_jobs.mrq_agents.find({"worker_group": self.worker_group}))
+        return list(connections.mongodb_jobs.mrq_agents.find({"worker_group": self.worker_group, "status": "started"}))
 
     def fetch_worker_group_reports(self, projection=None):
         return list(connections.mongodb_jobs.mrq_workers.find({
