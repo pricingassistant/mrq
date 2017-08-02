@@ -129,6 +129,9 @@ def get_workers():
 def get_workergroups():
     collection = connections.mongodb_jobs.mrq_workergroups
     data = {"workergroups": {str(row.pop("_id")): row for row in collection.find(sort=[("_id", 1)])}}
+    for workergroup_id in data["workergroups"]:
+        if "serial" not in data["workergroups"][workergroup_id]:
+            data["workergroups"][workergroup_id]["serial"] = str(int(time.time()))
     return jsonify(data)
 
 
@@ -136,10 +139,24 @@ def get_workergroups():
 @requires_auth
 def post_workergroups():
     workergroups = json.loads(request.form["workergroups"])
-    for k, v in workergroups.iteritems():
-        connections.mongodb_jobs.mrq_workergroups.update_one({"_id": k}, {"$set": v}, upsert=True)
 
-    return jsonify({"status": "ok"})
+    # Remove workergroups which hasn't be sent but were present previously (supposed deleted)
+    workergroup_list_json = list(workergroups.keys())
+    workergroup_list_mongo = [document["_id"] for document in connections.mongodb_jobs.mrq_workergroups.find()]
+    workergroup_to_delete_list = list(set(workergroup_list_mongo) - set(workergroup_list_json))
+    for workergroup_id in workergroup_to_delete_list:
+        connections.mongodb_jobs.mrq_workergroups.delete_one({"_id": workergroup_id})
+
+    outdated_wgcs = []
+    for k, v in iteritems(workergroups):
+        if ("serial" not in v or v["serial"] == connections.mongodb_jobs.mrq_workergroups.find_one({"_id": k})["serial"]):
+            v["serial"] = str(int(time.time()))
+            connections.mongodb_jobs.mrq_workergroups.update_one({"_id": k}, {"$set": v}, upsert=True)
+        else:
+            outdated_wgcs.append(k)
+
+    return jsonify({"status": "outdated" if len(outdated_wgcs) else "ok",
+                    "outdated_wgcs": outdated_wgcs})
 
 
 def build_api_datatables_query(req):

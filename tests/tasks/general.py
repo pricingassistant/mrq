@@ -83,6 +83,12 @@ class CPULoop(Task):
             pass
 
 
+class Sleep(Task):
+    def run(self, params):
+        time.sleep(params.get("sleep", 100))
+        return True
+
+
 class Retry(Task):
 
     def run(self, params):

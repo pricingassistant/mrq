@@ -105,6 +105,13 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
       var action = $(evt.target).data("action");
       var data = _.clone(this.filters);
 
+      if (action == "move"){
+        if (destination_queue == null || destination_queue == "") {
+          return ;
+        }
+        data["destination_queue"] = prompt("Enter destination queue");
+      }
+
       data["action"] = action;
       self.jobaction(evt, data);
 
@@ -222,6 +229,18 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
           self.refreshCallStack(job_id);
         });
         self.refreshCallStack(job_id);
+
+      } else if (action == "move") {
+
+        var queue = prompt("Enter destination queue");
+        if (queue != null && queue != "")
+        {
+          self.jobaction(evt, {
+            "id": job_id,
+            "action": action,
+            "destination_queue": queue
+          });
+        }
 
       } else {
 
@@ -343,6 +362,10 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
                   display.push("cputime "+String(source.time).substring(0,6)+"s ("+source.switches+" switches)");
                 }
 
+                if (source.retry_count) {
+                  display.push("retried " + String(source.retry_count) + " times");
+                }
+
                 return "<small>" + display.join("<br/>") + "</small>";
 
               } else {
@@ -392,6 +415,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
                   "<br/><br/>"+
                   "<button class='btn btn-xs btn-danger pull-right' data-action='cancel'><span class='glyphicon glyphicon-remove-circle'></span> Cancel</button>"+
                   "<button class='btn btn-xs btn-warning' data-action='requeue'><span class='glyphicon glyphicon-refresh'></span> Requeue</button>"+
+                  "<button class='btn btn-xs btn-warning' data-action='move'><span class='glyphicon glyphicon-refresh'></span> Move to...</button>"+
                 "</div>";
               }
               return "";

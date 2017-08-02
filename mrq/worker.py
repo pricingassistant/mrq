@@ -328,6 +328,18 @@ class Worker(Process):
         except Exception as e:  # pylint: disable=broad-except
             self.log.debug("Worker report failed: %s" % e)
 
+    def greenlet_command_handler(self):
+        """
+        This greenlet is used to execute commands directly in the worker
+        """
+        while True:
+            command = self.redis.blpop("{}:wcmd:{}".format(get_current_config()["redis_prefix"],
+                                                           self.id)
+                                       ).split(" ")
+            if command[0] == "kill":
+                Job(command[1]).current_greenlet.kill(block=True)
+            pass
+
     def greenlet_admin(self):
         """ This greenlet is used to get status information about the worker
             when --admin_port was given
@@ -435,6 +447,9 @@ class Worker(Process):
 
         if self.config["admin_port"]:
             self.greenlets["admin"] = gevent.spawn(self.greenlet_admin)
+
+        # ehould add a condition using the config
+        self.greenlets["command_handler"] = gevent.spawn(self.greenlet_command_handler)
 
         self.install_signal_handlers()
 

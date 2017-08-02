@@ -98,7 +98,7 @@ class JobAction(Task):
             if list(query.keys()) == ["queue"]:
                 Queue(query["queue"]).empty()
 
-        elif action in ("requeue", "requeue_retry"):
+        elif action in ("requeue", "requeue_retry", "move"):
 
             # Requeue task by groups of maximum 1k items (if all in the same
             # queue)
@@ -127,7 +127,7 @@ class JobAction(Task):
                     if destination_queue is not None:
                         updates["queue"] = destination_queue
 
-                    if action == "requeue":
+                    if action in ("requeue", "move"):
                         updates["retry_count"] = 0
 
                     self.collection.update({
