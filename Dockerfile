@@ -27,6 +27,7 @@ RUN apt-get update && \
     			bzip2 \
 				mongodb-org \
 				nginx redis-server \
+				g++ \
 	&& \
 	apt-get clean -y && \
 	rm -rf /var/lib/apt/lists/*
