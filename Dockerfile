@@ -32,6 +32,9 @@ RUN apt-get update && \
 	apt-get clean -y && \
 	rm -rf /var/lib/apt/lists/*
 
+RUN curl -sL https://deb.nodesource.com/setup_7.x | bash -
+RUN apt-get install -y --no-install-recommends nodejs
+
 # Download pypy
 RUN curl -sL 'https://bitbucket.org/squeaky/portable-pypy/downloads/pypy-5.8-1-linux_x86_64-portable.tar.bz2' > /pypy.tar.bz2 && tar jxvf /pypy.tar.bz2 && rm -rf /pypy.tar.bz2 && mv /pypy-* /pypy
 

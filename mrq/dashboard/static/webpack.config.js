@@ -17,7 +17,6 @@ module.exports = {
             datatablesbs3: "js/vendor/datatables.bs3",
             moment: "js/vendor/moment.min",
             sparkline: "js/vendor/jquery.sparkline.min",
-            "mrq.css": "../css/mrq-dashboard.css"
         }
     },
     output: {

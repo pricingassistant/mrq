@@ -5,7 +5,7 @@
   "dependencies": {
   },
   "engines": {
-    "node": "7.5.0"
+    "node": "^7.5.0"
   },
   "repository": {
     "type": "git",
