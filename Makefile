@@ -45,13 +45,11 @@ clean:
 	find . -name __pycache__ | xargs rm -r
 
 dashboard:
-	cd mrq/dashboard/static && npm install && mkdir -p bin && npm run build
 	python mrq/dashboard/app.py
 
 stack:
 	mongod --smallfiles --noprealloc --nojournal &
 	redis-server &
-	cd mrq/dashboard/static && npm install && mkdir -p bin && npm run build
 	python mrq/dashboard/app.py &
 
 pep8:
