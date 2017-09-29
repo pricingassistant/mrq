@@ -31,7 +31,8 @@ module.exports = {
             jQuery: "jquery",
             "window.jQuery": "jquery",
             _: "underscore",
-            Backbone: "backbone"
+            Backbone: "backbone",
+            moment: "moment"
         }),
         new UglifyJSPlugin({compress: {warnings: false}})
     ],
