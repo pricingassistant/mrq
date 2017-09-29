@@ -136,7 +136,6 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
     },
 
     getRefreshInterval:function() {
-
       var interval = parseInt($(".js-autorefresh").val(), 10) * 1000;
 
       if (!this.app.rootView.isTabVisible) {
@@ -156,9 +155,11 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
       if (!interval) return console.log("cancel queue");
 
       clearTimeout(self.refreshDataTableTimeout);
-      self.refreshDataTableTimeout = setTimeout(function() {
-        self.refreshDataTable();
-      }, interval);
+      if (interval > 0) {
+          self.refreshDataTableTimeout = setTimeout(function() {
+              self.refreshDataTable();
+          }, interval);
+      }
 
     },
 
