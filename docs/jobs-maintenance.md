@@ -30,14 +30,6 @@ SCHEDULER_TASKS = [
     "interval": 3600
   },
 
-  # This will requeue jobs 'lost' between redis.blpop() and mongo.update(status=started).
-  # This can happen only when the worker is killed brutally in the middle of dequeue_jobs()
-  {
-    "path": "mrq.basetasks.cleaning.RequeueLostJobs",
-    "params": {},
-    "interval": 24 * 3600
-  },
-
   # This will clean the list of known queues in Redis. It will mostly remove empty queues
   # so that they are not displayed in the dashboard anymore.
   {
