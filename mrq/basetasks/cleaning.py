@@ -88,6 +88,19 @@ class MigrateKnownQueues(Task):
             Queue(str(queue)).add_to_known_queues()
 
 
+class PopulateKnownQueues(Task):
+
+    """
+        Populates the known queues in Redis.
+    """
+
+    def run(self, params):
+
+        queues = Queue.all()
+        for queue in queues:
+            Queue(queue, add_to_known_queues=True)
+
+
 class CleanKnownQueues(Task):
 
     """
