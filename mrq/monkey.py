@@ -304,7 +304,7 @@ def patch_io_httplib(config):
             newsock = self._obj.makefile(*args, **kwargs)
             return mrq_wrapped_socket(newsock, self._parent_connection)
 
-    def request(old_method, self, method, url, body=None, headers=None):
+    def request(old_method, self, method, url, body=None, headers=None, *args, **kwargs):
 
         if headers is None:
             headers = {}
