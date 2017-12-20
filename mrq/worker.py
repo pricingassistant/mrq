@@ -208,7 +208,7 @@ class Worker(Process):
             its jobs. """
 
         greenlets = []
-        for greenlet in self.gevent_pool:
+        for greenlet in list(self.gevent_pool):
             g = {}
             short_stack = []
             stack = traceback.format_stack(greenlet.gr_frame)
