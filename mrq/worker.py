@@ -263,6 +263,7 @@ class Worker(Process):
             "scheduler",
             "name",
             "local_ip",
+            "external_ip",
             "agent_id",
             "worker_group",
             "worker_profile"
