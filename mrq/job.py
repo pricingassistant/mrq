@@ -102,11 +102,10 @@ class Job(object):
                 "path": 1,
                 "params": 1,
                 "status": 1,
-                "retry_count": 1
+                "retry_count": 1,
             }
 
         if start:
-
             self.datestarted = datetime.datetime.utcnow()
             self.set_data(self.collection.find_and_modify(
                 {
@@ -117,6 +116,9 @@ class Job(object):
                     "status": "started",
                     "datestarted": self.datestarted,
                     "worker": self.worker.id
+                },
+                "$unset": {
+                    "dateexpires": 1 # we don't want started jobs to expire unexpectedly
                 }},
                 projection=fields)
             )
@@ -153,6 +155,7 @@ class Job(object):
             task_def = self.get_task_config()
 
             self.timeout = task_def.get("timeout", cfg["default_job_timeout"])
+            self.default_ttl = task_def.get("default_ttl")
             self.result_ttl = task_def.get("result_ttl", cfg["default_job_result_ttl"])
             self.abort_ttl = task_def.get("abort_ttl", cfg["default_job_abort_ttl"])
             self.cancel_ttl = task_def.get("cancel_ttl", cfg["default_job_cancel_ttl"])
@@ -448,6 +451,11 @@ class Job(object):
             "status": status,
             "dateupdated": now
         }
+
+        # we don't want started jobs to expire unexpectedly
+        if status not in ["started", "success", "abort", "cancel"] and self.default_ttl is not None:
+            db_updates["dateexpires"] = (self.data.get("datequeued") or now) + datetime.timedelta(days=self.default_ttl)
+
         db_updates.update(updates or {})
 
         if self.datestarted:

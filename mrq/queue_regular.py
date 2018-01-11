@@ -92,6 +92,8 @@ class QueueRegular(Queue):
                     "status": "started",
                     "datestarted": datetime.datetime.utcnow(),
                     "worker": worker.id if worker else None
+                }, "$unset": {
+                    "dateexpires": 1 # we don't want started jobs to expire unexpectedly
                 }},
                 sort=sort_order,
                 return_document=ReturnDocument.AFTER,
@@ -101,7 +103,8 @@ class QueueRegular(Queue):
                     "params": 1,
                     "status": 1,
                     "retry_count": 1,
-                    "queue": 1
+                    "queue": 1,
+                    "datequeued": 1
                 }
             )
 

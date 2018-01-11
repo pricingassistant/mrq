@@ -6,6 +6,7 @@ import time
 
 
 def test_retry(worker):
+    worker.start(flags="--config tests/fixtures/config-scheduler8.py")
 
     job_id = worker.send_task(
         "tests.tasks.general.Retry", {"queue": "noexec", "delay": 60}, block=False)
@@ -15,6 +16,7 @@ def test_retry(worker):
     assert job_data["queue"] == "noexec"
     assert job_data["status"] == "retry"
     assert job_data["dateretry"] > datetime.datetime.utcnow()
+    assert datetime.datetime.utcnow() + datetime.timedelta(days=1) < job_data["dateexpires"] < datetime.datetime.utcnow() + datetime.timedelta(days=3)
     assert job_data.get("result") is None
 
 
