@@ -151,6 +151,13 @@ def add_parser_args(parser, config_type):
         help='Adds random latency to the network calls, zero to N seconds. Can be a range (1-2)')
 
     parser.add_argument(
+        '--default_job_ttl',
+        default=180 * 24 * 3600,
+        action='store',
+        type=float,
+        help='Seconds the tasks are kept in MongoDB when statuses are not success, abort, cancel and started')
+
+    parser.add_argument(
         '--default_job_result_ttl',
         default=7 * 24 * 3600,
         action='store',
