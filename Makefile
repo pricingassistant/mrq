@@ -44,6 +44,9 @@ clean:
 	find . -path ./venv -prune -o -name "*.pyc" -exec rm {} \;
 	find . -name __pycache__ | xargs rm -r
 
+build_dashboard:
+    cd mrq/dashboard/static && npm install && mkdir -p bin && npm run build
+
 dashboard:
 	python mrq/dashboard/app.py
 
