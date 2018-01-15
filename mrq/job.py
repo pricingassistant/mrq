@@ -155,8 +155,8 @@ class Job(object):
             task_def = self.get_task_config()
 
             self.timeout = task_def.get("timeout", cfg["default_job_timeout"])
-            self.default_ttl = task_def.get("default_ttl")
-            self.result_ttl = task_def.get("result_ttl", cfg["default_job_result_ttl"])
+            self.default_ttl = task_def.get("default_ttl", cfg["default_job_ttl"])
+            self.result_ttl = task_def.get("result_ttl", cfg["default_job_result_ttl"]) # success ttl
             self.abort_ttl = task_def.get("abort_ttl", cfg["default_job_abort_ttl"])
             self.cancel_ttl = task_def.get("cancel_ttl", cfg["default_job_cancel_ttl"])
             self.max_retries = task_def.get("max_retries", cfg["default_job_max_retries"])
