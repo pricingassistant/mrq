@@ -45,7 +45,7 @@ clean:
 	find . -name __pycache__ | xargs rm -r
 
 build_dashboard:
-    cd mrq/dashboard/static && npm install && mkdir -p bin && npm run build
+	cd mrq/dashboard/static && npm install && mkdir -p bin && npm run build
 
 dashboard:
 	python mrq/dashboard/app.py
