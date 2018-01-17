@@ -3,7 +3,7 @@ standard_library.install_aliases()
 from builtins import range
 from mrq.task import Task
 from mrq.context import (log, retry_current_job, connections, get_current_config, get_current_job,
-                         subpool_map, abort_current_job, set_current_job_progress)
+                         subpool_map, subpool_imap, abort_current_job, set_current_job_progress)
 from mrq.job import queue_job
 import urllib.request, urllib.error, urllib.parse
 import json
@@ -244,7 +244,7 @@ class SubPool(Task):
             return True
 
         if x == "exception":
-            raise Exception(x)
+            raise Exception(x)  # __INNER_EXCEPTION_LINE__
 
         time.sleep(x)
 
@@ -253,7 +253,10 @@ class SubPool(Task):
     def run(self, params):
         self.job = get_current_job()
 
-        return subpool_map(params["pool_size"], self.inner, params["inner_params"])
+        if params.get("imap"):
+            return subpool_map(params["pool_size"], self.inner, params["inner_params"])
+        else:
+            return list(subpool_imap(params["pool_size"], self.inner, params["inner_params"]))
 
 
 class GetMetrics(Task):

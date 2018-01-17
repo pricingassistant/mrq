@@ -152,6 +152,8 @@ def test_general_simple_task_reverse(worker):
 def test_known_queues_lifecycle(worker):
 
     worker.start(queues="default_reverse xtest test_timed_set", flags="--config tests/fixtures/config-raw1.py")
+    time.sleep(1)
+    worker.wait_for_idle()
 
     # Test known queues
     from mrq.queue import Queue, send_task

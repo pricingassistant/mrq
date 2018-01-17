@@ -60,7 +60,7 @@ def test_dequeue_strategy(worker, p_greenlets, p_strategy):
     print("Worker has flags %s" % flags)
     worker.start(flags=flags, queues="q1 q2", deps=False, block=False)
 
-    gotit = worker.wait_for_idle()
+    gotit = worker.wait_for_idle(timeout=10)
 
     if p_strategy == "burst":
         assert not gotit  # because worker should be stopped already

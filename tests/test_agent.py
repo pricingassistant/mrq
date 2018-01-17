@@ -11,8 +11,9 @@ def scenario(profiles, agents):
 
     for agent in agents:
         agent["worker_group"] = "xx"
+        agent["status"] = "started"
 
-    connections.mongodb_jobs.mrq_agents.insert_many(agents + [{"worker_group": "zz"}])
+    connections.mongodb_jobs.mrq_agents.insert_many(agents + [{"worker_group": "yy", "status": "started"}, {"worker_group": "zz"}])
     connections.mongodb_jobs.mrq_workergroups.insert_one({"_id": "xx", "profiles": profiles})
 
     agent = Agent(worker_group="xx")

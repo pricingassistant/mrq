@@ -261,7 +261,7 @@ class WorkerFixture(ProcessFixture):
         f.close()
         return data
 
-    def wait_for_idle(self):
+    def wait_for_idle(self, timeout=None):
 
         if "--processes" in self.cmdline:
             print("Warning: wait_for_idle() doesn't support multiprocess workers yet")
@@ -275,7 +275,7 @@ class WorkerFixture(ProcessFixture):
             return True
 
         try:
-            wait_for_net_service("127.0.0.1", self.admin_port, poll_interval=0.01)
+            wait_for_net_service("127.0.0.1", self.admin_port, poll_interval=0.01, timeout=timeout)
             f = urllib.request.urlopen("http://127.0.0.1:%s/wait_for_idle" % self.admin_port)
             data = f.read().decode('utf-8')
             assert data == "idle"
