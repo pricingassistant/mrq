@@ -116,7 +116,7 @@ class CleanKnownQueues(Task):
 
         # Only clean queues older than N days
         time_threshold = time.time() - max_age
-        for queue, time_last_used in known_queues.iteritems():
+        for queue, time_last_used in known_queues.items():
             if queue in queues_from_config:
                 continue
             if time_last_used < time_threshold:
