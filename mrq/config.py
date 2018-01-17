@@ -455,6 +455,13 @@ def add_parser_args(parser, config_type):
             help='Overwrite the local IP, to be displayed in the dashboard.')
 
         parser.add_argument(
+            '--external_ip',
+            default=None,
+            action="store",
+            type=str,
+            help='Overwrite the external IP, to be displayed in the dashboard.')
+
+        parser.add_argument(
             '--max_latency',
             default=1.,
             type=float,

@@ -88,6 +88,19 @@ class MigrateKnownQueues(Task):
             Queue(str(queue)).add_to_known_queues()
 
 
+class PopulateKnownQueues(Task):
+
+    """
+        Populates the known queues in Redis.
+    """
+
+    def run(self, params):
+
+        queues = Queue.all()
+        for queue in queues:
+            Queue(queue, add_to_known_queues=True)
+
+
 class CleanKnownQueues(Task):
 
     """
@@ -123,8 +136,9 @@ class CleanKnownQueues(Task):
                 q = Queue(queue, add_to_known_queues=False)
                 size = q.size()
                 if check_mongo:
-                    size += connections.mongodb_jobs.mrq_jobs.count({"queue": queue})
-                if size == 0:
+                    has_job = connections.mongodb_jobs.mrq_jobs.find_one({"queue": queue})
+
+                if size == 0 or has_job is None:
                     removed_queues.append(queue)
                     print("Removing empty queue '%s' from known queues ..." % queue)
                     if not pretend:

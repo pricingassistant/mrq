@@ -2,8 +2,7 @@
   "name": "mrq-dashboard",
   "version": "0.9.1",
   "description": "PricingAssistant MRQ dashboard",
-  "dependencies": {
-  },
+  "dependencies": {},
   "engines": {
     "node": "^7.5.0"
   },

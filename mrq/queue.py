@@ -10,6 +10,7 @@ import binascii
 
 import sys
 from future import standard_library
+from itertools import chain
 
 PY3 = sys.version_info > (3,)
 standard_library.install_aliases()
@@ -118,6 +119,13 @@ class Queue(object):
     def get_retry_queue(self):
         """ Return the name of the queue where retried jobs will be queued """
         return self.id
+
+    @classmethod
+    def ensure_known_queues(cls, queues):
+        """ List all previously known queues """
+        now = time.time()
+        params = chain.from_iterable((now, queue) for queue in queues)
+        context.connections.redis.zadd(Queue.redis_key_known_queues(), *params)
 
     def add_to_known_queues(self, timestamp=None):
         """ Adds this queue to the shared list of known queues """

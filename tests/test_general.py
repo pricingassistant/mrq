@@ -181,6 +181,33 @@ def test_known_queues_lifecycle(worker):
     # Still not there.
     assert set(Queue.redis_known_queues().keys()) == set(["default", "xtest", "test_timed_set"])
 
+    # Now we're going to test that the known queues are correctly updated when requeuing a job
+
+    # Queue the job again
+    send_task("tests.tasks.general.Add", {"a": 41, "b": 1, "sleep": 1}, queue="x")
+
+    worker.send_task("mrq.basetasks.cleaning.CleanKnownQueues", {}, block=True)
+    # Requeue it in a different queue
+    params = {
+        "action": "requeue",
+        "destination_queue": "x2"
+    }
+    worker.send_task("mrq.basetasks.utils.JobAction", params, block=True)
+
+    assert set(Queue.redis_known_queues().keys()) == set(["x", "x2", "default", "xtest", "test_timed_set"])
+
+    Queue("x2").empty()
+    assert set(Queue.redis_known_queues().keys()) == set(["default", "x", "xtest", "test_timed_set"])
+
+    # Requeue it in the same queue
+    params = {
+        "action": "requeue"
+    }
+    worker.send_task("mrq.basetasks.utils.JobAction", params, block=True)
+
+    # The queue should be back
+    assert set(Queue.redis_known_queues().keys()) == set(["default", "x", "x2", "xtest", "test_timed_set"])
+
 
 def test_general_exception_status(worker):
 

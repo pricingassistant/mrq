@@ -58,7 +58,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models", "moment
             "sType":"string",
             "sWidth":"150px",
             "mData":function(source, type/*, val*/) {
-              return "<a href='/#jobs?worker="+source._id+"'>"+source.name+"</a><br/><small>"+source.config.local_ip + " " + source._id+"</small>";
+              return "<a href='/#jobs?worker="+source._id+"'>"+source.name+"</a><br/><small>"+ (source.config.external_ip || source.config.local_ip) + " " + source._id+"</small>";
             }
           },
           {
