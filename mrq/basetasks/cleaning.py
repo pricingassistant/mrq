@@ -137,10 +137,11 @@ class CleanKnownQueues(Task):
                 # size() returns the number of queued jobs
                 size = q.size()
 
+                has_job = None
                 if check_mongo:
                     has_job = connections.mongodb_jobs.mrq_jobs.find_one({"queue": queue})
 
-                if size == 0 and (not check_mongo or not has_job):
+                if size == 0 and has_job is None:
                     removed_queues.append(queue)
                     print("Removing empty queue '%s' from known queues ..." % queue)
                     if not pretend:
