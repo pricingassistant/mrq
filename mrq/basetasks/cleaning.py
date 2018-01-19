@@ -134,11 +134,13 @@ class CleanKnownQueues(Task):
                 continue
             if time_last_used < time_threshold:
                 q = Queue(queue, add_to_known_queues=False)
+                # size() returns the number of queued jobs
                 size = q.size()
+
                 if check_mongo:
                     has_job = connections.mongodb_jobs.mrq_jobs.find_one({"queue": queue})
 
-                if size == 0 or has_job is None:
+                if size == 0 and (not check_mongo or has_job):
                     removed_queues.append(queue)
                     print("Removing empty queue '%s' from known queues ..." % queue)
                     if not pretend:
