@@ -473,8 +473,10 @@ class Job(object):
         if exception:
             trace = traceback.format_exc()
             context.log.error(trace)
+            exc, value = sys.exc_info()[0:2]
+            if hasattr(value, "subpool_traceback"):
+                trace = "Exception first caught in a subpool. Traceback:\n%s\n%s" % (value.subpool_traceback, trace)
             db_updates["traceback"] = trace
-            exc = sys.exc_info()[0]
             db_updates["exceptiontype"] = exc.__name__
 
             self._save_traceback_history(status, trace, exc)

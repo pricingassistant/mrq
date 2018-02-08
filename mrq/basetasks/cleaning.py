@@ -129,16 +129,19 @@ class CleanKnownQueues(Task):
 
         # Only clean queues older than N days
         time_threshold = time.time() - max_age
-        for queue, time_last_used in known_queues.iteritems():
+        for queue, time_last_used in known_queues.items():
             if queue in queues_from_config:
                 continue
             if time_last_used < time_threshold:
                 q = Queue(queue, add_to_known_queues=False)
+                # size() returns the number of queued jobs
                 size = q.size()
+
+                has_job = None
                 if check_mongo:
                     has_job = connections.mongodb_jobs.mrq_jobs.find_one({"queue": queue})
 
-                if size == 0 or has_job is None:
+                if size == 0 and has_job is None:
                     removed_queues.append(queue)
                     print("Removing empty queue '%s' from known queues ..." % queue)
                     if not pretend:
