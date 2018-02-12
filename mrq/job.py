@@ -454,7 +454,7 @@ class Job(object):
 
         # we don't want started jobs to expire unexpectedly
         if status not in ["started", "success", "abort", "cancel"] and self.default_ttl is not None:
-            db_updates["dateexpires"] = (self.data.get("datequeued") or now) + datetime.timedelta(days=self.default_ttl)
+            db_updates["dateexpires"] = (self.data.get("datequeued") or now) + datetime.timedelta(seconds=self.default_ttl)
 
         db_updates.update(updates or {})
 
