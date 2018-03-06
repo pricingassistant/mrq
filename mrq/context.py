@@ -87,6 +87,9 @@ def set_current_config(config):
 
 
 def get_current_config():
+    if not _GLOBAL_CONTEXT["config"]:
+        log.warning("get_current_config was called before setup of MRQ's environment. "
+                    "Use context.setup_context() for setting up MRQ's environment.")
     return _GLOBAL_CONTEXT["config"]
 
 
