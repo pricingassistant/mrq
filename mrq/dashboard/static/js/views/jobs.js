@@ -371,7 +371,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
             "sClass": "col-jobs-worker",
             "mData":function(source, type/*, val*/) {
               if (type == "display") {
-                return source.worker?("<small><a href='/#jobs?worker="+source.worker+"'>"+source.worker+"</a></small>"):"";
+                return source.worker?("<small><a href='/#workers?id="+source.worker+"'>"+source.worker+"</a></small>"):"";
               } else {
                 return source.worker || "";
               }
