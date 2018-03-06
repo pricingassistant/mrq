@@ -245,12 +245,20 @@ def api_datatables(unit):
 
     elif unit == "workers":
         fields = None
-        query = {"status": {"$nin": ["stop"]}}
         collection = connections.mongodb_jobs.mrq_workers
         sort = [("datestarted", -1)]
 
-        if request.args.get("showstopped"):
-            query = {}
+        query = {}
+        if request.args.get("id"):
+            query["_id"] = ObjectId(request.args["id"])
+        else:
+            if request.args.get("status"):
+                statuses = request.args["status"].split("-")
+                query["status"] = {"$in": statuses}
+            if request.args.get("ip"):
+                query["$or"] = [{"config.local_ip": request.args["ip"]}, {"config.external_ip": request.args["ip"]}]
+            if request.args.get("queue"):
+                query["config.queues"] = request.args["queue"]
 
     elif unit == "agents":
         fields = None
