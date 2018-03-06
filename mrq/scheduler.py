@@ -66,6 +66,10 @@ class Scheduler(object):
                     datetime.datetime.utcnow(), task["dailytime"])
                 task["interval"] = 3600 * 24
 
+                # Avoid to queue task in check() if today dailytime is already passed
+                if datetime.datetime.utcnow().time() > task["dailytime"].time():
+                    task["datelastqueued"] = datetime.datetime.utcnow()
+
             self.collection.find_one_and_update({"hash": task["hash"]}, {"$set": task}, upsert=True)
             log.debug("Scheduler: added %s" % task["hash"])
 
