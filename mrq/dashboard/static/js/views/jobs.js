@@ -306,6 +306,10 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
                 html = "<div class='js-actions' data-jobid="+source._id+"><a href='/#jobs?status=" + (source.status || "queued")+ "'>" + "<span class='label " + css_class + "'>" + (source.status || "queued") + "</span></a>";
                 html += "<br/><br/>";
 
+                if (source.status === 'failed') {
+                    html += "<div class='js-actions' data-jobid="+source._id+"><a href='/#jobs?exceptiontype=" + source.exceptiontype+ "'>" + "<span class='label label-danger'>" + source.exceptiontype + "</span></a><br /><br />";
+                }
+
                 if (source.progress) {
                   var progress = (Math.round(source.progress*10000)/100);
                   html += '<div class="progress"><div class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="'+progress+'" aria-valuemin="0" aria-valuemax="100" style="width: '+progress+'%;">'+progress+'%</div></div>';
