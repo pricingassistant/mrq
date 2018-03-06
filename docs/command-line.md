@@ -45,10 +45,9 @@ You can pass additional configuration flags:
 
  - `--max_jobs`: Gevent:max number of jobs to do before quitting. Use as a workaround for memory leaks in your tasks. Defaults to **0**
  - `--max_memory`: Max memory (in Mb) after which the process will be shut down. Use with `--processes [1-N]`
-                  to have supervisord automatically respawn the worker when this happens. Defaults to **1**
+                  to have the worker automatically respawn when this happens. Defaults to **1**
  - `--grenlets, --gevent, --g`: Max number of greenlets to use. Defaults to **1**.
- - `--processes, --p`: Number of processes to launch with supervisord. Defaults to **0** (no supervisord).
- - `--supervisord_template`: Path of supervisord template to use. Defaults to **supervisord_templates/default.conf**.
+ - `--processes, --p`: Number of processes to launch . Defaults to **0**.
  - `--scheduler`: Run the scheduler. Defaults to **false**.
  - `--scheduler_interval`: Seconds between scheduler checks. Defaults to **60** seconds, only ints are acceptable.
  - `--report_interval`: Seconds between worker reports to MongoDB. Defaults to **10** seconds, floats are acceptable too.
@@ -69,7 +68,7 @@ The default is to run tasks one at a time. You should obviously change this beha
 
 This will start 30 greenlets over 3 UNIX processes. Each of them will run 10 jobs at the same time.
 
-As soon as you use the `--processes` option (even with `--processes=1`) then supervisord will be used to control the processes. It is quite useful to manage long-running instances.
+The worker is autonomous to handle its processes. It is quite useful to manage long-running instances.
 
 ### Simulating network latency
 

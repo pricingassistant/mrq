@@ -117,7 +117,7 @@ Much better! If you use `top` while launching these commands (you can open a sec
 
 As you know, a single Python process can only use a single CPU. Let's try to use all the cores you have at your disposal to get better performance!
 
-mrq-worker can start multiple processes with the ```--processes``` flag. In this case it will use `supervisord` to manage the processes. If you use this option you will have to manually terminate the worker with a `ctrl-C` keystroke once it is finished:
+mrq-worker can start multiple processes with the ```--processes``` flag. The worker handles its own processes. If you use this option you will have to manually terminate the worker with a `ctrl-C` keystroke once it is finished:
 
 ```
 ./enqueue.py square_raw 20000 && mrq-worker square_raw --greenlets 30 --processes 5
