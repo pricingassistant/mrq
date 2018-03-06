@@ -49,6 +49,8 @@ class JobAction(Task):
                     query[k] = {"$in": list(self.params[k])}
                 else:
                     query[k] = self.params[k]
+            if query.get("worker"):
+                query["worker"] = ObjectId(query["worker"])
 
         if self.params.get("params"):
             params_dict = json.loads(self.params.get("params"))  # pylint: disable=no-member
@@ -139,7 +141,5 @@ class JobAction(Task):
 
             if destination_queue is not None:
                 Queue.ensure_known_queues([destination_queue])
-
-        print(stats)
 
         return stats
