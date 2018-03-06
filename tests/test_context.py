@@ -1,6 +1,8 @@
 import json
 import os
 from collections import defaultdict
+import subprocess
+
 
 # Read from tests.tasks.general.GetMetrics
 TEST_LOCAL_METRICS = defaultdict(int)
@@ -106,11 +108,6 @@ def test_context_metric_failed(worker):
 
 
 def test_context_setup():
-
-    try:
-        import subprocess32 as subprocess
-    except:
-        import subprocess
 
     process = subprocess.Popen("python tests/fixtures/standalone_script1.py",
                                shell=True, close_fds=True, env={"MRQ_NAME": "testname1", "PYTHONPATH": os.getcwd()}, cwd=os.getcwd(), stdout=subprocess.PIPE)
