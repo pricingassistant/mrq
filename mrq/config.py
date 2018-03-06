@@ -343,7 +343,7 @@ def add_parser_args(parser, config_type):
             default=0,
             type=int,
             action='store',
-            help='Number of processes to launch with supervisord')
+            help='Number of processes to launch')
 
         parser.add_argument(
             '--scheduler',

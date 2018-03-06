@@ -14,6 +14,24 @@ for p_query in [
     OPTS.append([p_query])
 
 
+def test_cancel_by_worker(worker):
+    from bson import ObjectId
+
+    job_id = worker.send_task("tests.tasks.general.Add", {"a": 41, "b": 1}, queue="default", block=False)
+
+    job = Job(job_id)
+    job.wait(poll_interval=0.01)
+
+    job_data = job.fetch().data
+
+    worker.send_task("mrq.basetasks.utils.JobAction", {"action": "cancel", "worker": str(job_data["worker"])},
+                     block=True)
+
+    job_data = job.fetch().data
+
+    assert job_data["status"] == "cancel"
+
+
 @pytest.mark.parametrize(["p_query"], OPTS)
 def test_cancel_by_path(worker, p_query):
 

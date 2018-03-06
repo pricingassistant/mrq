@@ -34,7 +34,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
 
       var self = this;
 
-      $.ajax("/api/logs?job="+job_id+"&last_log_id="+self.last_log_id, {
+      $.ajax("api/logs?job="+job_id+"&last_log_id="+self.last_log_id, {
         "type": "GET",
         "success": function(data) {
           if (!self.last_log_id) {
@@ -53,7 +53,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
     refreshStackTrace: function(jobId)  {
       var self = this;
 
-      $.ajax("/api/job/"+jobId+"/traceback", {
+      $.ajax("api/job/"+jobId+"/traceback", {
         "type": "GET",
         "success": function(data) {
           if (data["traceback_history"]) {
@@ -163,7 +163,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
 
       if (action == "viewresult") {
 
-        $.ajax("/api/job/"+job_id+"/result", {
+        $.ajax("api/job/"+job_id+"/result", {
           "type": "GET",
           "success": function(data) {
             self.$(".js-jobs-modal .js-jobs-modal-content").html(_.escape(JSON.stringify(data, null, 2)));
@@ -238,7 +238,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
 
       $(evt.target).find(".glyphicon").addClass("spin");
 
-      $.ajax("/api/jobaction", {
+      $.ajax("api/jobaction", {
         "type": "POST",
         "data": data,
         "success": function(data) {
@@ -306,6 +306,10 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
                 html = "<div class='js-actions' data-jobid="+source._id+"><a href='/#jobs?status=" + (source.status || "queued")+ "'>" + "<span class='label " + css_class + "'>" + (source.status || "queued") + "</span></a>";
                 html += "<br/><br/>";
 
+                if (source.status === 'failed') {
+                    html += "<div class='js-actions' data-jobid="+source._id+"><a href='/#jobs?exceptiontype=" + source.exceptiontype+ "'>" + "<span class='label label-danger'>" + source.exceptiontype + "</span></a><br /><br />";
+                }
+
                 if (source.progress) {
                   var progress = (Math.round(source.progress*10000)/100);
                   html += '<div class="progress"><div class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="'+progress+'" aria-valuemin="0" aria-valuemax="100" style="width: '+progress+'%;">'+progress+'%</div></div>';
@@ -371,7 +375,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
             "sClass": "col-jobs-worker",
             "mData":function(source, type/*, val*/) {
               if (type == "display") {
-                return source.worker?("<small><a href='/#jobs?worker="+source.worker+"'>"+source.worker+"</a></small>"):"";
+                return source.worker?("<small><a href='/#workers?id="+source.worker+"'>"+source.worker+"</a></small>"):"";
               } else {
                 return source.worker || "";
               }
@@ -436,7 +440,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
         self.filters[k] = self.$(".js-datatable-filters-"+k).val();
       });
 
-      window.location = "/#jobs?"+$.param(self.filters, true).replace(/\+/g, "%20");
+    window.location = window.location.toString().replace(/\#.*/, "#jobs?"+$.param(self.filters, true).replace(/\+/g, "%20"));
     },
 
   });

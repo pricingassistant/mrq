@@ -12,7 +12,7 @@ define(["jquery", "underscore", "models", "views/generic/page"],function($, _, M
 
     render: function() {
       var self = this;
-      $.get("/api/workergroups").done(function(data) {
+      $.get("api/workergroups").done(function(data) {
         self.renderTemplate();
         self.$("textarea").val(JSON.stringify(data["workergroups"], null, 8));
       });
@@ -25,7 +25,7 @@ define(["jquery", "underscore", "models", "views/generic/page"],function($, _, M
 
       var val = self.$("textarea").val();
 
-      $.post("/api/workergroups", {"workergroups": val}).done(function(data) {
+      $.post("api/workergroups", {"workergroups": val}).done(function(data) {
         if (data.status != "ok") {
           return alert("There was an error while saving!");
         }

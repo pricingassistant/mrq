@@ -19,11 +19,6 @@ import psutil
 import argparse
 import pipes
 
-try:
-    import subprocess32 as subprocess
-except:
-    import subprocess
-
 sys.path.insert(0, os.getcwd())
 
 from mrq import config

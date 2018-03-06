@@ -24,12 +24,12 @@ class JobAction(Task):
 
         self.params = params
         self.collection = connections.mongodb_jobs.mrq_jobs
+
         query = self.build_query()
 
         return self.perform_action(
             self.params.get("action"), query, self.params.get("destination_queue")
         )
-
 
     def build_query(self):
         query = {}
@@ -54,6 +54,8 @@ class JobAction(Task):
                     query[k] = {"$in": list(self.params[k])}
                 else:
                     query[k] = self.params[k]
+            if query.get("worker"):
+                query["worker"] = ObjectId(query["worker"])
 
         if self.params.get("params"):
             params_dict = json.loads(self.params.get("params"))  # pylint: disable=no-member
