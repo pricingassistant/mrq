@@ -48,7 +48,6 @@ class Orchestrate(Task):
         agents = self.fetch_worker_group_agents(group)
 
         desired_workers = self.get_desired_workers_for_group(group, agents)
-        print "here desired", len(desired_workers), "/", len(agents)
 
         # Evaluate what workers are currently, rightfully there. They won't be touched.
         current_workers = defaultdict(int)
@@ -238,9 +237,6 @@ class Orchestrate(Task):
 
         # Compute the desired count for each profile
         # This is the real "autoscaling" part.
-        print "here group profiles", group["_id"], len(group.get("profiles") or [])
-        from pprint import pprint
-        pprint(worker_count_by_profile)
         for profileid, profile in group.get("profiles", {}).items():
 
             cfg = self.get_config_for_profile(profile)
@@ -251,7 +247,6 @@ class Orchestrate(Task):
             total_greenlets = (cfg.greenlets or 1) * (cfg.processes or 1)
             warmups = worker_warmups_by_profile[profileid]
 
-            print "here details", profileid, worker_usage, report_count, current_desired_count, total_greenlets, warmups
             # By default, try not to change count
             desired_count = current_desired_count
 
