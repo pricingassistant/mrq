@@ -16,7 +16,6 @@ MRQ was first developed at [Pricing Assistant](http://pricingassistant.com) and 
  * **Great [dashboard](http://mrq.readthedocs.org/en/latest/dashboard/):** Have visibility and control on everything: queued jobs, current jobs, worker status, ...
  * **Per-job logs:** Get the log output of each task separately in the dashboard
  * **Gevent worker:** IO-bound tasks can be done in parallel in the same UNIX process for maximum throughput
- * **Supervisord integration:** CPU-bound tasks can be split across several UNIX processes with a single command-line flag
  * **Job management:** You can retry, requeue, cancel jobs from the code or the dashboard.
  * **Performance:** Bulk job queueing, easy job profiling
  * **Easy [configuration](http://mrq.readthedocs.org/en/latest/configuration):** Every aspect of MRQ is configurable through command-line flags or a configuration file
