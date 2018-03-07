@@ -29,7 +29,7 @@ _GLOBAL_CONTEXT = {
 }
 
 # Global log object, usable from all jobs
-log = logging.getLogger("current")
+log = logging.getLogger("mrq.current")
 
 
 def setup_context(**kwargs):
