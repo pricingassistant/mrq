@@ -17,12 +17,13 @@ import ujson as json
 from bson import ObjectId
 from redis.lock import LuaLock
 from collections import defaultdict
+from mrq.utils import load_class_by_path
 
 from .job import Job
 from .exceptions import (TimeoutInterrupt, StopRequested, JobInterrupt, AbortInterrupt,
                          RetryInterrupt, MaxRetriesInterrupt, MaxConcurrencyInterrupt)
 from .context import (set_current_worker, set_current_job, get_current_job, get_current_config,
-                      connections, enable_greenlet_tracing, run_task)
+                      connections, enable_greenlet_tracing, run_task, log)
 from .queue import Queue
 from .utils import MongoJSONEncoder, MovingAverage
 from .processes import Process
@@ -76,9 +77,7 @@ class Worker(Process):
         self.pool_size = self.config["greenlets"]
         self.pool_usage_average = MovingAverage((60 / self.config["report_interval"] or 1))
 
-        from .logger import LogHandler
-        self.log_handler = LogHandler(quiet=self.config["quiet"])
-        self.log = self.log_handler.get_logger(worker=self.id)
+        self.set_logger()
 
         self.refresh_queues(fatal=True)
         self.queues_with_notify = list({q.redis_key_notify() for q in self.queues if q.use_notify()})
@@ -104,6 +103,22 @@ class Worker(Process):
         if self.config["ensure_indexes"]:
             run_task("mrq.basetasks.indexes.EnsureIndexes", {})
 
+    def set_logger(self):
+        import logging
+
+        self.log = logging.getLogger(str(self.id))
+        logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s")
+        self.log.setLevel(getattr(logging, self.config["log_level"]))
+        # No need to send worker logs to mongo?
+        # logger_class = load_class_by_path(self.config["logger"])
+
+        # # All mrq handlers must have worker and collection keyword arguments
+        # if self.config["logger"].startswith("mrq"):
+        #     self.log_handler = logger_class(collection=self.config["mongodb_logs"], worker=str(self.id), **self.config["logger_config"])
+        # else:
+        #     self.log_handler = logger_class(**self.config["logger_config"])
+        # self.log.addHandler(self.log_handler)
+
     @property
     def config(self):
         return get_current_config()
@@ -117,9 +132,6 @@ class Worker(Process):
         self.redis = connections.redis
         self.mongodb_jobs = connections.mongodb_jobs
         self.mongodb_logs = connections.mongodb_logs
-
-        if self.mongodb_logs:
-            self.log_handler.set_collection(self.mongodb_logs.mrq_logs)
 
         self.connected = True
 
@@ -164,7 +176,7 @@ class Worker(Process):
 
         while True:
             try:
-                self.flush_logs(w=0)
+                self.flush_logs()
             except Exception as e:  # pylint: disable=broad-except
                 self.log.error("When flushing logs: %s" % e)
             finally:
@@ -368,8 +380,9 @@ class Worker(Process):
         except Exception as e:  # pylint: disable=broad-except
             self.log.debug("Error in admin server : %s" % e)
 
-    def flush_logs(self, w=0):
-        self.log_handler.flush(w=w)
+    def flush_logs(self):
+        for handler in self.log.handlers:
+            handler.flush()
 
     def wait_for_idle(self):
         """ Waits until the worker has nothing more to do. Very useful in tests """
@@ -598,7 +611,7 @@ class Worker(Process):
         self.status = "stop"
 
         self.report_worker(w=1)
-        self.flush_logs(w=1)
+        self.flush_logs()
 
         g_time = getattr(self.greenlet, "_trace_time", 0)
         g_switches = getattr(self.greenlet, "_trace_switches", None)

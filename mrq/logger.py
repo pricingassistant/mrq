@@ -3,6 +3,7 @@ from future.builtins import object
 from future.utils import iteritems
 
 from collections import defaultdict
+import logging
 import datetime
 import sys
 PY3 = sys.version_info > (3,)
@@ -30,7 +31,7 @@ def _decode_if_str(string):
         return unicode(string)  # pylint: disable=undefined-variable
 
 
-class LogHandler(object):
+class LogHandler(logging.Handler):
 
     """ Job/Worker-aware log handler.
 
@@ -38,25 +39,30 @@ class LogHandler(object):
         when creating lots of logger objects.
     """
 
-    def __init__(self, collection=None, quiet=False):
+    def __init__(self, collection=None, quiet=False, worker=None, mongodb_logs_size=16 * 1024 * 1024):
+        super(LogHandler, self).__init__()
 
         self.buffer = {}
         self.collection = None
+        self.mongodb_logs_size = mongodb_logs_size
 
         self.reset()
         self.set_collection(collection)
-        self.quiet = quiet
-
         # Import here to avoid import loop
         # pylint: disable=cyclic-import
-        from .context import get_current_job
+        from .context import get_current_job, get_current_worker
         self.get_current_job = get_current_job
-
-    def get_logger(self, worker=None, job=None):
-        return Logger(self, worker=worker, job=job)
+        self.worker = worker
 
     def set_collection(self, collection=None):
-        self.collection = collection
+        if collection == "1":
+            from .context import connections
+            self.collection = connections.mongodb_logs.mrq_logs
+        if self.collection and self.mongodb_logs_size:
+            if "mrq_logs" in connections.mongodb_logs.collection_names()  and not self.collection.options()["capped"]:
+                connections.mongodb_logs.run_command({"convertToCapped": "mrq_logs", "size": self.mongodb_logs_size});
+            else:
+                connections.mongodb_logs.create_collection("mrq_logs", capped=True, size=self.mongodb_logs_size)
 
     def reset(self):
         self.buffer = {
@@ -64,36 +70,21 @@ class LogHandler(object):
             "jobs": defaultdict(list)
         }
 
-    def log(self, level, *args, **kwargs):
-
-        worker = kwargs.get("worker")
-        job = kwargs.get("job")
-
-        joined_unicode_args = u" ".join([_decode_if_str(x) for x in args])
-        formatted = u"%s [%s] %s" % (
-            datetime.datetime.utcnow(), level.upper(), joined_unicode_args)
-
-        if not self.quiet:
-            try:
-                print(_encode_if_unicode(formatted))
-            except UnicodeDecodeError:
-                print(formatted)
-
+    def emit(self, record):
+        log_entry = self.format(record)
         if self.collection is False:
             return
+        log_entry = _decode_if_str(log_entry)
 
-        if worker is not None:
-            self.buffer["workers"][worker].append(formatted)
-        elif job is not None:
-            if job == "current":
-                job_object = self.get_current_job()
-                if job_object:
-                    self.buffer["jobs"][job_object.id].append(formatted)
-            else:
-                self.buffer["jobs"][job].append(formatted)
+        if self.worker is not None:
+            self.buffer["workers"][self.worker].append(log_entry)
 
-    def flush(self, w=0):
+        if record.name == "current":
+            job_object = self.get_current_job()
+            if job_object:
+                self.buffer["jobs"][job_object.id].append(log_entry)
 
+    def flush(self):
         # We may log some stuff before we are even connected to Mongo!
         if not self.collection:
             return
@@ -108,48 +99,9 @@ class LogHandler(object):
 
         if len(inserts) == 0:
             return
-
         self.reset()
 
         try:
-            self.collection.insert(inserts, w=w)
+            self.collection.insert(inserts)
         except Exception as e:  # pylint: disable=broad-except
-            from mrq.context import get_current_worker
-            self.log("debug", "Log insert failed: %s" % e, worker=get_current_worker())
-
-
-class Logger(object):
-
-    """ This object acts as a logger from python's logging module. """
-
-    def __init__(self, handler, **kwargs):
-        self._handler = handler
-        self.kwargs = kwargs
-        self.quiet = False
-
-    @property
-    def handler(self):
-        if self._handler:
-            return self._handler
-
-        # Import here to avoid import loop
-        from .context import get_current_worker
-        worker = get_current_worker()
-
-        if worker:
-            return worker.log_handler
-        else:
-            self._handler = LogHandler(quiet=self.quiet)
-            return self._handler
-
-    def info(self, *args):
-        self.handler.log("info", *args, **self.kwargs)
-
-    def warning(self, *args):
-        self.handler.log("warning", *args, **self.kwargs)
-
-    def error(self, *args):
-        self.handler.log("error", *args, **self.kwargs)
-
-    def debug(self, *args):
-        self.handler.log("debug", *args, **self.kwargs)
+            self.emit("Log insert failed: %s" % e)
