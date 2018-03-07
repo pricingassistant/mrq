@@ -68,23 +68,18 @@ def get_current_worker():
 
 def set_logger_config():
     config = _GLOBAL_CONTEXT["config"]
-    default_format = "%(asctime)s [%(levelname)s] %(message)s"
-    logging_format = config.get("logging_format", default_format)
-    logging.basicConfig(format=logging_format)
+    log_format = config["log_format"]
+    logging.basicConfig(format=log_format)
     log.setLevel(getattr(logging, config["log_level"]))
 
-    handlers = config["logger_config"].keys() if config["logger_config"] else [config["logger"]]
+    handlers = config["log_handlers"].keys() if config["log_handlers"] else [config["log_handler"]]
     for handler in handlers:
         handler_class = load_class_by_path(handler)
-        handler_config = config["logger_config"].get(handler, {})
-        handler_format = handler_config.pop("format", logging_format)
+        handler_config = config["log_handlers"].get(handler, {})
+        handler_format = handler_config.pop("format", log_format)
         handler_level = getattr(logging, handler_config.pop("level", config["log_level"]))
-        if handler.startswith("mrq"):
-            log_handler = handler_class(collection=config["mongodb_logs"], **handler_config)
-        else:
-            log_handler = handler_class(**handler_config)
-        logging_format = config.get("logging_format", default_format)
-        formatter = logging.Formatter(logging_format)
+        log_handler = handler_class(**handler_config)
+        formatter = logging.Formatter(handler_format)
         log_handler.setFormatter(formatter)
         log_handler.setLevel(handler_level)
         log.addHandler(log_handler)

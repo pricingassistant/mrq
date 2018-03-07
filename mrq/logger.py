@@ -31,7 +31,7 @@ def _decode_if_str(string):
         return unicode(string)  # pylint: disable=undefined-variable
 
 
-class LogHandler(logging.Handler):
+class MongoHandler(logging.Handler):
 
     """ Job/Worker-aware log handler.
 
@@ -39,24 +39,27 @@ class LogHandler(logging.Handler):
         when creating lots of logger objects.
     """
 
-    def __init__(self, collection=None, quiet=False, worker=None, mongodb_logs_size=16 * 1024 * 1024):
-        super(LogHandler, self).__init__()
+    def __init__(self, worker=None, mongodb_logs_size=16 * 1024 * 1024):
+        super(MongoHandler, self).__init__()
 
         self.buffer = {}
         self.collection = None
         self.mongodb_logs_size = mongodb_logs_size
 
         self.reset()
-        self.set_collection(collection)
+        self.set_collection()
         # Import here to avoid import loop
         # pylint: disable=cyclic-import
         from .context import get_current_job, get_current_worker
         self.get_current_job = get_current_job
         self.worker = worker
 
-    def set_collection(self, collection=None):
+    def set_collection(self):
+        from .context import get_current_config, connections
+        config = get_current_config()
+        collection = config["mongodb_logs"]
+
         if collection == "1":
-            from .context import connections
             self.collection = connections.mongodb_logs.mrq_logs
         if self.collection and self.mongodb_logs_size:
             if "mrq_logs" in connections.mongodb_logs.collection_names()  and not self.collection.options()["capped"]:

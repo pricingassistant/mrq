@@ -117,10 +117,16 @@ def add_parser_args(parser, config_type):
         help='Path to a custom worker class')
 
     parser.add_argument(
-        '--logger',
-        default="mrq.logger.LogHandler",
+        '--log_handler',
+        default="mrq.logger.MongoHandler",
         action="store",
-        help='Path to a logger class')
+        help='Path to a log handler class')
+
+    parser.add_argument(
+        '--log_format',
+        default="%(asctime)s [%(levelname)s] %(message)s",
+        action="store",
+        help='log format')
 
     parser.add_argument(
         '--log_level',
@@ -507,7 +513,7 @@ def get_config(
 
     # Keys that can't be passed from the command line
     default_config["tasks"] = {}
-    default_config["logger_config"] = {}
+    default_config["log_handlers"] = {}
     default_config["scheduled_tasks"] = {}
 
     # Only keep values different from config, actually passed on the command

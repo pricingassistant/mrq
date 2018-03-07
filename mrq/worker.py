@@ -107,7 +107,7 @@ class Worker(Process):
         import logging
 
         self.log = logging.getLogger(str(self.id))
-        logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s")
+        logging.basicConfig(format=self.config["log_format"])
         self.log.setLevel(getattr(logging, self.config["log_level"]))
         # No need to send worker logs to mongo?
         # logger_class = load_class_by_path(self.config["logger"])
