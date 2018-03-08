@@ -53,13 +53,13 @@ $ mrq-dashboard
 
 Then spawn a worker listenig to your timed_set queue example_timed_set:
 ```
-$ mrq-worker example_timed_set
+$ mrq-worker example_timed_set --config=/app/examples/timed_set/config.py
 ```
 
 This is obviously a very simple example, production systems will be much more complex but it gives you an overview of timed set queues and a good starting point.
 
 
-Expected result for mrq-worker example_timed_set
+Expected result for mrq-worker example_timed_set --config=/app/examples/timed_set/config.py
 ==================================
 
 ```
