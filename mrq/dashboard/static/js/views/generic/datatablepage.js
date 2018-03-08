@@ -76,7 +76,7 @@ define(["views/generic/page", "underscore", "jquery"],function(Page, _, $) {
         "bServerSide": true,
         "bDeferRender": true,
         "bDestroy": true,
-        "sAjaxSource": "/api/datatables/"+unit_name,
+        "sAjaxSource": "api/datatables/"+unit_name,
         "fnServerData": function (sSource, aoData, fnCallback) {
           self.loading = true;
           _.each(self.filters, function(v, k) {

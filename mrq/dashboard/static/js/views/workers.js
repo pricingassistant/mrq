@@ -23,7 +23,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models", "moment
         self.filters[k] = self.$(".js-workers-datatable-filters-"+k).val();
       });
 
-      window.location = "/#workers?"+$.param(self.filters, true).replace(/\+/g, "%20");
+      window.location = window.location.toString().replace(/\#.*/, "#workers?"+$.param(self.filters, true).replace(/\+/g, "%20"));
 
     },
 

@@ -34,7 +34,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
 
       var self = this;
 
-      $.ajax("/api/logs?job="+job_id+"&last_log_id="+self.last_log_id, {
+      $.ajax("api/logs?job="+job_id+"&last_log_id="+self.last_log_id, {
         "type": "GET",
         "success": function(data) {
           if (!self.last_log_id) {
@@ -53,7 +53,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
     refreshStackTrace: function(jobId)  {
       var self = this;
 
-      $.ajax("/api/job/"+jobId+"/traceback", {
+      $.ajax("api/job/"+jobId+"/traceback", {
         "type": "GET",
         "success": function(data) {
           if (data["traceback_history"]) {
@@ -163,7 +163,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
 
       if (action == "viewresult") {
 
-        $.ajax("/api/job/"+job_id+"/result", {
+        $.ajax("api/job/"+job_id+"/result", {
           "type": "GET",
           "success": function(data) {
             self.$(".js-jobs-modal .js-jobs-modal-content").html(_.escape(JSON.stringify(data, null, 2)));
@@ -238,7 +238,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
 
       $(evt.target).find(".glyphicon").addClass("spin");
 
-      $.ajax("/api/jobaction", {
+      $.ajax("api/jobaction", {
         "type": "POST",
         "data": data,
         "success": function(data) {
@@ -440,7 +440,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
         self.filters[k] = self.$(".js-datatable-filters-"+k).val();
       });
 
-      window.location = "/#jobs?"+$.param(self.filters, true).replace(/\+/g, "%20");
+    window.location = window.location.toString().replace(/\#.*/, "#jobs?"+$.param(self.filters, true).replace(/\+/g, "%20"));
     },
 
   });

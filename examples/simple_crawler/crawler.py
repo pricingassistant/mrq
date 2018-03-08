@@ -87,14 +87,14 @@ class Report(Task):
         collection = connections.mongodb_jobs.simple_crawler_urls
 
         print()
-        print( "Crawl stats")
-        print( "===========")
-        print( "URLs queued: %s" % collection.find().count())
-        print( "URLs successfully crawled: %s" % collection.find({"fetched_date": {"$exists": True}}).count())
-        print( "URLs redirected: %s" % collection.find({"redirected_to": {"$exists": True}}).count())
-        print( "Bytes fetched: %s" % (list(collection.aggregate(
+        print("Crawl stats")
+        print("===========")
+        print("URLs queued: %s" % collection.find().count())
+        print("URLs successfully crawled: %s" % collection.find({"fetched_date": {"$exists": True}}).count())
+        print("URLs redirected: %s" % collection.find({"redirected_to": {"$exists": True}}).count())
+        print("Bytes fetched: %s" % (list(collection.aggregate([
             {"$group": {"_id": None, "sum": {"$sum": "$html_length"}}}
-        )) or [{}])[0].get("sum", 0))
+        ])) or [{}])[0].get("sum", 0))
         print()
 
 
