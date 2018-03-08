@@ -62,9 +62,9 @@ class MongoHandler(logging.Handler):
         if collection == "1":
             self.collection = connections.mongodb_logs.mrq_logs
         if self.collection and self.mongodb_logs_size:
-            if "mrq_logs" in connections.mongodb_logs.collection_names()  and not self.collection.options()["capped"]:
-                connections.mongodb_logs.run_command({"convertToCapped": "mrq_logs", "size": self.mongodb_logs_size});
-            else:
+            if "mrq_logs" in connections.mongodb_logs.collection_names() and not self.collection.options().get("capped"):
+                connections.mongodb_logs.command({"convertToCapped": "mrq_logs", "size": self.mongodb_logs_size})
+            elif "mrq_logs" not in connections.mongodb_logs.collection_names():
                 connections.mongodb_logs.create_collection("mrq_logs", capped=True, size=self.mongodb_logs_size)
 
     def reset(self):
