@@ -542,7 +542,8 @@ class Job(object):
         if hasattr(encodings, "_cache") and len(encodings._cache) > 0:
             encodings._cache = {}
 
-        context.log.handler.flush()
+        for handler in context.log.handlers:
+            handler.flush()
 
     def trace_memory_start(self):
         """ Starts measuring memory consumption """

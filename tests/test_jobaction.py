@@ -112,3 +112,56 @@ def test_cancel_by_path(worker, p_query):
         Queue("q2").size() == expected_action_jobs
 
     worker.stop_deps()
+
+
+def test_cleaning_jobs(worker):
+
+    def test(qname, action, val1, val2):
+
+        worker.start()
+        worker.send_task("tests.tasks.general.MongoInsert", {"a": 43}, block=False, queue=qname)
+        worker.send_task("tests.tasks.general.MongoInsert", {"a": 43}, block=False, queue=qname)
+        worker.send_task("tests.tasks.general.MongoInsert", {"a": 43}, block=False, queue=qname)
+        worker.send_task("tests.tasks.general.MongoInsert", {"a": 43}, block=False, queue=qname)
+        worker.send_task("tests.tasks.general.MongoInsert", {"a": 43}, block=False, queue=qname)
+
+        worker.send_task("mrq.basetasks.utils.JobAction", {
+            "path": "tests.tasks.general.MongoInsert",
+            "status": "queued",
+            "action": action,
+            "queue": qname
+        }, block=False, queue="testMrq")
+
+        time.sleep(1)
+
+        worker.send_task("tests.tasks.general.MongoInsert", {"a": 43}, block=False, queue=qname)
+        worker.send_task("tests.tasks.general.MongoInsert", {"a": 43}, block=False, queue=qname)
+        worker.send_task("tests.tasks.general.MongoInsert", {"a": 43}, block=False, queue=qname)
+        worker.send_task("tests.tasks.general.MongoInsert", {"a": 43}, block=False, queue=qname)
+        worker.send_task("tests.tasks.general.MongoInsert", {"a": 43}, block=False, queue=qname)
+        worker.send_task("tests.tasks.general.MongoInsert", {"a": 43}, block=False, queue=qname)
+
+        assert worker.mongodb_jobs.mrq_jobs.count({"status": "queued"}) == val1
+
+        worker.stop(deps=False)
+
+        worker.start(queues="testMrq", deps=False)
+        time.sleep(1)
+
+        assert worker.mongodb_jobs.mrq_jobs.count({"status": "queued"}) == val2
+        worker.stop(deps=True)
+
+    # Test action: cancel
+    test("test_cancel", "cancel", 12, 6)
+
+    # Test action requeued
+    test("test_requeued", "requeue", 12, 11)
+
+    # Test action: requeue_retry
+    test("test_requeue_retry", "requeue_retry", 12, 11)
+
+    # Test run task with no job queued
+    worker.start()
+    worker.send_task("mrq.basetasks.utils.JobAction", {}, block=False)
+    assert worker.mongodb_jobs.mrq_jobs.count({"status": "queued"}) == 0
+    worker.stop(deps=True)
