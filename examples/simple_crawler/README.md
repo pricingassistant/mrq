@@ -11,6 +11,7 @@ First, get into the docker image at the root of this directory:
 ```
 docker run -t -i -v `pwd`:/src -w /src pricingassistant/mrq bash
 ```
+Don't forget to `cd` in the directory of this exemple!
 
 Then install MRQ and the packages needed for this example:
 ```
