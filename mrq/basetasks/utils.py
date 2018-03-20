@@ -135,7 +135,7 @@ class JobAction(Task):
                     }, {"$set": updates}, multi=True)
 
                 if destination_queue is None:
-                    Queue.ensure_known_queues(jobs_by_queue.iterkeys())
+                    Queue.ensure_known_queues(jobs_by_queue.keys())
 
             if destination_queue is not None:
                 Queue.ensure_known_queues([destination_queue])
