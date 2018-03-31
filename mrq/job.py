@@ -250,6 +250,11 @@ class Job(object):
         exc = AbortInterrupt()
         self._attach_original_exception(exc)
         raise exc
+        
+    def interrupt_job(self):
+        """ interrupt the current job mid-excution. """
+        exc = JobInterrupt()
+        raise exc
 
     def cancel(self):
         """ Markes the current job as cancelled. Doesn't interrupt it. """
