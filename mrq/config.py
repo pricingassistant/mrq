@@ -432,7 +432,7 @@ def add_parser_args(parser, config_type):
 
         parser.add_argument(
             '--subqueues_refresh_interval',
-            default=10,
+            default=60,
             action='store',
             type=float,
             help="Seconds between worker refreshes of the known subqueues")

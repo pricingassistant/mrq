@@ -5,6 +5,7 @@ from mrq.task import Task
 from mrq.context import (log, retry_current_job, connections, get_current_config, get_current_job,
                          subpool_map, subpool_imap, abort_current_job, set_current_job_progress)
 from mrq.job import queue_job
+from mrq.queue import Queue
 import urllib.request, urllib.error, urllib.parse
 import json
 import time
@@ -20,7 +21,7 @@ class Add(Task):
         res = params.get("a", 0) + params.get("b", 0)
 
         if params.get("sleep", 0):
-            log.info("sleeping", params.get("sleep", 0))
+            log.info("sleeping %s", params.get("sleep", 0))
             time.sleep(params.get("sleep", 0))
 
         return res
@@ -292,3 +293,8 @@ class SendTask(Task):
 
     def run(self, params):
         return queue_job(params["path"], params["params"], queue=params.get("queue"))
+
+
+class QueueAllKnown(Task):
+    def run(self, params):
+        return list(Queue.all_known())

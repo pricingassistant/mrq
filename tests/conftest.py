@@ -290,8 +290,8 @@ class RedisFixture(ProcessFixture):
     def flush(self):
         connections.redis.flushall()
 
-        # Empty local known_queues cache too
-        Queue.known_queues = {}
+        # Empty process-local cache too
+        Queue.paused_queues = set()
 
 
 class MongoFixture(ProcessFixture):

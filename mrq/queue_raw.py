@@ -23,12 +23,43 @@ class QueueRaw(Queue):
         elif "_sorted" in self.id:
             self.is_sorted = True
 
+    @property
+    def has_subqueues(self):
+        return bool(self.get_config().get("has_subqueues"))
+
+    @property
+    def redis_key_known_subqueues(self):
+        """ Returns the redis key used to store the known subqueues of this raw queue. """
+        return "%s:ksq:%s" % (context.get_current_config()["redis_prefix"], self.root_id)
+
+    @property
+    def redis_key(self):
+        """ Returns the redis key used to store this queue. """
+        return "%s:q:%s" % (context.get_current_config()["redis_prefix"], self.id)
+
+    @property
+    def redis_key_started(cls):
+        """ Returns the global redis key used to store started job ids """
+        return "%s:s:started" % context.get_current_config()["redis_prefix"]
+
+    def empty(self):
+        """ Empty a queue. """
+        with context.connections.redis.pipeline(transaction=True) as pipe:
+            pipe.delete(self.redis_key)
+            pipe.delete(self.redis_key_known_subqueues)
+            pipe.execute()
+
+    def get_known_subqueues(self):
+        """ Returns all known subqueues """
+        if not self.has_subqueues:
+            return set()
+        return set(context.connections.redis.smembers(self.redis_key_known_subqueues))
+
     def size(self):
         """ Returns the total number of queued jobs on the queue """
 
         if self.id.endswith("/"):
-            queues = Queue.instanciate_queues([self.id])
-            return sum(q.size() for q in queues if not q.id.endswith("/"))
+            return sum(Queue(q).size() for q in self.get_known_subqueues())
 
         # ZSET
         if self.is_sorted:
@@ -45,6 +76,9 @@ class QueueRaw(Queue):
 
         if len(params_list) == 0:
             return
+
+        if self.is_subqueue:
+            context.connections.redis.sadd(self.redis_key_known_subqueues, self.id)
 
         # ZSET
         if self.is_sorted:
@@ -66,10 +100,6 @@ class QueueRaw(Queue):
         context.metric("queues.%s.enqueued" % self.id, len(params_list))
         context.metric("queues.all.enqueued", len(params_list))
 
-        # Update the timestamp of the queue in the known queues if it's older than 1 day
-        if self.id not in Queue.known_queues or Queue.known_queues[self.id] < time.time() - 86400:
-            self.add_to_known_queues()
-
     def remove_raw_jobs(self, params_list):
         """ Remove jobs from a raw queue with their raw params. """
 
@@ -88,6 +118,11 @@ class QueueRaw(Queue):
             # O(n)! Use with caution.
             for k in params_list:
                 context.connections.redis.lrem(self.redis_key, 1, k)
+
+        # Is the queue now empty?
+        # TODO LUA this with the above
+        if self.is_subqueue and self.size() == 0:
+            context.connections.redis.srem(self.redis_key_known_subqueues, self.id)
 
         context.metric("queues.%s.removed" % self.id, len(params_list))
         context.metric("queues.all.removed", len(params_list))
@@ -190,6 +225,12 @@ class QueueRaw(Queue):
             params = redis_group_command("lpop", max_jobs, self.redis_key)
 
         if len(params) == 0:
+
+            # We didn't dequeue anything. Does this mean the queue is empty?
+            # TODO LUA this with the above
+            if self.is_subqueue and self.size() == 0:
+                context.connections.redis.srem(self.redis_key_known_subqueues, self.id)
+
             return
 
         if worker:

@@ -27,15 +27,34 @@ class QueueRegular(Queue):
     def collection(self):
         return context.connections.mongodb_jobs.mrq_jobs
 
+    def empty(self):
+        """ Remove all jobs """
+        return self.collection.delete_many({"queue": self.id})
+
+    def get_retry_queue(self):
+        """ Return the name of the queue where retried jobs will be queued """
+        return self.id
+
+    def get_known_subqueues(self):
+        """ Returns all known subqueues """
+
+        all_queues_from_mongodb = Queue.all_known(sources=("jobs", ))
+
+        idprefix = self.id
+        if not idprefix.endswith("/"):
+            idprefix += "/"
+
+        return {q for q in all_queues_from_mongodb if q.startswith(idprefix)}
+
     def size(self):
         """ Returns the total number of queued jobs on the queue """
 
         if self.id.endswith("/"):
-            subqueues = list(self.get_known_subqueues())
+            subqueues = self.get_known_subqueues()
             if len(subqueues) == 0:
                 return 0
             else:
-                return self.collection.count({"status": "queued", "queue": {"$in": subqueues}})
+                return self.collection.count({"status": "queued", "queue": {"$in": list(subqueues)}})
         else:
             return self.collection.count({"status": "queued", "queue": self.id})
 

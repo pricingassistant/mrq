@@ -26,6 +26,7 @@ RAW_QUEUES = {
         }
     },
     "test_raw": {
+        "has_subqueues": True,
         "job_factory": lambda rawparam: {
             "path": "tests.tasks.general.MongoInsert",
             "params": {
@@ -34,6 +35,7 @@ RAW_QUEUES = {
         }
     },
     "test_set": {
+        "has_subqueues": True,
         "job_factory": lambda rawparam: {
             "path": "tests.tasks.general.MongoInsert",
             "params": {

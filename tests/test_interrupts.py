@@ -288,11 +288,11 @@ def test_interrupt_worker_sigkill(worker, p_flags):
 #     worker.stop(deps=False)
 
 #     assert Queue("xxx").size() == 0
-#     assert connections.redis.zcard(Queue.redis_key_started()) == 2
+#     assert connections.redis.zcard(Queue.redis_key_started) == 2
 
 #     worker.start(queues="default", start_deps=False, flush=False)
 
-#     assert connections.redis.zcard(Queue.redis_key_started()) == 2
+#     assert connections.redis.zcard(Queue.redis_key_started) == 2
 
 #     res = worker.send_task("mrq.basetasks.cleaning.RequeueRedisStartedJobs", {
 #         "timeout": 0
@@ -303,7 +303,7 @@ def test_interrupt_worker_sigkill(worker, p_flags):
 
 #     assert Queue("xxx").size() == 2
 #     assert Queue("default").size() == 0
-#     assert connections.redis.zcard(Queue.redis_key_started()) == 0
+#     assert connections.redis.zcard(Queue.redis_key_started) == 0
 
 
 def test_interrupt_maxjobs(worker):

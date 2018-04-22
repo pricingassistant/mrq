@@ -165,7 +165,7 @@ class Agent(Process):
         log.debug("Starting queue stats...")
 
         # Fetch all known queues
-        queues = list(Queue.instanciate_queues(Queue.known_queues.keys()))
+        queues = [Queue(q) for q in Queue.all_known()]
 
         new_queues = {queue.id for queue in queues}
         old_queues = set(self.queue_etas.keys())
