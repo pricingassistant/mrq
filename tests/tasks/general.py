@@ -283,7 +283,6 @@ class GetIoHookEvents(Task):
                 evt["args"] = repr(evt["args"])
                 evt.pop("options", None)
 
-            # print evt
             evts.append(evt)
 
         return json.dumps(evts, cls=MongoJSONEncoder)
