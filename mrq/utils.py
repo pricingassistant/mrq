@@ -184,8 +184,6 @@ class MongoJSONEncoder(json.JSONEncoder):
             return str(obj)
         elif isinstance(obj, uuid.UUID):
             return str(obj)
-        elif isinstance(obj, property):
-            return str(obj)
         elif isinstance(obj, bytes):
             return obj.decode('utf-8')
         return json.JSONEncoder.default(self, obj)
