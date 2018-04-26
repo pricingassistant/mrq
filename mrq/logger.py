@@ -82,7 +82,7 @@ class MongoHandler(logging.Handler):
         if self.worker is not None:
             self.buffer["workers"][self.worker].append(log_entry)
 
-        if record.name == "current":
+        if record.name == "mrq.current":
             job_object = self.get_current_job()
             if job_object:
                 self.buffer["jobs"][job_object.id].append(log_entry)
