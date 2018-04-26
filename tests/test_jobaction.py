@@ -146,7 +146,7 @@ def test_cleaning_jobs(worker):
         worker.stop(deps=False)
 
         worker.start(queues="testMrq", deps=False)
-        time.sleep(1)
+        worker.wait_for_idle()
 
         assert worker.mongodb_jobs.mrq_jobs.count({"status": "queued"}) == val2
         worker.stop(deps=True)
@@ -163,5 +163,6 @@ def test_cleaning_jobs(worker):
     # Test run task with no job queued
     worker.start()
     worker.send_task("mrq.basetasks.utils.JobAction", {}, block=False)
+    worker.wait_for_idle()
     assert worker.mongodb_jobs.mrq_jobs.count({"status": "queued"}) == 0
     worker.stop(deps=True)
