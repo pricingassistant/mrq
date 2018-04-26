@@ -12,7 +12,7 @@ class LockedAdd(Add):
         res = params.get("a", 0) + params.get("b", 0)
 
         if params.get("sleep", 0):
-            log.info("sleeping", params.get("sleep", 0))
+            log.info("sleeping %d", params.get("sleep", 0))
             time.sleep(params.get("sleep", 0))
 
         return res
