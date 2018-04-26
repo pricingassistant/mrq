@@ -66,9 +66,9 @@ def test_general_simple_task_one(worker):
     assert "adding" in db_logs[0]["logs"]
 
     # Worker logs
-    db_logs = list(
-        worker.mongodb_logs.mrq_logs.find({"worker": db_workers[0]["_id"]}))
-    assert len(db_logs) >= 1
+    # db_logs = list(
+    #     worker.mongodb_logs.mrq_logs.find({"worker": db_workers[0]["_id"]}))
+    # assert len(db_logs) >= 1
 
     worker.stop_deps()
 
