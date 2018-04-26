@@ -68,21 +68,24 @@ def get_current_worker():
 
 def set_logger_config():
     config = _GLOBAL_CONTEXT["config"]
-    log_format = config["log_format"]
-    logging.basicConfig(format=log_format)
-    log.setLevel(getattr(logging, config["log_level"]))
+    if config.get("quiet"):
+        log.disabled = True
+    else:
+        log_format = config["log_format"]
+        logging.basicConfig(format=log_format)
+        log.setLevel(getattr(logging, config["log_level"]))
 
-    handlers = config["log_handlers"].keys() if config["log_handlers"] else [config["log_handler"]]
-    for handler in handlers:
-        handler_class = load_class_by_path(handler)
-        handler_config = config["log_handlers"].get(handler, {})
-        handler_format = handler_config.pop("format", log_format)
-        handler_level = getattr(logging, handler_config.pop("level", config["log_level"]))
-        log_handler = handler_class(**handler_config)
-        formatter = logging.Formatter(handler_format)
-        log_handler.setFormatter(formatter)
-        log_handler.setLevel(handler_level)
-        log.addHandler(log_handler)
+        handlers = config["log_handlers"].keys() if config["log_handlers"] else [config["log_handler"]]
+        for handler in handlers:
+            handler_class = load_class_by_path(handler)
+            handler_config = config["log_handlers"].get(handler, {})
+            handler_format = handler_config.pop("format", log_format)
+            handler_level = getattr(logging, handler_config.pop("level", config["log_level"]))
+            log_handler = handler_class(**handler_config)
+            formatter = logging.Formatter(handler_format)
+            log_handler.setFormatter(formatter)
+            log_handler.setLevel(handler_level)
+            log.addHandler(log_handler)
 
 
 def set_current_config(config):

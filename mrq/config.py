@@ -117,6 +117,12 @@ def add_parser_args(parser, config_type):
         help='Path to a custom worker class')
 
     parser.add_argument(
+        '--quiet',
+        default=False,
+        action='store_true',
+        help='Don\'t output task logs')
+
+    parser.add_argument(
         '--log_handler',
         default="mrq.logger.MongoHandler",
         action="store",
