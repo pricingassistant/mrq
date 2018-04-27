@@ -188,7 +188,6 @@ def test_raw_exception(worker):
     worker.send_raw_tasks(p_queue, ["msg1"], block=True)
 
     failjob = list(jobs_collection.find())[0]
-
     assert Queue("default").size() == 0
     assert Queue(p_queue).size() == 0
     assert jobs_collection.count() == 1
@@ -210,7 +209,6 @@ def test_raw_exception(worker):
 
     assert Queue("default").size() == 0
     assert Queue(p_queue).size() == 0
-    assert Queue("testx").size() == 1
     assert jobs_collection.count() == 2
     assert list(jobs_collection.find({"_id": failjob["_id"]}))[
         0]["status"] == "queued"
@@ -221,8 +219,7 @@ def test_raw_exception(worker):
 
     worker.start(
         deps=False, flags="--greenlets 10 --config tests/fixtures/config-raw1.py", queues="default testx")
-
-    time.sleep(2)
+    worker.wait_for_idle()
 
     assert Queue(p_queue).size() == 0
     assert jobs_collection.count() == 2

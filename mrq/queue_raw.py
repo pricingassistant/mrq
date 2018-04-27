@@ -1,3 +1,4 @@
+from datetime import datetime
 import time
 from .queue import Queue
 from . import context
@@ -240,10 +241,10 @@ class QueueRaw(Queue):
         for j in job_data:
             j["status"] = "started"
             j["queue"] = retry_queue
+            j["datequeued"] = datetime.now()
             j["raw_queue"] = self.id
             if worker:
                 j["worker"] = worker.id
-
         for job in job_class.insert(job_data, statuses_no_storage=statuses_no_storage):
             yield job
 
