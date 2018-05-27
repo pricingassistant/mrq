@@ -534,7 +534,7 @@ class Job(object):
         if hasattr(fnmatch, "purge"):
             fnmatch.purge()  # pylint: disable=no-member
         elif hasattr(fnmatch, "_purge"):
-            fnmatch._purge()
+            fnmatch._purge()  # pylint: disable=no-member
 
         if hasattr(encodings, "_cache") and len(encodings._cache) > 0:
             encodings._cache = {}

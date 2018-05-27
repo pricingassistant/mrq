@@ -29,6 +29,12 @@ class Agent(Process):
 
         self.dateorchestrated = None
 
+        # global redis key used to ensure only one agent orchestrator runs at a time
+        self.redis_queuestats_lock_key = "%s:queuestatslock" % (self.config["redis_prefix"])
+
+        # global HSET redis key used to store queue stats
+        self.redis_queuestats_key= "%s:queuestats" % (self.config["redis_prefix"])
+
     def work(self):
 
         self.install_signal_handlers()
@@ -147,16 +153,6 @@ class Agent(Process):
                     time.sleep(interval)
 
             time.sleep(interval)
-
-    @property
-    def redis_queuestats_lock_key(self):
-        """ Returns the global redis key used to ensure only one agent orchestrator runs at a time """
-        return "%s:queuestatslock" % (get_current_config()["redis_prefix"])
-
-    @property
-    def redis_queuestats_key(self):
-        """ Returns the global HSET redis key used to store queue stats """
-        return "%s:queuestats" % (get_current_config()["redis_prefix"])
 
     def queuestats(self):
         """ Compute ETAs for every known queue & subqueue """

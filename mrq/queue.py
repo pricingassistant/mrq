@@ -75,6 +75,13 @@ class Queue(object):
 
         self.use_large_ids = context.get_current_config()["use_large_job_ids"]
 
+
+    @classmethod
+    @property
+    def redis_key_paused_queues(cls):
+        return "%s:s:paused" % context.get_current_config()["redis_prefix"]
+
+
     @classmethod
     def get_queue_type(cls, queue_id):
         """ Return the queue type, currently determined only by its suffix. """
@@ -94,11 +101,6 @@ class Queue(object):
     def get_config(self):
         """ Returns the specific configuration for this queue """
         return Queue.get_queues_config().get(self.root_id) or {}
-
-    @property
-    def redis_key_paused_queues(cls):
-        """ Returns the redis key used to store paused queues. """
-        return "%s:s:paused" % (context.get_current_config()["redis_prefix"])
 
     @classmethod
     def redis_paused_queues(cls):

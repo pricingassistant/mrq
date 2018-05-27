@@ -46,3 +46,4 @@ dump.rdb
 supervisord.pid
 memory_traces
 mrq/dashboard/static/node_modules/
+.vscode

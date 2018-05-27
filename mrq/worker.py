@@ -135,15 +135,11 @@ class Worker(Process):
 
         self.connected = True
 
-    @property
-    def redis_scheduler_lock_key(self):
-        """ Returns the global redis key used to ensure only one scheduler runs at a time """
-        return "%s:schedulerlock" % get_current_config()["redis_prefix"]
-
     def greenlet_scheduler(self):
 
+        redis_scheduler_lock_key = "%s:schedulerlock" % get_current_config()["redis_prefix"]
         while True:
-            with LuaLock(connections.redis, self.redis_scheduler_lock_key,
+            with LuaLock(connections.redis, redis_scheduler_lock_key,
                          timeout=self.config["scheduler_interval"] + 10, blocking=False, thread_local=False):
                 self.scheduler.check()
 
@@ -367,7 +363,7 @@ class Worker(Process):
             def write(self, *_):
                 pass
 
-        from gevent import wsgi
+        from gevent import pywsgi
 
         def admin_routes(env, start_response):
             path = env["PATH_INFO"]
@@ -384,7 +380,7 @@ class Worker(Process):
             start_response(status, [('Content-Type', 'application/json')])
             return [res]
 
-        server = wsgi.WSGIServer((self.config["admin_ip"], self.config["admin_port"]), admin_routes, log=Devnull())
+        server = pywsgi.WSGIServer((self.config["admin_ip"], self.config["admin_port"]), admin_routes, log=Devnull())
 
         try:
             self.log.debug("Starting admin server on port %s" % self.config["admin_port"])
@@ -450,6 +446,9 @@ class Worker(Process):
             self.greenlets["report"] = gevent.spawn(self.greenlet_report)
             self.greenlets["logs"] = gevent.spawn(self.greenlet_logs)
 
+        if self.config["admin_port"]:
+            self.greenlets["admin"] = gevent.spawn(self.greenlet_admin)
+
         if self.config["scheduler"] and self.config["scheduler_interval"] > 0:
 
             from .scheduler import Scheduler
@@ -458,9 +457,6 @@ class Worker(Process):
             self.scheduler.check_config_integrity()  # If this fails, we won't dequeue any jobs
 
             self.greenlets["scheduler"] = gevent.spawn(self.greenlet_scheduler)
-
-        if self.config["admin_port"]:
-            self.greenlets["admin"] = gevent.spawn(self.greenlet_admin)
 
         self.install_signal_handlers()
 

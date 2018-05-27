@@ -6,6 +6,7 @@ from collections import defaultdict
 import logging
 import datetime
 import sys
+import pymongo
 PY3 = sys.version_info > (3,)
 
 
@@ -65,7 +66,10 @@ class MongoHandler(logging.Handler):
             if "mrq_logs" in connections.mongodb_logs.collection_names() and not self.collection.options().get("capped"):
                 connections.mongodb_logs.command({"convertToCapped": "mrq_logs", "size": self.mongodb_logs_size})
             elif "mrq_logs" not in connections.mongodb_logs.collection_names():
-                connections.mongodb_logs.create_collection("mrq_logs", capped=True, size=self.mongodb_logs_size)
+                try:
+                    connections.mongodb_logs.create_collection("mrq_logs", capped=True, size=self.mongodb_logs_size)
+                except pymongo.errors.OperationFailure:  # The collection might have been created in the meantime
+                    pass
 
     def reset(self):
         self.buffer = {

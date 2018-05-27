@@ -76,13 +76,14 @@ class QueueRegular(Queue):
 
         count = 0
 
-        job_ids = None
+
 
         # TODO: remove _id sort after full migration to datequeued
         sort_order = [("datequeued", -1 if self.is_reverse else 1), ("_id", -1 if self.is_reverse else 1)]
 
         # MongoDB optimization: with many jobs it's faster to fetch the IDs first and do the atomic update second
         # Some jobs may have been stolen by another worker in the meantime but it's a balance (should we over-fetch?)
+        # job_ids = None
         # if max_jobs > 5:
         #     job_ids = [x["_id"] for x in self.collection.find(
         #         self.base_dequeue_query,
@@ -94,16 +95,16 @@ class QueueRegular(Queue):
         #     if len(job_ids) == 0:
         #         return
 
-        for i in range(max_jobs if job_ids is None else len(job_ids)):
+        for i in range(max_jobs):  # if job_ids is None else len(job_ids)):
 
-            if job_ids is not None:
-                query = {
-                    "status": "queued",
-                    "_id": job_ids[i]
-                }
-                sort_order = None
-            else:
-                query = self.base_dequeue_query
+            # if job_ids is not None:
+            #     query = {
+            #         "status": "queued",
+            #         "_id": job_ids[i]
+            #     }
+            #     sort_order = None
+            # else:
+            query = self.base_dequeue_query
 
             job_data = self.collection.find_one_and_update(
                 query,

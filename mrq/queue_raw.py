@@ -24,24 +24,18 @@ class QueueRaw(Queue):
         elif "_sorted" in self.id:
             self.is_sorted = True
 
-    @property
-    def has_subqueues(self):
-        return bool(self.get_config().get("has_subqueues"))
+        self.has_subqueues = bool(self.get_config().get("has_subqueues"))
 
-    @property
-    def redis_key_known_subqueues(self):
-        """ Returns the redis key used to store the known subqueues of this raw queue. """
-        return "%s:ksq:%s" % (context.get_current_config()["redis_prefix"], self.root_id)
+        current_config = context.get_current_config()
 
-    @property
-    def redis_key(self):
-        """ Returns the redis key used to store this queue. """
-        return "%s:q:%s" % (context.get_current_config()["redis_prefix"], self.id)
+        # redis key used to store the known subqueues of this raw queue.
+        self.redis_key_known_subqueues = "%s:ksq:%s" % (current_config["redis_prefix"], self.root_id)
 
-    @property
-    def redis_key_started(cls):
-        """ Returns the global redis key used to store started job ids """
-        return "%s:s:started" % context.get_current_config()["redis_prefix"]
+        # redis key used to store this queue.
+        self.redis_key = "%s:q:%s" % (current_config["redis_prefix"], self.id)
+
+        # global redis key used to store started job ids
+        self.redis_key_started = "%s:s:started" % current_config["redis_prefix"]
 
     def empty(self):
         """ Empty a queue. """
