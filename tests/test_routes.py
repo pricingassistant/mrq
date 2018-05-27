@@ -93,7 +93,9 @@ def test_routes_datatables(worker, api):
 
     task_path = "tests.tasks.general.RaiseException"
     worker.send_task(task_path, {
-                     "message": "xyz"}, block=True, accept_statuses=["failed"])
+                     "message": "xyz"}, block=True, accept_statuses=["failed"], queue="low")
+    worker.send_task(task_path, {
+                     "message": "xyz"}, block=True, accept_statuses=["failed"], queue="high")
 
     unit = "workers"
     data, _ = api.GET("/api/datatables/%s?sEcho=1" % unit)
@@ -101,14 +103,14 @@ def test_routes_datatables(worker, api):
 
     unit = "jobs"
     data, _ = api.GET("/api/datatables/%s?sEcho=1" % unit)
-    assert len(data["aaData"]) == 1
+    assert len(data["aaData"]) == 2
     assert data["aaData"][0]["path"] == task_path
     assert data["aaData"][0]["status"] == "failed"
     assert "xyz" in data["aaData"][0]["traceback"]
 
     unit = "queues"
     data, _ = api.GET("/api/datatables/%s?sEcho=1" % unit)
-    assert len(data["aaData"]) > 1
+    assert len(data["aaData"]) == 2
 
     # TODO: test unit = "scheduled_jobs"
 
