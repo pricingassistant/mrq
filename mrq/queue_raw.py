@@ -2,8 +2,7 @@ from datetime import datetime
 import time
 from .queue import Queue
 from . import context
-from .redishelpers import redis_zaddbyscore, redis_zpopbyscore
-from .redishelpers import redis_group_command
+from .redishelpers import redis_zaddbyscore, redis_zpopbyscore, redis_key, redis_group_command
 from past.utils import old_div
 from future.builtins import range
 
@@ -29,13 +28,13 @@ class QueueRaw(Queue):
         current_config = context.get_current_config()
 
         # redis key used to store the known subqueues of this raw queue.
-        self.redis_key_known_subqueues = "%s:ksq:%s" % (current_config["redis_prefix"], self.root_id)
+        self.redis_key_known_subqueues = redis_key("known_subqueues", self)
 
         # redis key used to store this queue.
-        self.redis_key = "%s:q:%s" % (current_config["redis_prefix"], self.id)
+        self.redis_key = redis_key("queue", self)
 
         # global redis key used to store started job ids
-        self.redis_key_started = "%s:s:started" % current_config["redis_prefix"]
+        self.redis_key_started = redis_key("started_jobs")
 
     def empty(self):
         """ Empty a queue. """

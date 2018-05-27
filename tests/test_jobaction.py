@@ -43,16 +43,13 @@ def test_cancel_by_path(worker, p_query):
 
     job_ids = []
     job_ids.append(worker.send_task("tests.tasks.general.Add", {
-                   "a": 41, "b": 1, "sleep": 2}, queue="default", block=False))
+                   "a": 41, "b": 1, "sleep": 4}, queue="default", block=False))
 
     params = {
         "action": "cancel",
         "status": "queued"
     }
     params.update(p_query[0])
-
-    requeue_job = worker.send_task(
-        "mrq.basetasks.utils.JobAction", params, block=False)
 
     job_ids.append(worker.send_task(
         "tests.tasks.general.MongoInsert", {"a": 42}, queue="q1", block=False))
@@ -62,6 +59,9 @@ def test_cancel_by_path(worker, p_query):
         "tests.tasks.general.MongoInsert", {"a": 43}, queue="q2", block=False))
     job_ids.append(worker.send_task(
         "tests.tasks.general.MongoInsert2", {"a": 44}, queue="q1", block=False))
+
+    requeue_job = worker.send_task(
+        "mrq.basetasks.utils.JobAction", params, block=False)
 
     Job(job_ids[-1]).wait(poll_interval=0.01)
 
@@ -74,8 +74,7 @@ def test_cancel_by_path(worker, p_query):
     assert jobs[0]["status"] == "success"
     assert jobs[0]["result"] == 42
 
-    assert Job(requeue_job).fetch().data["result"][
-        "cancelled"] == expected_action_jobs
+    assert Job(requeue_job).fetch().data["result"]["cancelled"] == expected_action_jobs
 
     # Check that the right number of jobs ran.
     assert worker.mongodb_jobs.tests_inserts.count() == len(

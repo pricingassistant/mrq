@@ -7,6 +7,7 @@ from bson import ObjectId
 from . import context
 from . import job as jobmodule
 import binascii
+from .redishelpers import redis_key
 
 import sys
 from future import standard_library
@@ -75,13 +76,6 @@ class Queue(object):
 
         self.use_large_ids = context.get_current_config()["use_large_job_ids"]
 
-
-    @classmethod
-    @property
-    def redis_key_paused_queues(cls):
-        return "%s:s:paused" % context.get_current_config()["redis_prefix"]
-
-
     @classmethod
     def get_queue_type(cls, queue_id):
         """ Return the queue type, currently determined only by its suffix. """
@@ -101,11 +95,6 @@ class Queue(object):
     def get_config(self):
         """ Returns the specific configuration for this queue """
         return Queue.get_queues_config().get(self.root_id) or {}
-
-    @classmethod
-    def redis_paused_queues(cls):
-        """ Returns the set of currently paused queues """
-        return {q.decode("utf-8") for q in context.connections.redis.smembers(cls.redis_key_paused_queues)}
 
     def serialize_job_ids(self, job_ids):
         """ Returns job_ids serialized for storage in Redis """
@@ -136,7 +125,7 @@ class Queue(object):
 
     def pause(self):
         """ Adds this queue to the set of paused queues """
-        context.connections.redis.sadd(Queue.redis_key_paused_queues, self._get_pausable_id())
+        context.connections.redis.sadd(redis_key("paused_queues"), self._get_pausable_id())
 
     def is_paused(self):
         """
@@ -146,13 +135,13 @@ class Queue(object):
         """
         root_is_paused = False
         if self.root_id != self.id:
-            root_is_paused = context.connections.redis.sismember(Queue.redis_key_paused_queues, self.root_id)
+            root_is_paused = context.connections.redis.sismember(redis_key("paused_queues"), self.root_id)
 
-        return root_is_paused or context.connections.redis.sismember(Queue.redis_key_paused_queues, self.id)
+        return root_is_paused or context.connections.redis.sismember(redis_key("paused_queues"), self.id)
 
     def resume(self):
         """ Resumes a paused queue """
-        context.connections.redis.srem(Queue.redis_key_paused_queues, self._get_pausable_id())
+        context.connections.redis.srem(redis_key("paused_queues"), self._get_pausable_id())
 
     def count_jobs_to_dequeue(self):
         """ Returns the number of jobs that can be dequeued right now from the queue. """
@@ -234,9 +223,6 @@ class Queue(object):
 
         return queues
 
-    def redis_key_notify(self):
-        return "%s:notify:%s" % (context.get_current_config()["redis_prefix"], self.root_id)
-
     def use_notify(self):
         """ Does this queue use notifications? """
         return bool(self.get_config().get("notify"))
@@ -250,7 +236,7 @@ class Queue(object):
         # Not really useful to send more than 100 notifs (to be configured)
         count = min(new_jobs_count, 100)
 
-        notify_key = self.redis_key_notify()
+        notify_key = redis_key("notify", self)
 
         context.connections.redis.lpush(notify_key, *([1] * count))
         context.connections.redis.expire(notify_key, max(1, int(context.get_current_config()["max_latency"] * 2)))

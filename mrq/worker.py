@@ -27,6 +27,7 @@ from .context import (set_current_worker, set_current_job, get_current_job, get_
 from .queue import Queue
 from .utils import MongoJSONEncoder, MovingAverage
 from .processes import Process
+from .redishelpers import redis_key
 
 
 class Worker(Process):
@@ -55,6 +56,8 @@ class Worker(Process):
         self.max_jobs = self.config["max_jobs"]
         self.max_time = datetime.timedelta(seconds=self.config["max_time"]) or None
 
+        self.paused_queues = set()
+
         self.connected = False  # MongoDB + Redis
 
         self.process = psutil.Process(os.getpid())
@@ -80,7 +83,7 @@ class Worker(Process):
         self.set_logger()
 
         self.refresh_queues(fatal=True)
-        self.queues_with_notify = list({q.redis_key_notify() for q in self.queues if q.use_notify()})
+        self.queues_with_notify = list({redis_key("notify", q) for q in self.queues if q.use_notify()})
         self.has_subqueues = any([queue.endswith("/") for queue in self.config["queues"]])
 
         self.log.info(
@@ -206,12 +209,16 @@ class Worker(Process):
             if fatal:
                 raise
 
+    def get_paused_queues(self):
+        """ Returns the set of currently paused queues """
+        return {q.decode("utf-8") for q in self.redis.smembers(redis_key("paused_queues"))}
+
     def greenlet_paused_queues(self):
 
       while True:
 
           # Update the process-local list of paused queues
-          Queue.paused_queues = Queue.redis_paused_queues()
+          self.paused_queues = self.get_paused_queues()
           time.sleep(self.config["paused_queues_refresh_interval"])
 
     def get_memory(self):
@@ -546,8 +553,8 @@ class Worker(Process):
 
         available_queues = [
             queue for queue in self.queues
-            if queue.root_id not in Queue.paused_queues and
-            queue.id not in Queue.paused_queues
+            if queue.root_id not in self.paused_queues and
+            queue.id not in self.paused_queues
         ]
 
         for queue_i in range(len(available_queues)):
