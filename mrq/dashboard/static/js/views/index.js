@@ -14,7 +14,7 @@ define(["jquery", "underscore", "views/generic/page", "models", "moment", "circl
 
     fetchStats: function(cb) {
       var self = this;
-      $.get("/workers").done(function (data) {
+      $.get("workers").done(function (data) {
         workers = data.workers;
         var poolSize = 0;
         var currentJobs = 0;

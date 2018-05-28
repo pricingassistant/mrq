@@ -264,9 +264,6 @@ class Job(object):
                 self.fetch(full_data={"_id": 0, "queue": 1, "path": 1})
             queue = self.data["queue"]
 
-        from .queue import Queue
-        Queue(queue, add_to_known_queues=True)
-
         self._save_status("queued", updates={
             "queue": queue,
             "datequeued": datetime.datetime.utcnow(),
@@ -537,12 +534,13 @@ class Job(object):
         if hasattr(fnmatch, "purge"):
             fnmatch.purge()  # pylint: disable=no-member
         elif hasattr(fnmatch, "_purge"):
-            fnmatch._purge()
+            fnmatch._purge()  # pylint: disable=no-member
 
         if hasattr(encodings, "_cache") and len(encodings._cache) > 0:
             encodings._cache = {}
 
-        context.log.handler.flush()
+        for handler in context.log.handlers:
+            handler.flush()
 
     def trace_memory_start(self):
         """ Starts measuring memory consumption """
@@ -607,7 +605,7 @@ def queue_raw_jobs(queue, params_list, **kwargs):
     """ Queue some jobs on a raw queue """
 
     from .queue import Queue
-    queue_obj = Queue(queue, add_to_known_queues=True)
+    queue_obj = Queue(queue)
     queue_obj.enqueue_raw_jobs(params_list, **kwargs)
 
 
@@ -628,7 +626,7 @@ def queue_jobs(main_task_path, params_list, queue=None, batch_size=1000):
         queue = task_def.get("queue", "default")
 
     from .queue import Queue
-    queue_obj = Queue(queue, add_to_known_queues=True)
+    queue_obj = Queue(queue)
 
     if queue_obj.is_raw:
         raise Exception("Can't queue regular jobs on a raw queue")

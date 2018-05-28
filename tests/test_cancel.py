@@ -11,17 +11,17 @@ def test_cancel_by_path(worker):
 
     job_id1 = worker.send_task(
         "tests.tasks.general.MongoInsert", {"a": 41, "sleep": 2}, block=False)
+    worker.wait_for_idle()
+
+    job_id2 = worker.send_task(
+        "tests.tasks.general.MongoInsert", {"a": 43}, block=False, queue="testMrq")
 
     worker.send_task("mrq.basetasks.utils.JobAction", {
         "path": "tests.tasks.general.MongoInsert",
         "status": "queued",
         "action": "cancel"
     }, block=False)
-
-    job_id2 = worker.send_task(
-        "tests.tasks.general.MongoInsert", {"a": 43}, block=False)
-
-    Job(job_id2).wait(poll_interval=0.01)
+    worker.wait_for_idle()
 
     # Leave some time to unqueue job_id2 without executing.
     time.sleep(1)

@@ -19,16 +19,11 @@ import psutil
 import argparse
 import pipes
 
-try:
-    import subprocess32 as subprocess
-except:
-    import subprocess
-
 sys.path.insert(0, os.getcwd())
 
 from mrq import config
 from mrq.utils import load_class_by_path
-from mrq.context import set_current_config
+from mrq.context import set_current_config, set_logger_config
 
 
 def main():
@@ -38,6 +33,7 @@ def main():
     cfg = config.get_config(parser=parser, config_type="worker", sources=("file", "env", "args"))
 
     set_current_config(cfg)
+    set_logger_config()
 
     # If we are launching with a --processes option and without MRQ_IS_SUBPROCESS, we are a manager process
     if cfg["processes"] > 0 and not os.environ.get("MRQ_IS_SUBPROCESS"):

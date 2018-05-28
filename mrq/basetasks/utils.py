@@ -4,7 +4,7 @@ from future.builtins import str
 from mrq.task import Task
 from mrq.queue import Queue
 from bson import ObjectId
-from mrq.context import connections, get_current_config
+from mrq.context import connections, get_current_config, get_current_job
 from collections import defaultdict
 from mrq.utils import group_iter
 import datetime
@@ -33,8 +33,13 @@ class JobAction(Task):
 
     def build_query(self):
         query = {}
+        current_job = get_current_job()
+
         if self.params.get("id"):
             query["_id"] = ObjectId(self.params.get("id"))
+
+        if current_job and current_job.data.get("datequeued"):
+            query["datequeued"] = {"$lte": current_job.data["datequeued"]}
 
         # TODO use redis for queue
         for k in [
@@ -49,6 +54,8 @@ class JobAction(Task):
                     query[k] = {"$in": list(self.params[k])}
                 else:
                     query[k] = self.params[k]
+            if query.get("worker"):
+                query["worker"] = ObjectId(query["worker"])
 
         if self.params.get("params"):
             params_dict = json.loads(self.params.get("params"))  # pylint: disable=no-member

@@ -121,7 +121,7 @@ def test_scheduler_dailytime_with_datelastqueued(worker):
         env={
             # We need to pass this in the environment so that each worker has the
             # exact same hash
-            "MRQ_TEST_SCHEDULER_TIME": str(now - 100 - 3600 * 24)
+            "MRQ_TEST_SCHEDULER_TIME": str(now + 3)
         })
     time.sleep(7)
     print(list(worker.mongodb_jobs.tests_inserts.find()))

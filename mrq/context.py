@@ -2,10 +2,11 @@ from future import standard_library
 standard_library.install_aliases()
 from future.builtins import next, map
 from past.builtins import basestring
-from .logger import Logger
+import logging
 import gevent
 import gevent.pool
 import urllib.parse
+import sys
 import time
 import pymongo
 import traceback
@@ -28,7 +29,7 @@ _GLOBAL_CONTEXT = {
 }
 
 # Global log object, usable from all jobs
-log = Logger(None, job="current")
+log = logging.getLogger("mrq.current")
 
 
 def setup_context(**kwargs):
@@ -65,10 +66,30 @@ def set_current_worker(worker):
 def get_current_worker():
     return _GLOBAL_CONTEXT["worker"]
 
+def set_logger_config():
+    config = _GLOBAL_CONTEXT["config"]
+    if config.get("quiet"):
+        log.disabled = True
+    else:
+        log_format = config["log_format"]
+        logging.basicConfig(format=log_format)
+        log.setLevel(getattr(logging, config["log_level"]))
+
+        handlers = config["log_handlers"].keys() if config["log_handlers"] else [config["log_handler"]]
+        for handler in handlers:
+            handler_class = load_class_by_path(handler)
+            handler_config = config["log_handlers"].get(handler, {})
+            handler_format = handler_config.pop("format", log_format)
+            handler_level = getattr(logging, handler_config.pop("level", config["log_level"]))
+            log_handler = handler_class(**handler_config)
+            formatter = logging.Formatter(handler_format)
+            log_handler.setFormatter(formatter)
+            log_handler.setLevel(handler_level)
+            log.addHandler(log_handler)
+
 
 def set_current_config(config):
     _GLOBAL_CONTEXT["config"] = config
-    log.quiet = config["quiet"]
 
     if config["add_network_latency"] != "0" and config["add_network_latency"]:
         from mrq.monkey import patch_network_latency
@@ -82,11 +103,11 @@ def set_current_config(config):
         from mrq.monkey import patch_io_all
         patch_io_all(config)
 
-    if config["mongodb_logs"] == "0":
-        log.handler.collection = False
-
 
 def get_current_config():
+    if not _GLOBAL_CONTEXT["config"]:
+        log.warning("get_current_config was called before setup of MRQ's environment. "
+                    "Use context.setup_context() for setting up MRQ's environment.")
     return _GLOBAL_CONTEXT["config"]
 
 

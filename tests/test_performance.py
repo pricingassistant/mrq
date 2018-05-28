@@ -9,11 +9,6 @@ import pytest
 import os
 import random
 
-try:
-    import subprocess32 as subprocess
-except:
-    import subprocess
-
 
 @pytest.mark.parametrize(["p_max_latency", "p_min_observed_latency", "p_max_observed_latency"], [
     [1, -0.3, 1],

@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <title>MRQ Dashboard</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="icon" href="/static/images/favicon.ico" type="image/x-icon" />
+    <link rel="icon" href="static/images/favicon.ico" type="image/x-icon" />
 
     <script>
       window.MRQ_CONFIG = {{ MRQ_CONFIG|safe }};
@@ -15,7 +15,7 @@
     <div class="navbar navbar-default navbar-top">
       <div class="container">
         <div class="navbar-header">
-          <a href="/#" class="navbar-brand">MRQ Dashboard</a>
+          <a href="#" class="navbar-brand">MRQ Dashboard</a>
           <button class="navbar-toggle" type="button" data-toggle="collapse" data-target="#navbar-main">
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
@@ -26,34 +26,34 @@
           <ul class="nav navbar-nav">
 
             <li class="js-nav-status">
-              <a href="/#status">Statuses</a>
+              <a href="#status">Statuses</a>
             </li>
             <li class="js-nav-queues">
-              <a href="/#queues">Queues</a>
+              <a href="#queues">Queues</a>
             </li>
             <li class="js-nav-workers">
-              <a href="/#workers">Workers</a>
+              <a href="#workers">Workers</a>
             </li>
             <li class="js-nav-workergroups">
-              <a href="/#workergroups">Worker groups</a>
+              <a href="#workergroups">Worker groups</a>
             </li>
               <li class="js-nav-agents">
-              <a href="/#agents">Agents</a>
+              <a href="#agents">Agents</a>
             </li>
             <li class="js-nav-taskpaths">
-              <a href="/#taskpaths">Paths</a>
+              <a href="#taskpaths">Paths</a>
             </li>
             <li class="js-nav-taskexceptions">
-              <a href="/#taskexceptions">Exceptions</a>
+              <a href="#taskexceptions">Exceptions</a>
             </li>
             <li class="js-nav-jobs">
-              <a href="/#jobs">Jobs</a>
+              <a href="#jobs">Jobs</a>
             </li>
             <li class="js-nav-scheduledjobs">
-              <a href="/#scheduledjobs">Scheduled Jobs</a>
+              <a href="#scheduledjobs">Scheduled Jobs</a>
             </li>
             <li class="js-nav-scheduledjobs">
-              <a href="/#io">I/O</a>
+              <a href="#io">I/O</a>
             </li>
 
             <!--
@@ -194,16 +194,48 @@
           <form class="form-inline js-datatable-filters pull-left" role="form">
             <br/>
             Filter by: &nbsp;
-
             <div class="form-group">
-              <div class="checkbox">
-                <label>
-                  <input type="checkbox" class="js-datatable-filters-showstopped" <%= filters.showstopped?'checked="checked"':'' %>> Show stopped
-                </label>
-              </div>
+              <label class="sr-only" for="jobs-form-id">ID</label>
+              <input type="text" class="form-control input-sm js-workers-datatable-filters-id" id="jobs-form-id" placeholder="Worker ID" value="<%- filters.id %>">
             </div>
+            <div class="form-group">
+              <label class="sr-only" for="jobs-form-queue">IP</label>
+              <input type="text" class="form-control input-sm js-workers-datatable-filters-ip" id="jobs-form-ip" placeholder="Worker IP" value="<%- filters.ip %>">
+            </div>
+            <div class="form-group">
+              <label class="sr-only" for="jobs-form-queue">IP</label>
+              <input type="text" class="form-control input-sm js-workers-datatable-filters-queue" id="jobs-form-queue" placeholder="Queue" value="<%- filters.queue %>">
+            </div>
+            <div class="form-group">
+              <select class="form-control input-sm js-workers-datatable-filters-status" id="jobs-form-status">
+                <option <%= filters.status==""?"selected='selected'":"" %> value="">-statuses-</option>
+                <% _.each({
+                    "spawn": "spawn",
+                    "started": "started",
+                    "wait": "wait",
+                    "full": "full",
+                    "join": "join",
+                    "stop": "stop",
+                    "killing": "killing",
+                    "kill": "kill",
+                    "spawn-started-wait-full-join": "{RUNNING}",
+                    "stop-killing-kill": "{NOT_RUNNING}"
+                  }, function(k, i) { %>
+                  <option <%= filters.status==i?"selected='selected'":"" %> value="<%= i %>"><%= k %></option>
+                <% }) %>
+              </select>
+            </div>
+            <!--
+            <div class="checkbox">
+              <label>
+                <input type="checkbox"> Remember me
+              </label>
+            </div
+            -->
+            <button type="submit" class="btn btn-default js-datatable-filters-submit input-sm" style="padding:5px">OK</button>
 
           </form>
+
         </div>
 
         <div class="container">
@@ -419,7 +451,7 @@
     </div>
 
 
-    <script src="/static/bin/bundle.js"></script>
+    <script src="static/bin/bundle.js"></script>
 
 
   </body>

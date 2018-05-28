@@ -7,7 +7,11 @@ This is a simple demo app that crawls a website, to demo some MRQ features.
 How to use
 ==========
 
-First, get into a Python virtualenv (`make virtualenv`) or into the docker image at the root of this directory (`make ssh`)
+First, get into the docker image at the root of this directory:
+```
+docker run -t -i -v `pwd`:/src -w /src pricingassistant/mrq bash
+```
+Don't forget to `cd` in the directory of this exemple!
 
 Then install MRQ and the packages needed for this example:
 ```
@@ -51,13 +55,13 @@ This is obviously a very simple crawler, production systems will be much more co
 Expected result for crawler.Report
 ==================================
 
-As of 2015-02-20:
+As of 2018-03-06:
 
 ```
 Crawl stats
 ===========
-URLs queued: 26
-URLs successfully crawled: 23
+URLs queued: 81
+URLs successfully crawled: 81
 URLs redirected: 1
-Bytes fetched: 608131
+Bytes fetched: 4099658
 ```

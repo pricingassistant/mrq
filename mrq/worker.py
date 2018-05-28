@@ -17,15 +17,17 @@ import ujson as json
 from bson import ObjectId
 from redis.lock import LuaLock
 from collections import defaultdict
+from mrq.utils import load_class_by_path
 
 from .job import Job
 from .exceptions import (TimeoutInterrupt, StopRequested, JobInterrupt, AbortInterrupt,
                          RetryInterrupt, MaxRetriesInterrupt, MaxConcurrencyInterrupt)
 from .context import (set_current_worker, set_current_job, get_current_job, get_current_config,
-                      connections, enable_greenlet_tracing, run_task)
+                      connections, enable_greenlet_tracing, run_task, log)
 from .queue import Queue
 from .utils import MongoJSONEncoder, MovingAverage
 from .processes import Process
+from .redishelpers import redis_key
 
 
 class Worker(Process):
@@ -54,6 +56,8 @@ class Worker(Process):
         self.max_jobs = self.config["max_jobs"]
         self.max_time = datetime.timedelta(seconds=self.config["max_time"]) or None
 
+        self.paused_queues = set()
+
         self.connected = False  # MongoDB + Redis
 
         self.process = psutil.Process(os.getpid())
@@ -76,12 +80,10 @@ class Worker(Process):
         self.pool_size = self.config["greenlets"]
         self.pool_usage_average = MovingAverage((60 / self.config["report_interval"] or 1))
 
-        from .logger import LogHandler
-        self.log_handler = LogHandler(quiet=self.config["quiet"])
-        self.log = self.log_handler.get_logger(worker=self.id)
+        self.set_logger()
 
         self.refresh_queues(fatal=True)
-        self.queues_with_notify = list({q.redis_key_notify() for q in self.queues if q.use_notify()})
+        self.queues_with_notify = list({redis_key("notify", q) for q in self.queues if q.use_notify()})
         self.has_subqueues = any([queue.endswith("/") for queue in self.config["queues"]])
 
         self.log.info(
@@ -104,6 +106,22 @@ class Worker(Process):
         if self.config["ensure_indexes"]:
             run_task("mrq.basetasks.indexes.EnsureIndexes", {})
 
+    def set_logger(self):
+        import logging
+
+        self.log = logging.getLogger(str(self.id))
+        logging.basicConfig(format=self.config["log_format"])
+        self.log.setLevel(getattr(logging, self.config["log_level"]))
+        # No need to send worker logs to mongo?
+        # logger_class = load_class_by_path(self.config["logger"])
+
+        # # All mrq handlers must have worker and collection keyword arguments
+        # if self.config["logger"].startswith("mrq"):
+        #     self.log_handler = logger_class(collection=self.config["mongodb_logs"], worker=str(self.id), **self.config["logger_config"])
+        # else:
+        #     self.log_handler = logger_class(**self.config["logger_config"])
+        # self.log.addHandler(self.log_handler)
+
     @property
     def config(self):
         return get_current_config()
@@ -118,20 +136,13 @@ class Worker(Process):
         self.mongodb_jobs = connections.mongodb_jobs
         self.mongodb_logs = connections.mongodb_logs
 
-        if self.mongodb_logs:
-            self.log_handler.set_collection(self.mongodb_logs.mrq_logs)
-
         self.connected = True
-
-    @property
-    def redis_scheduler_lock_key(self):
-        """ Returns the global redis key used to ensure only one scheduler runs at a time """
-        return "%s:schedulerlock" % get_current_config()["redis_prefix"]
 
     def greenlet_scheduler(self):
 
+        redis_scheduler_lock_key = "%s:schedulerlock" % get_current_config()["redis_prefix"]
         while True:
-            with LuaLock(connections.redis, self.redis_scheduler_lock_key,
+            with LuaLock(connections.redis, redis_scheduler_lock_key,
                          timeout=self.config["scheduler_interval"] + 10, blocking=False, thread_local=False):
                 self.scheduler.check()
 
@@ -164,7 +175,7 @@ class Worker(Process):
 
         while True:
             try:
-                self.flush_logs(w=0)
+                self.flush_logs()
             except Exception as e:  # pylint: disable=broad-except
                 self.log.error("When flushing logs: %s" % e)
             finally:
@@ -180,18 +191,34 @@ class Worker(Process):
         """ Updates the list of currently known queues and subqueues """
 
         try:
-            self.queues = list(Queue.instanciate_queues(self.config["queues"]))
+            queues = []
+            prefixes = [q for q in self.config["queues"] if q.endswith("/")]
+            known_subqueues = Queue.all_known(prefixes=prefixes)
+
+            for q in self.config["queues"]:
+                queues.append(Queue(q))
+                if q.endswith("/"):
+                    for subqueue in known_subqueues:
+                        if subqueue.startswith(q):
+                            queues.append(Queue(subqueue))
+
+            self.queues = queues
+
         except Exception as e:  # pylint: disable=broad-except
             self.log.error("When refreshing subqueues: %s", e)
             if fatal:
                 raise
+
+    def get_paused_queues(self):
+        """ Returns the set of currently paused queues """
+        return {q.decode("utf-8") for q in self.redis.smembers(redis_key("paused_queues"))}
 
     def greenlet_paused_queues(self):
 
       while True:
 
           # Update the process-local list of paused queues
-          Queue.paused_queues = Queue.redis_paused_queues()
+          self.paused_queues = self.get_paused_queues()
           time.sleep(self.config["paused_queues_refresh_interval"])
 
     def get_memory(self):
@@ -343,7 +370,7 @@ class Worker(Process):
             def write(self, *_):
                 pass
 
-        from gevent import wsgi
+        from gevent import pywsgi
 
         def admin_routes(env, start_response):
             path = env["PATH_INFO"]
@@ -360,7 +387,7 @@ class Worker(Process):
             start_response(status, [('Content-Type', 'application/json')])
             return [res]
 
-        server = wsgi.WSGIServer((self.config["admin_ip"], self.config["admin_port"]), admin_routes, log=Devnull())
+        server = pywsgi.WSGIServer((self.config["admin_ip"], self.config["admin_port"]), admin_routes, log=Devnull())
 
         try:
             self.log.debug("Starting admin server on port %s" % self.config["admin_port"])
@@ -368,8 +395,9 @@ class Worker(Process):
         except Exception as e:  # pylint: disable=broad-except
             self.log.debug("Error in admin server : %s" % e)
 
-    def flush_logs(self, w=0):
-        self.log_handler.flush(w=w)
+    def flush_logs(self):
+        for handler in self.log.handlers:
+            handler.flush()
 
     def wait_for_idle(self):
         """ Waits until the worker has nothing more to do. Very useful in tests """
@@ -425,6 +453,9 @@ class Worker(Process):
             self.greenlets["report"] = gevent.spawn(self.greenlet_report)
             self.greenlets["logs"] = gevent.spawn(self.greenlet_logs)
 
+        if self.config["admin_port"]:
+            self.greenlets["admin"] = gevent.spawn(self.greenlet_admin)
+
         if self.config["scheduler"] and self.config["scheduler_interval"] > 0:
 
             from .scheduler import Scheduler
@@ -433,9 +464,6 @@ class Worker(Process):
             self.scheduler.check_config_integrity()  # If this fails, we won't dequeue any jobs
 
             self.greenlets["scheduler"] = gevent.spawn(self.greenlet_scheduler)
-
-        if self.config["admin_port"]:
-            self.greenlets["admin"] = gevent.spawn(self.greenlet_admin)
 
         self.install_signal_handlers()
 
@@ -525,8 +553,8 @@ class Worker(Process):
 
         available_queues = [
             queue for queue in self.queues
-            if queue.root_id not in Queue.paused_queues and
-            queue.id not in Queue.paused_queues
+            if queue.root_id not in self.paused_queues and
+            queue.id not in self.paused_queues
         ]
 
         for queue_i in range(len(available_queues)):
@@ -598,7 +626,7 @@ class Worker(Process):
         self.status = "stop"
 
         self.report_worker(w=1)
-        self.flush_logs(w=1)
+        self.flush_logs()
 
         g_time = getattr(self.greenlet, "_trace_time", 0)
         g_switches = getattr(self.greenlet, "_trace_switches", None)

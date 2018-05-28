@@ -8,6 +8,7 @@ import psutil
 from .version import VERSION
 from .utils import get_local_ip
 import atexit
+import logging
 
 
 def add_parser_args(parser, config_type):
@@ -71,15 +72,6 @@ def add_parser_args(parser, config_type):
              ' "0" will disable remote logs, "1" will use main MongoDB.')
 
     parser.add_argument(
-        '--mongodb_logs_size',
-        action='store',
-        default=16 *
-        1024 *
-        1024,
-        type=int,
-        help='If provided, sets the log collection to capped to that amount of bytes.')
-
-    parser.add_argument(
         '--redis',
         action='store',
         default="redis://127.0.0.1:6379",
@@ -112,12 +104,6 @@ def add_parser_args(parser, config_type):
         help='Specify a different name')
 
     parser.add_argument(
-        '--quiet',
-        default=False,
-        action='store_true',
-        help='Don\'t output task logs')
-
-    parser.add_argument(
         '--config',
         '-c',
         default=None,
@@ -129,6 +115,30 @@ def add_parser_args(parser, config_type):
         default="mrq.worker.Worker",
         action="store",
         help='Path to a custom worker class')
+
+    parser.add_argument(
+        '--quiet',
+        default=False,
+        action='store_true',
+        help='Don\'t output task logs')
+
+    parser.add_argument(
+        '--log_handler',
+        default="mrq.logger.MongoHandler",
+        action="store",
+        help='Path to a log handler class')
+
+    parser.add_argument(
+        '--log_format',
+        default="%(asctime)s [%(levelname)s] %(message)s",
+        action="store",
+        help='log format')
+
+    parser.add_argument(
+        '--log_level',
+        default="DEBUG",
+        action="store",
+        help='set the logging level')
 
     parser.add_argument(
         '--version',
@@ -343,7 +353,7 @@ def add_parser_args(parser, config_type):
             default=0,
             type=int,
             action='store',
-            help='Number of processes to launch with supervisord')
+            help='Number of processes to launch')
 
         parser.add_argument(
             '--scheduler',
@@ -428,7 +438,7 @@ def add_parser_args(parser, config_type):
 
         parser.add_argument(
             '--subqueues_refresh_interval',
-            default=10,
+            default=60,
             action='store',
             type=float,
             help="Seconds between worker refreshes of the known subqueues")
@@ -509,6 +519,7 @@ def get_config(
 
     # Keys that can't be passed from the command line
     default_config["tasks"] = {}
+    default_config["log_handlers"] = {}
     default_config["scheduled_tasks"] = {}
 
     # Only keep values different from config, actually passed on the command

@@ -27,15 +27,34 @@ class QueueRegular(Queue):
     def collection(self):
         return context.connections.mongodb_jobs.mrq_jobs
 
+    def empty(self):
+        """ Remove all jobs """
+        return self.collection.delete_many({"queue": self.id})
+
+    def get_retry_queue(self):
+        """ Return the name of the queue where retried jobs will be queued """
+        return self.id
+
+    def get_known_subqueues(self):
+        """ Returns all known subqueues """
+
+        all_queues_from_mongodb = Queue.all_known(sources=("jobs", ))
+
+        idprefix = self.id
+        if not idprefix.endswith("/"):
+            idprefix += "/"
+
+        return {q for q in all_queues_from_mongodb if q.startswith(idprefix)}
+
     def size(self):
         """ Returns the total number of queued jobs on the queue """
 
         if self.id.endswith("/"):
-            subqueues = list(self.get_known_subqueues())
+            subqueues = self.get_known_subqueues()
             if len(subqueues) == 0:
                 return 0
             else:
-                return self.collection.count({"status": "queued", "queue": {"$in": subqueues}})
+                return self.collection.count({"status": "queued", "queue": {"$in": list(subqueues)}})
         else:
             return self.collection.count({"status": "queued", "queue": self.id})
 
@@ -57,13 +76,14 @@ class QueueRegular(Queue):
 
         count = 0
 
-        job_ids = None
+
 
         # TODO: remove _id sort after full migration to datequeued
         sort_order = [("datequeued", -1 if self.is_reverse else 1), ("_id", -1 if self.is_reverse else 1)]
 
         # MongoDB optimization: with many jobs it's faster to fetch the IDs first and do the atomic update second
         # Some jobs may have been stolen by another worker in the meantime but it's a balance (should we over-fetch?)
+        # job_ids = None
         # if max_jobs > 5:
         #     job_ids = [x["_id"] for x in self.collection.find(
         #         self.base_dequeue_query,
@@ -75,16 +95,16 @@ class QueueRegular(Queue):
         #     if len(job_ids) == 0:
         #         return
 
-        for i in range(max_jobs if job_ids is None else len(job_ids)):
+        for i in range(max_jobs):  # if job_ids is None else len(job_ids)):
 
-            if job_ids is not None:
-                query = {
-                    "status": "queued",
-                    "_id": job_ids[i]
-                }
-                sort_order = None
-            else:
-                query = self.base_dequeue_query
+            # if job_ids is not None:
+            #     query = {
+            #         "status": "queued",
+            #         "_id": job_ids[i]
+            #     }
+            #     sort_order = None
+            # else:
+            query = self.base_dequeue_query
 
             job_data = self.collection.find_one_and_update(
                 query,

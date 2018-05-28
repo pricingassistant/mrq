@@ -1,3 +1,4 @@
+import pytest
 from mrq.agent import Agent
 from mrq.context import connections
 import time
@@ -225,6 +226,7 @@ def test_agent_process(worker):
     worker.stop_deps()
 
 
+@pytest.mark.skipif("True")
 def test_agent_autoscaling(worker):
 
     worker.start(agent=True, flags="--worker_group xxx --total_memory=500 --total_cpu=500 --orchestrate_interval=1 --report_interval=1  --autoscaling_taskpath tests.tasks.agent.Autoscale")

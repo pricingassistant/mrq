@@ -66,9 +66,9 @@ def test_general_simple_task_one(worker):
     assert "adding" in db_logs[0]["logs"]
 
     # Worker logs
-    db_logs = list(
-        worker.mongodb_logs.mrq_logs.find({"worker": db_workers[0]["_id"]}))
-    assert len(db_logs) >= 1
+    # db_logs = list(
+    #     worker.mongodb_logs.mrq_logs.find({"worker": db_workers[0]["_id"]}))
+    # assert len(db_logs) >= 1
 
     worker.stop_deps()
 
@@ -151,62 +151,50 @@ def test_general_simple_task_reverse(worker):
 
 def test_known_queues_lifecycle(worker):
 
-    worker.start(queues="default_reverse xtest test_timed_set", flags="--config tests/fixtures/config-raw1.py")
+    worker.start(
+        queues="default_reverse xtest test_timed_set",
+        flags="--config tests/fixtures/config-raw1.py --subqueues_refresh_interval=0.1"
+    )
     time.sleep(1)
     worker.wait_for_idle()
 
     # Test known queues
-    from mrq.queue import Queue, send_task
-    assert set(Queue.redis_known_queues().keys()) == set(["default", "xtest", "test_timed_set"])
+    from mrq.queue import Queue, send_task, send_raw_tasks
+
+    # Just watching queues doesn't add them to known ones.
+    # BTW this doesn't read config from the worker, just db/redis.
+    assert set(Queue.all_known()) == set()
 
     # Try queueing a task
     send_task("tests.tasks.general.Add", {"a": 41, "b": 1, "sleep": 1}, queue="x")
 
-    assert set(Queue.redis_known_queues().keys()) == set(["x", "default", "xtest", "test_timed_set"])
+    jobs = list(worker.mongodb_jobs.mrq_jobs.find())
+    assert len(jobs) == 1
+    assert jobs[0]["queue"] == "x"
 
-    Queue("x").add_to_known_queues(timestamp=time.time() - (8 * 86400))
-
-    worker.send_task("mrq.basetasks.cleaning.CleanKnownQueues", {}, block=True)
-
-    # Not removed - not empty yet.
-    assert set(Queue.redis_known_queues().keys()) == set(["x", "default", "xtest", "test_timed_set"])
+    assert set(Queue.all_known()) == set(["x"])
 
     Queue("x").empty()
 
-    # Will be removed immediately by the empty() method call.
-    assert set(Queue.redis_known_queues().keys()) == set(["default", "xtest", "test_timed_set"])
+    jobs = list(worker.mongodb_jobs.mrq_jobs.find())
+    assert len(jobs) == 0
+    assert set(Queue.all_known()) == set()
 
-    worker.send_task("mrq.basetasks.cleaning.CleanKnownQueues", {}, block=True)
+    all_known = worker.send_task("tests.tasks.general.QueueAllKnown", {}, queue="default")
+    # Will get all from config
+    assert len(all_known) > 0
 
-    # Still not there.
-    assert set(Queue.redis_known_queues().keys()) == set(["default", "xtest", "test_timed_set"])
+    # Now add a job on a raw queue
+    send_raw_tasks("test_raw/sub", ["a", "b", "c"])
+    time.sleep(1)
 
-    # Now we're going to test that the known queues are correctly updated when requeuing a job
+    all_known_plus_sub = worker.send_task("tests.tasks.general.QueueAllKnown", {}, queue="default")
+    assert set(all_known_plus_sub).difference(set(all_known)) == set(["test_raw/sub"])
 
-    # Queue the job again
-    send_task("tests.tasks.general.Add", {"a": 41, "b": 1, "sleep": 1}, queue="x")
+    Queue("test_raw/sub").remove_raw_jobs(["a", "b", "c"])
 
-    worker.send_task("mrq.basetasks.cleaning.CleanKnownQueues", {}, block=True)
-    # Requeue it in a different queue
-    params = {
-        "action": "requeue",
-        "destination_queue": "x2"
-    }
-    worker.send_task("mrq.basetasks.utils.JobAction", params, block=True)
-
-    assert set(Queue.redis_known_queues().keys()) == set(["x", "x2", "default", "xtest", "test_timed_set"])
-
-    Queue("x2").empty()
-    assert set(Queue.redis_known_queues().keys()) == set(["default", "x", "xtest", "test_timed_set"])
-
-    # Requeue it in the same queue
-    params = {
-        "action": "requeue"
-    }
-    worker.send_task("mrq.basetasks.utils.JobAction", params, block=True)
-
-    # The queue should be back
-    assert set(Queue.redis_known_queues().keys()) == set(["default", "x", "x2", "xtest", "test_timed_set"])
+    all_known_plus_sub = worker.send_task("tests.tasks.general.QueueAllKnown", {}, queue="default")
+    assert set(all_known_plus_sub).difference(set(all_known)) == set()
 
 
 def test_general_exception_status(worker):

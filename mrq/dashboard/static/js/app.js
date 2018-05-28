@@ -13,8 +13,6 @@ define([
 
   var app = {
 
-    root:"/",
-
     genericviews: {},
 
     views:{},
@@ -54,66 +52,9 @@ define([
 
     },
 
-    login:function(email,pwd,cb) {
-      this.checkAuth(email,pwd,function(err, user) {
-        if (err) {
-          alert("Error while logging in. Please retry later!");
-          return cb(err);
-        }
-        if (!user) {
-          cb(null,false);
-          app.router.navigate("login", {trigger: true});
-        } else {
-          app.user.set(user);
-
-          cb(null, true);
-
-          if (window.location.hash.length<2 || window.location.hash=="#login") {
-            app.router.navigate("", {trigger: true});
-          }
-
-
-        }
-      });
-    },
-
-    checkAuth:function(email,pwd,cb) {
-      var opts = {
-        dataType:"json",
-        success:function(body) {
-          if (body=="0") return cb(null,false);
-          cb(null,body);
-        },
-        error:function(err) {
-          if (err.status==403) return cb(null,false);
-          cb(err);
-        }
-      };
-
-      if (email) {
-        opts.url = "/api/auth/login";
-        opts.type = "POST";
-        opts.data = {"userEmail":email,"userPassword":pwd};
-      } else {
-        opts.url = "/api/auth/me";
-      }
-      return $.ajax(opts);
-    },
-
-    logout:function() {
-      $.ajax({
-        "url":"/api/auth/logout",
-        "type":"POST",
-        success:function( /*body*/ ) {
-          app.user.clear();
-          app.router.navigate("login",true);
-        }
-      });
-    },
-
     getWorkersData: function(cb) {
       $.ajax({
-        "url":"/api/datatables/workers?iDisplayLength=1000&iDisplayStart=0&sEcho=0",
+        "url":"api/datatables/workers?iDisplayLength=1000&iDisplayStart=0&sEcho=0",
         "type":"GET",
         success:function( body ) {
           cb(false, body.aaData);
@@ -126,7 +67,7 @@ define([
 
     getJobsDataFromWorkers: function(cb) {
       $.ajax({
-        "url":"/api/datatables/workers?iDisplayLength=1000&iDisplayStart=0&sEcho=0",
+        "url":"api/datatables/workers?iDisplayLength=1000&iDisplayStart=0&sEcho=0",
         "type":"GET",
         success:function( body ) {
 

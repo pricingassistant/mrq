@@ -192,7 +192,6 @@ def api_datatables(unit):
     sort = None
     skip = int(request.args.get("iDisplayStart", 0))
     limit = int(request.args.get("iDisplayLength", 20))
-    with_mongodb_size = bool(request.args.get("with_mongodb_size"))
 
     if unit == "queues":
 
@@ -200,16 +199,8 @@ def api_datatables(unit):
         for name in Queue.all_known():
             queue = Queue(name)
 
-            jobs = None
-            if with_mongodb_size:
-                jobs = connections.mongodb_jobs.mrq_jobs.count({
-                    "queue": name,
-                    "status": request.args.get("status") or "queued"
-                })
-
             q = {
                 "name": name,
-                "jobs": jobs,  # MongoDB size
                 "size": queue.size(),  # Redis size
                 "is_sorted": queue.is_sorted,
                 "is_timed": queue.is_timed,
@@ -236,7 +227,7 @@ def api_datatables(unit):
 
             queues.append(q)
 
-        queues.sort(key=lambda x: -((x["jobs"] or 0) + x["size"]))
+        queues.sort(key=lambda x: -x["size"])
 
         data = {
             "aaData": queues,
@@ -245,12 +236,20 @@ def api_datatables(unit):
 
     elif unit == "workers":
         fields = None
-        query = {"status": {"$nin": ["stop"]}}
         collection = connections.mongodb_jobs.mrq_workers
         sort = [("datestarted", -1)]
 
-        if request.args.get("showstopped"):
-            query = {}
+        query = {}
+        if request.args.get("id"):
+            query["_id"] = ObjectId(request.args["id"])
+        else:
+            if request.args.get("status"):
+                statuses = request.args["status"].split("-")
+                query["status"] = {"$in": statuses}
+            if request.args.get("ip"):
+                query["$or"] = [{"config.local_ip": request.args["ip"]}, {"config.external_ip": request.args["ip"]}]
+            if request.args.get("queue"):
+                query["config.queues"] = request.args["queue"]
 
     elif unit == "agents":
         fields = None
