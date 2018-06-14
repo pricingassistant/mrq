@@ -495,6 +495,12 @@ def add_parser_args(parser, config_type):
                  'to dequeue them in command-line order.')
 
 
+class ArgumentParserIgnoringDefaults(argparse.ArgumentParser):
+    def add_argument(self, *args, **kwargs):
+        kwargs.pop("default", None)
+        return argparse.ArgumentParser.add_argument(self, *args, **kwargs)
+
+
 def get_config(
         sources=(
             "file",
@@ -522,13 +528,12 @@ def get_config(
     default_config["log_handlers"] = {}
     default_config["scheduled_tasks"] = {}
 
-    # Only keep values different from config, actually passed on the command
-    # line
+    # Only keep values actually passed on the command line
     from_args = {}
     if "args" in sources:
-        for k, v in parser.parse_args().__dict__.items():
-            if default_config[k] != v:
-                from_args[k] = v
+        cmdline_parser = ArgumentParserIgnoringDefaults(argument_default=argparse.SUPPRESS)
+        add_parser_args(cmdline_parser, config_type)
+        from_args = cmdline_parser.parse_args().__dict__
 
     # If we were given another config file, use it
 
