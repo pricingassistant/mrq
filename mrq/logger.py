@@ -3,10 +3,8 @@ from future.builtins import object
 from future.utils import iteritems
 
 from collections import defaultdict
-import logging
 import datetime
 import sys
-import pymongo
 PY3 = sys.version_info > (3,)
 
 
@@ -32,7 +30,7 @@ def _decode_if_str(string):
         return unicode(string)  # pylint: disable=undefined-variable
 
 
-class MongoHandler(logging.Handler):
+class LogHandler(object):
 
     """ Job/Worker-aware log handler.
 
@@ -40,36 +38,25 @@ class MongoHandler(logging.Handler):
         when creating lots of logger objects.
     """
 
-    def __init__(self, worker=None, mongodb_logs_size=16 * 1024 * 1024):
-        super(MongoHandler, self).__init__()
+    def __init__(self, collection=None, quiet=False):
 
         self.buffer = {}
         self.collection = None
-        self.mongodb_logs_size = mongodb_logs_size
 
         self.reset()
-        self.set_collection()
+        self.set_collection(collection)
+        self.quiet = quiet
+
         # Import here to avoid import loop
         # pylint: disable=cyclic-import
-        from .context import get_current_job, get_current_worker
+        from .context import get_current_job
         self.get_current_job = get_current_job
-        self.worker = worker
 
-    def set_collection(self):
-        from .context import get_current_config, connections
-        config = get_current_config()
-        collection = config["mongodb_logs"]
+    def get_logger(self, worker=None, job=None):
+        return Logger(self, worker=worker, job=job)
 
-        if collection == "1":
-            self.collection = connections.mongodb_logs.mrq_logs
-        if self.collection and self.mongodb_logs_size:
-            if "mrq_logs" in connections.mongodb_logs.collection_names() and not self.collection.options().get("capped"):
-                connections.mongodb_logs.command({"convertToCapped": "mrq_logs", "size": self.mongodb_logs_size})
-            elif "mrq_logs" not in connections.mongodb_logs.collection_names():
-                try:
-                    connections.mongodb_logs.create_collection("mrq_logs", capped=True, size=self.mongodb_logs_size)
-                except pymongo.errors.OperationFailure:  # The collection might have been created in the meantime
-                    pass
+    def set_collection(self, collection=None):
+        self.collection = collection
 
     def reset(self):
         self.buffer = {
@@ -77,21 +64,36 @@ class MongoHandler(logging.Handler):
             "jobs": defaultdict(list)
         }
 
-    def emit(self, record):
-        log_entry = self.format(record)
+    def log(self, level, *args, **kwargs):
+
+        worker = kwargs.get("worker")
+        job = kwargs.get("job")
+
+        joined_unicode_args = u" ".join([_decode_if_str(x) for x in args])
+        formatted = u"%s [%s] %s" % (
+            datetime.datetime.utcnow(), level.upper(), joined_unicode_args)
+
+        if not self.quiet:
+            try:
+                print(_encode_if_unicode(formatted))
+            except UnicodeDecodeError:
+                print(formatted)
+
         if self.collection is False:
             return
-        log_entry = _decode_if_str(log_entry)
 
-        if self.worker is not None:
-            self.buffer["workers"][self.worker].append(log_entry)
+        if worker is not None:
+            self.buffer["workers"][worker].append(formatted)
+        elif job is not None:
+            if job == "current":
+                job_object = self.get_current_job()
+                if job_object:
+                    self.buffer["jobs"][job_object.id].append(formatted)
+            else:
+                self.buffer["jobs"][job].append(formatted)
 
-        if record.name == "mrq.current":
-            job_object = self.get_current_job()
-            if job_object:
-                self.buffer["jobs"][job_object.id].append(log_entry)
+    def flush(self, w=0):
 
-    def flush(self):
         # We may log some stuff before we are even connected to Mongo!
         if not self.collection:
             return
@@ -106,9 +108,48 @@ class MongoHandler(logging.Handler):
 
         if len(inserts) == 0:
             return
+
         self.reset()
 
         try:
-            self.collection.insert(inserts)
+            self.collection.insert(inserts, w=w)
         except Exception as e:  # pylint: disable=broad-except
-            self.emit("Log insert failed: %s" % e)
+            from mrq.context import get_current_worker
+            self.log("debug", "Log insert failed: %s" % e, worker=get_current_worker())
+
+
+class Logger(object):
+
+    """ This object acts as a logger from python's logging module. """
+
+    def __init__(self, handler, **kwargs):
+        self._handler = handler
+        self.kwargs = kwargs
+        self.quiet = False
+
+    @property
+    def handler(self):
+        if self._handler:
+            return self._handler
+
+        # Import here to avoid import loop
+        from .context import get_current_worker
+        worker = get_current_worker()
+
+        if worker:
+            return worker.log_handler
+        else:
+            self._handler = LogHandler(quiet=self.quiet)
+            return self._handler
+
+    def info(self, *args):
+        self.handler.log("info", *args, **self.kwargs)
+
+    def warning(self, *args):
+        self.handler.log("warning", *args, **self.kwargs)
+
+    def error(self, *args):
+        self.handler.log("error", *args, **self.kwargs)
+
+    def debug(self, *args):
+        self.handler.log("debug", *args, **self.kwargs)
