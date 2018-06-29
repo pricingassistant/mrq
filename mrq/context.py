@@ -2,7 +2,7 @@ from future import standard_library
 standard_library.install_aliases()
 from future.builtins import next, map
 from past.builtins import basestring
-# from .logger import Logger
+from .logger import Logger
 import logging
 import gevent
 import gevent.pool
