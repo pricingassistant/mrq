@@ -401,7 +401,7 @@ class Worker(Process):
         except Exception as e:  # pylint: disable=broad-except
             self.log.debug("Error in admin server : %s" % e)
 
-    def flush_logs(self):
+    def flush_logs(self, w=0):
         self.log_handler.flush(w=w)
         # for handler in self.log.handlers:
         #     handler.flush()
