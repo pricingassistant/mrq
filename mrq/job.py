@@ -523,76 +523,86 @@ class Job(object):
             io_data["started"] = time.time()
             self._current_io = io_data
 
-    def trace_memory_clean_caches(self):
-        """ Avoid polluting results with some builtin python caches """
+    # def trace_memory_clean_caches(self):
+    #     """ Avoid polluting results with some builtin python caches """
 
-        urllib.parse.clear_cache()
-        re.purge()
-        linecache.clearcache()
-        copyreg.clear_extension_cache()
+    #     urllib.parse.clear_cache()
+    #     re.purge()
+    #     linecache.clearcache()
+    #     copyreg.clear_extension_cache()
 
-        if hasattr(fnmatch, "purge"):
-            fnmatch.purge()  # pylint: disable=no-member
-        elif hasattr(fnmatch, "_purge"):
-            fnmatch._purge()  # pylint: disable=no-member
+    #     if hasattr(fnmatch, "purge"):
+    #         fnmatch.purge()  # pylint: disable=no-member
+    #     elif hasattr(fnmatch, "_purge"):
+    #         fnmatch._purge()  # pylint: disable=no-member
 
-        if hasattr(encodings, "_cache") and len(encodings._cache) > 0:
-            encodings._cache = {}
+    #     if hasattr(encodings, "_cache") and len(encodings._cache) > 0:
+    #         encodings._cache = {}
 
-        for handler in context.log.handlers:
-            handler.flush()
+    #     for handler in context.log.handlers:
+    #         handler.flush()
 
-    def trace_memory_start(self):
-        """ Starts measuring memory consumption """
+    # def trace_memory_start(self):
+    #     """ Starts measuring memory consumption """
 
-        self.trace_memory_clean_caches()
+    #     self.trace_memory_clean_caches()
 
-        objgraph.show_growth(limit=30)
+    #     objgraph.show_growth(limit=30)
 
-        gc.collect()
-        self._memory_start = self.worker.get_memory()["total"]
+    #     gc.collect()
+    #     self._memory_start = self.worker.get_memory()["total"]
 
-    def trace_memory_stop(self):
-        """ Stops measuring memory consumption """
+    # def trace_memory_stop(self):
+    #     """ Stops measuring memory consumption """
 
-        self.trace_memory_clean_caches()
+    #     self.trace_memory_clean_caches()
 
-        objgraph.show_growth(limit=30)
+    #     objgraph.show_growth(limit=30)
 
-        trace_type = context.get_current_config()["trace_memory_type"]
-        if trace_type:
+    #     trace_type = context.get_current_config()["trace_memory_type"]
+    #     if trace_type:
 
-            filename = '%s/%s-%s.png' % (
-                context.get_current_config()["trace_memory_output_dir"],
-                trace_type,
-                self.id)
+    #         filename = '%s/%s-%s.png' % (
+    #             context.get_current_config()["trace_memory_output_dir"],
+    #             trace_type,
+    #             self.id)
 
-            chain = objgraph.find_backref_chain(
-                random.choice(
-                    objgraph.by_type(trace_type)
-                ),
-                objgraph.is_proper_module
-            )
-            objgraph.show_chain(chain, filename=filename)
-            del filename
-            del chain
+    #         chain = objgraph.find_backref_chain(
+    #             random.choice(
+    #                 objgraph.by_type(trace_type)
+    #             ),
+    #             objgraph.is_proper_module
+    #         )
+    #         objgraph.show_chain(chain, filename=filename)
+    #         del filename
+    #         del chain
 
-        gc.collect()
-        self._memory_stop = self.worker.get_memory()["total"]
+    #     gc.collect()
+    #     self._memory_stop = self.worker.get_memory()["total"]
 
-        diff = self._memory_stop - self._memory_start
+    #     diff = self._memory_stop - self._memory_start
 
-        context.log.debug("Memory diff for job %s : %s" % (self.id, diff))
+    #     context.log.debug("Memory diff for job bla %s : %s" % (self.id, diff))
+    #     h = self.hp.heap()
+    #     print("---" * 10)
+    #     print("HEAP %s" % self.worker.get_memory())
+    #     import resource
+    #     print('Memory usage: %s (kb)' % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+    #     print(h)
+    #     print(h[0].byvia)
+    #     print(h[0].byvia[0].referrers)
+    #     print(h[0].byvia[0].referrers.byvia)
+    #     print("---" * 10)
 
-        # We need to update it later than the results, we need them off memory
-        # already.
-        self.collection.update(
-            {"_id": self.id},
-            {"$set": {
-                "memory_diff": diff
-            }},
-            w=1
-        )
+    #     # We need to update it later than the results, we need them off memory
+    #     # already.
+    #     self.collection.update(
+    #         {"_id": self.id},
+    #         {"$set": {
+    #             "memory_diff": diff
+    #         }},
+    #         w=1
+    #     )
 
 
 def get_job_result(job_id):

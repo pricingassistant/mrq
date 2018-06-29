@@ -4,6 +4,8 @@ from future.builtins import str, bytes
 from future.utils import iteritems
 import gevent
 import gevent.pool
+from guppy import hpy
+import objgraph
 import os
 import signal
 import datetime
@@ -12,6 +14,14 @@ import socket
 import traceback
 import psutil
 import sys
+import random
+import copyreg
+import encodings
+import gc
+import urllib.parse
+import re
+import linecache
+import fnmatch
 import json as json_stdlib
 import ujson as json
 from bson import ObjectId
@@ -22,6 +32,7 @@ from mrq.utils import load_class_by_path
 from .job import Job
 from .exceptions import (TimeoutInterrupt, StopRequested, JobInterrupt, AbortInterrupt,
                          RetryInterrupt, MaxRetriesInterrupt, MaxConcurrencyInterrupt)
+from . import context
 from .context import (set_current_worker, set_current_job, get_current_job, get_current_config,
                       connections, enable_greenlet_tracing, run_task, log)
 from .queue import Queue
@@ -62,6 +73,7 @@ class Worker(Process):
 
         self.process = psutil.Process(os.getpid())
         self.greenlet = gevent.getcurrent()
+
         self.graceful_stop = None
 
         self.work_lock = gevent.lock.Semaphore()
@@ -634,6 +646,78 @@ class Worker(Process):
             "Exiting main worker greenlet (%0.5fs, %s switches)." %
             (g_time, g_switches))
 
+    def trace_memory_clean_caches(self):
+        """ Avoid polluting results with some builtin python caches """
+
+        urllib.parse.clear_cache()
+        re.purge()
+        linecache.clearcache()
+        copyreg.clear_extension_cache()
+
+        if hasattr(fnmatch, "purge"):
+            fnmatch.purge()  # pylint: disable=no-member
+        elif hasattr(fnmatch, "_purge"):
+            fnmatch._purge()  # pylint: disable=no-member
+
+        if hasattr(encodings, "_cache") and len(encodings._cache) > 0:
+            encodings._cache = {}
+
+        for handler in context.log.handlers:
+            handler.flush()
+
+    def trace_memory_start(self):
+        """ Starts measuring memory consumption """
+
+        self.trace_memory_clean_caches()
+
+        objgraph.show_growth(limit=30)
+
+        gc.collect()
+        return self.get_memory()["total"]
+
+    def trace_memory_stop(self, memory_start, job_id):
+        """ Stops measuring memory consumption """
+
+        self.trace_memory_clean_caches()
+
+        objgraph.show_growth(limit=30)
+
+        trace_type = context.get_current_config()["trace_memory_type"]
+        if trace_type:
+
+            filename = '%s/%s-%shahahahahah.png' % (
+                context.get_current_config()["trace_memory_output_dir"],
+                trace_type,
+                job_id)
+
+            chain = objgraph.find_backref_chain(
+                random.choice(
+                    objgraph.by_type(trace_type)
+                ),
+                objgraph.is_proper_module
+            )
+            objgraph.show_chain(chain, filename=filename)
+            del filename
+            del chain
+
+        gc.collect()
+
+        memory_stop = self.get_memory()["total"]
+
+        diff = memory_stop - memory_start
+
+        context.log.debug("Memory diff for job %s : %s" % (job_id, diff))
+
+        # We need to update it later than the results, we need them off memory
+        # already.
+        context.connections.mongodb_jobs.mrq_jobs.update(
+            {"_id": job_id},
+            {"$set": {
+                "memory_diff": diff
+            }},
+            w=1
+        )
+
     def perform_job(self, job):
         """ Wraps a job.perform() call with timeout logic and exception handlers.
 
@@ -641,7 +725,11 @@ class Worker(Process):
         """
 
         if self.config["trace_memory"]:
-            job.trace_memory_start()
+            memory_start = self.trace_memory_start()
+            from meliae import scanner
+            scanner.dump_all_objects('/tmp/start-%s.json' % self.id)
+            hp = hpy()
+            hp.setrelheap()
 
         set_current_job(job)
 
@@ -697,9 +785,26 @@ class Worker(Process):
             set_current_job(None)
 
             self.done_jobs += 1
+            import gc
+            gevent.getcurrent().args = []
+            gc.collect()
 
             if self.config["trace_memory"]:
-                job.trace_memory_stop()
+                job_id = job.id
+                del job
+                self.trace_memory_stop(memory_start, job_id)
+                gc.collect()
+                from meliae import scanner
+                scanner.dump_all_objects('/tmp/end-%s.json' % self.id)
+                # h = hp.heap()
+                # print("---" * 10)
+                # import resource
+                # print('Memory usage: %s (kb)' % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+                # print(h)
+                # print(h[0].byvia)
+                # print(h[0].byvia[0].referrers)
+                # print(h[0].byvia[0].referrers.byvia)
+                # print("---" * 10)
 
     def shutdown_graceful(self):
         """ Graceful shutdown: waits for all the jobs to finish. """
