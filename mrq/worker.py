@@ -80,7 +80,10 @@ class Worker(Process):
         self.pool_size = self.config["greenlets"]
         self.pool_usage_average = MovingAverage((60 / self.config["report_interval"] or 1))
 
-        self.set_logger()
+        from .logger import LogHandler
+        self.log_handler = LogHandler(quiet=self.config["quiet"])
+        self.log = self.log_handler.get_logger(worker=self.id)
+        # self.set_logger()
 
         self.refresh_queues(fatal=True)
         self.queues_with_notify = list({redis_key("notify", q) for q in self.queues if q.use_notify()})
@@ -136,6 +139,9 @@ class Worker(Process):
         self.mongodb_jobs = connections.mongodb_jobs
         self.mongodb_logs = connections.mongodb_logs
 
+        if self.mongodb_logs:
+            self.log_handler.set_collection(self.mongodb_logs.mrq_logs)
+
         self.connected = True
 
     def greenlet_scheduler(self):
@@ -175,7 +181,7 @@ class Worker(Process):
 
         while True:
             try:
-                self.flush_logs()
+                self.flush_logs(w=0)
             except Exception as e:  # pylint: disable=broad-except
                 self.log.error("When flushing logs: %s" % e)
             finally:
@@ -396,8 +402,9 @@ class Worker(Process):
             self.log.debug("Error in admin server : %s" % e)
 
     def flush_logs(self):
-        for handler in self.log.handlers:
-            handler.flush()
+        self.log_handler.flush(w=w)
+        # for handler in self.log.handlers:
+        #     handler.flush()
 
     def wait_for_idle(self):
         """ Waits until the worker has nothing more to do. Very useful in tests """
@@ -626,7 +633,7 @@ class Worker(Process):
         self.status = "stop"
 
         self.report_worker(w=1)
-        self.flush_logs()
+        self.flush_logs(w=1)
 
         g_time = getattr(self.greenlet, "_trace_time", 0)
         g_switches = getattr(self.greenlet, "_trace_switches", None)

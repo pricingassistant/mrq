@@ -35,7 +35,7 @@ def main():
     cfg = config.get_config(parser=parser, config_type="run", sources=("file", "env", "args"))
     cfg["is_cli"] = True
     set_current_config(cfg)
-    set_logger_config()
+    # set_logger_config()
 
     if len(cfg["taskargs"]) == 1:
         params = json.loads(cfg["taskargs"][0])  # pylint: disable=no-member

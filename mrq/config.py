@@ -72,6 +72,15 @@ def add_parser_args(parser, config_type):
              ' "0" will disable remote logs, "1" will use main MongoDB.')
 
     parser.add_argument(
+        '--mongodb_logs_size',
+        action='store',
+        default=16 *
+        1024 *
+        1024,
+        type=int,
+        help='If provided, sets the log collection to capped to that amount of bytes.')
+
+    parser.add_argument(
         '--redis',
         action='store',
         default="redis://127.0.0.1:6379",

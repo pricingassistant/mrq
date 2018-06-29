@@ -2,6 +2,7 @@ from future import standard_library
 standard_library.install_aliases()
 from future.builtins import next, map
 from past.builtins import basestring
+from .logger import Logger
 import logging
 import gevent
 import gevent.pool
@@ -29,8 +30,8 @@ _GLOBAL_CONTEXT = {
 }
 
 # Global log object, usable from all jobs
-log = logging.getLogger("mrq.current")
-
+# log = logging.getLogger("mrq.current")
+log = Logger(None, job="current")
 
 def setup_context(**kwargs):
     """ Setup MRQ's environment.
@@ -90,6 +91,7 @@ def set_logger_config():
 
 def set_current_config(config):
     _GLOBAL_CONTEXT["config"] = config
+    log.quiet = config["quiet"]
 
     if config["add_network_latency"] != "0" and config["add_network_latency"]:
         from mrq.monkey import patch_network_latency
