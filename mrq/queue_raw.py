@@ -113,11 +113,6 @@ class QueueRaw(Queue):
             for k in params_list:
                 context.connections.redis.lrem(self.redis_key, 1, k)
 
-        # Is the queue now empty?
-        # TODO LUA this with the above
-        if self.is_subqueue and self.size() == 0:
-            context.connections.redis.srem(self.redis_key_known_subqueues, self.id)
-
         context.metric("queues.%s.removed" % self.id, len(params_list))
         context.metric("queues.all.removed", len(params_list))
 
