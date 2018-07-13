@@ -153,10 +153,14 @@ def build_api_datatables_query(req):
         for param in ["queue", "path", "exceptiontype"]:
             if req.args.get(param):
                 if "*" in req.args[param]:
-                    regexp = "^%s$" % re.escape(req.args[param]).replace("*", ".*")
-                    query[param] = re.compile(regexp)
+                    regexp = "^%s$" % req.args[param].replace("*", ".*")
+                    query[param] = {"$regex": regexp}
                 else:
                     query[param] = req.args[param]
+
+        if req.args.get("queue") and req.args["queue"].endswith("/"):
+            subqueues = Queue(req.args["queue"]).get_known_subqueues()
+            query["queue"] = {"$in": list(subqueues)}
 
         if req.args.get("status"):
             statuses = req.args["status"].split("-")

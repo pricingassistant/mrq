@@ -38,7 +38,7 @@ linterrors3: docker
 	docker run -i -t -v `pwd`:/app:rw -w /app pricingassistant/mrq-env python3 -m pylint -j 0 --errors-only --init-hook="import sys; sys.path.append('.')" --rcfile .pylintrc mrq
 
 virtualenv:
-	virtualenv venv --distribute
+	virtualenv venv --distribute --python=python2.7
 
 deps:
 	pip install -r requirements.txt
