@@ -38,8 +38,8 @@ class JobAction(Task):
         if self.params.get("id"):
             query["_id"] = ObjectId(self.params.get("id"))
 
-        if current_job and current_job.data.get("datequeued"):
-            query["datequeued"] = {"$lte": current_job.data["datequeued"]}
+        if current_job:
+            query["_id"] = {"$lte": current_job.id}
 
         # TODO use redis for queue
         for k in [
