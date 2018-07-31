@@ -192,7 +192,9 @@ class Agent(Process):
         definition = connections.mongodb_jobs.mrq_workergroups.find_one({"_id": self.worker_group})
 
         # Prepend all commands by their worker profile.
-        for profileid, profile in (definition or {}).get("profiles", {}).items():
-            profile["command"] = "MRQ_WORKER_PROFILE=%s %s" % (profileid, profile["command"])
+        commands = []
+        for command in definition.get("commands", []):
+            commands.append("MRQ_WORKER_GROUP=%s %s" % (self.worker_group, command))
+        definition["commands"] = commands
 
         return definition

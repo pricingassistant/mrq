@@ -410,13 +410,6 @@ def add_parser_args(parser, config_type):
             help='Worker group of the agent this worker was launched from')
 
         parser.add_argument(
-            '--worker_profile',
-            default="",
-            action='store',
-            type=str,
-            help='Worker profile used by the agent to launch this worker')
-
-        parser.add_argument(
             '--task_whitelist',
             default="",
             action='store',
