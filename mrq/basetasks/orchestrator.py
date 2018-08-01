@@ -51,9 +51,7 @@ class Orchestrate(Task):
         for agent in agents:
             desired_workers = self.get_desired_workers_for_agent(group, agent)
             agent["new_desired_workers"] = []
-            for worker in agent.get("desired_workers", []):
-                if worker in desired_workers:
-                    agent["new_desired_workers"].append(worker)
+            agent["new_desired_workers"] = desired_workers
 
         for agent in agents:
             if sorted(agent["new_desired_workers"]) != sorted(agent.get("desired_workers", [])):
@@ -85,7 +83,7 @@ class Orchestrate(Task):
         for definition in definitions:
             commands = []
             # Prepend all commands by their worker group.
-            for command in definition.get("commands"):
+            for command in definition.get("commands", []):
                 commands.append("MRQ_WORKER_GROUP=%s %s" % (definition["_id"], command))
 
             definition["commands"] = commands

@@ -59,7 +59,6 @@ class ProcessPool(object):
         self.desired_commands = commands
 
         target_commands = list(self.desired_commands)
-
         for process in list(self.processes):
             found = False
             for i in range(len(target_commands)):

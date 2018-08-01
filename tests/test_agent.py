@@ -6,7 +6,7 @@ from mrq.job import Job, get_job_result
 import psutil
 
 
-def scenario(profiles, agents):
+def scenario(commands, agents):
     connections.mongodb_jobs.mrq_agents.delete_many({})
     connections.mongodb_jobs.mrq_workergroups.delete_many({})
 
@@ -15,7 +15,7 @@ def scenario(profiles, agents):
         agent["status"] = "started"
 
     connections.mongodb_jobs.mrq_agents.insert_many(agents + [{"worker_group": "yy", "status": "started"}, {"worker_group": "zz"}])
-    connections.mongodb_jobs.mrq_workergroups.insert_one({"_id": "xx", "profiles": profiles})
+    connections.mongodb_jobs.mrq_workergroups.insert_one({"_id": "xx", "commands": commands})
 
     agent = Agent(worker_group="xx")
     agent.orchestrate()
@@ -29,14 +29,8 @@ def test_orchestration_scenarios(worker):
     worker.start()
 
     # Simplest scenario
-    assert scenario({
-        "a": {
-            "command": "mrq-worker a",
-            "memory": 1000,
-            "cpu": 1024,
-            "min_count": 1
-        }
-    }, [
+    assert scenario(
+        ["mrq-worker a"], [
         {
             "_id": "worker1",
             "total_cpu": 1024,
@@ -44,61 +38,14 @@ def test_orchestration_scenarios(worker):
         }
     ]) == {
         "worker1": [
-            "MRQ_WORKER_PROFILE=a mrq-worker a"
+            "MRQ_WORKER_GROUP=xx mrq-worker a"
         ]
     }
 
-    # Not enough memory
-    assert scenario({
-        "a": {
-            "command": "mrq-worker a",
-            "memory": 1001,
-            "cpu": 1024,
-            "min_count": 1
-        }
-    }, [
-        {
-            "_id": "worker1",
-            "total_cpu": 1024,
-            "total_memory": 1000
-        }
-    ]) == {
-        "worker1": []
-    }
-
-    # Not enough CPU
-    assert scenario({
-        "a": {
-            "command": "mrq-worker a",
-            "memory": 1000,
-            "cpu": 1025,
-            "min_count": 1
-        }
-    }, [
-        {
-            "_id": "worker1",
-            "total_cpu": 1024,
-            "total_memory": 1000
-        }
-    ]) == {
-        "worker1": []
-    }
-
     # Remove & add workers
-    assert scenario({
-        "a": {
-            "command": "mrq-worker a",
-            "memory": 1,
-            "cpu": 1,
-            "min_count": 2
-        },
-        "b": {
-            "command": "mrq-worker b",
-            "memory": 1,
-            "cpu": 1,
-            "min_count": 1
-        }
-    }, [
+    assert scenario(
+        ["mrq-worker --processes 2 a", "mrq-worker b"]
+    , [
         {
             "_id": "worker1",
             "total_cpu": 3,
@@ -107,74 +54,73 @@ def test_orchestration_scenarios(worker):
         }
     ]) == {
         "worker1": [
-            "MRQ_WORKER_PROFILE=a mrq-worker a",
-            "MRQ_WORKER_PROFILE=a mrq-worker a",
-            "MRQ_WORKER_PROFILE=b mrq-worker b"
+            "MRQ_WORKER_GROUP=xx mrq-worker --processes 2 a",
+            "MRQ_WORKER_GROUP=xx mrq-worker b"
         ]
     }
 
     # Worker removal & add priority
-    assert scenario({
-        "a": {
-            "command": "mrq-worker a",
-            "memory": 1,
-            "cpu": 1,
-            "min_count": 3
-        },
-        "b": {
-            "command": "mrq-worker b",
-            "memory": 1,
-            "cpu": 1,
-            "min_count": 1
-        }
-    }, [
-        {
-            "_id": "worker1",
-            "total_cpu": 11,
-            "total_memory": 11,
-            "desired_workers": ["mrq-worker a", "mrq-worker a"]
-        }, {
-            "_id": "worker2",
-            "total_cpu": 5,
-            "total_memory": 5,
-            "desired_workers": ["mrq-worker a", "mrq-worker a"]
-        }
-    ]) == {
-        "worker1": [
-            "MRQ_WORKER_PROFILE=a mrq-worker a",
-            "MRQ_WORKER_PROFILE=a mrq-worker a",
-            "MRQ_WORKER_PROFILE=b mrq-worker b"
-        ],
-        "worker2": ["MRQ_WORKER_PROFILE=a mrq-worker a"]
-    }
+    # assert scenario({
+    #     "a": {
+    #         "command": "mrq-worker a",
+    #         "memory": 1,
+    #         "cpu": 1,
+    #         "min_count": 3
+    #     },
+    #     "b": {
+    #         "command": "mrq-worker b",
+    #         "memory": 1,
+    #         "cpu": 1,
+    #         "min_count": 1
+    #     }
+    # }, [
+    #     {
+    #         "_id": "worker1",
+    #         "total_cpu": 11,
+    #         "total_memory": 11,
+    #         "desired_workers": ["mrq-worker a", "mrq-worker a"]
+    #     }, {
+    #         "_id": "worker2",
+    #         "total_cpu": 5,
+    #         "total_memory": 5,
+    #         "desired_workers": ["mrq-worker a", "mrq-worker a"]
+    #     }
+    # ]) == {
+    #     "worker1": [
+    #         "MRQ_WORKER_PROFILE=a mrq-worker a",
+    #         "MRQ_WORKER_PROFILE=a mrq-worker a",
+    #         "MRQ_WORKER_PROFILE=b mrq-worker b"
+    #     ],
+    #     "worker2": ["MRQ_WORKER_PROFILE=a mrq-worker a"]
+    # }
 
-    # Worker diversity enforced under constraints
-    assert scenario({
-        "a": {
-            "command": "mrq-worker a",
-            "memory": 1,
-            "cpu": 1,
-            "min_count": 3
-        },
-        "b": {
-            "command": "mrq-worker b",
-            "memory": 1,
-            "cpu": 1,
-            "min_count": 1
-        }
-    }, [
-        {
-            "_id": "worker1",
-            "total_cpu": 2,
-            "total_memory": 2,
-            "desired_workers": ["mrq-worker a", "mrq-worker a"]
-        }
-    ]) == {
-        "worker1": [
-            "MRQ_WORKER_PROFILE=a mrq-worker a",
-            "MRQ_WORKER_PROFILE=b mrq-worker b"
-        ]
-    }
+    # # Worker diversity enforced under constraints
+    # assert scenario({
+    #     "a": {
+    #         "command": "mrq-worker a",
+    #         "memory": 1,
+    #         "cpu": 1,
+    #         "min_count": 3
+    #     },
+    #     "b": {
+    #         "command": "mrq-worker b",
+    #         "memory": 1,
+    #         "cpu": 1,
+    #         "min_count": 1
+    #     }
+    # }, [
+    #     {
+    #         "_id": "worker1",
+    #         "total_cpu": 2,
+    #         "total_memory": 2,
+    #         "desired_workers": ["mrq-worker a", "mrq-worker a"]
+    #     }
+    # ]) == {
+    #     "worker1": [
+    #         "MRQ_WORKER_PROFILE=a mrq-worker a",
+    #         "MRQ_WORKER_PROFILE=b mrq-worker b"
+    #     ]
+    # }
 
 
 def test_agent_process(worker):
@@ -189,14 +135,10 @@ def test_agent_process(worker):
 
     assert connections.mongodb_jobs.mrq_workers.count() == 0
 
-    connections.mongodb_jobs.mrq_workergroups.insert_one({"_id": "xxx", "profiles": {
-        "a": {
-            "command": "TEST_ENVVAR='&42' mrq-worker a --report_interval=1",
-            "memory": 100,
-            "cpu": 100,
-            "min_count": 1
-        }
-    }})
+    connections.mongodb_jobs.mrq_workergroups.insert_one({
+        "_id": "xxx",
+        "commands": ["TEST_ENVVAR='&42' mrq-worker a --report_interval=1"]
+    })
 
     time.sleep(7)
 
@@ -208,7 +150,7 @@ def test_agent_process(worker):
 
     assert ctx["environ"].get("TEST_ENVVAR") == "&42"
 
-    connections.mongodb_jobs.mrq_workergroups.update_one({"_id": "xxx"}, {"$set": {"profiles": {}}})
+    connections.mongodb_jobs.mrq_workergroups.update_one({"_id": "xxx"}, {"$set": {"commands": []}})
 
     time.sleep(4)
 
@@ -295,14 +237,11 @@ def test_agent_force_terminate(worker):
     # First, test interrupting a worker doing only a sleeping process.
     #
 
-    connections.mongodb_jobs.mrq_workergroups.insert_one({"_id": "xxx", "profiles": {
-        "a": {
-            "command": "mrq-worker default --report_interval=60",
-            "memory": 100,
-            "cpu": 100,
-            "min_count": 1
-        }
-    }, "process_termination_timeout": 1})
+    connections.mongodb_jobs.mrq_workergroups.insert_one({
+        "_id": "xxx",
+        "commands": ["mrq-worker default --report_interval=60"],
+        "process_termination_timeout": 1
+    })
 
     time.sleep(5)
 
@@ -313,14 +252,10 @@ def test_agent_force_terminate(worker):
     res1 = get_job_result(job1)
     assert res1["status"] == "started"
 
-    connections.mongodb_jobs.mrq_workergroups.update_one({"_id": "xxx"}, {"$set": {"profiles": {
-        "a": {
-            "command": "mrq-worker otherqueue --report_interval=60",
-            "memory": 100,
-            "cpu": 100,
-            "min_count": 1
-        }
-    }, "process_termination_timeout": 1}})
+    connections.mongodb_jobs.mrq_workergroups.update_one(
+        {"_id": "xxx"},
+        {"$set": {"commands": ["mrq-worker otherqueue --report_interval=60"]
+    }})
 
     time.sleep(5)
 
@@ -340,14 +275,10 @@ def test_agent_force_terminate(worker):
 
     pids_before_sigkill = psutil.pids()
 
-    connections.mongodb_jobs.mrq_workergroups.update_one({"_id": "xxx"}, {"$set": {"profiles": {
-        "a": {
-            "command": "mrq-worker otherqueue2 --report_interval=60",
-            "memory": 100,
-            "cpu": 100,
-            "min_count": 1
-        }
-    }, "process_termination_timeout": 1}})
+    connections.mongodb_jobs.mrq_workergroups.update_one(
+        {"_id": "xxx"},
+        {"$set": {"commands": ["mrq-worker otherqueue2 --report_interval=60"]
+    }})
 
     # SIGKILL is sent after 5 seconds
     time.sleep(10)
