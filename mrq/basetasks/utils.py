@@ -38,9 +38,6 @@ class JobAction(Task):
         if self.params.get("id"):
             query["_id"] = ObjectId(self.params.get("id"))
 
-        if current_job and current_job.data.get("datequeued"):
-            query["datequeued"] = {"$lte": current_job.data["datequeued"]}
-
         # TODO use redis for queue
         for k in [
                 "queue",
@@ -62,6 +59,9 @@ class JobAction(Task):
 
             for key in params_dict:
                 query["params.%s" % key] = params_dict[key]
+                
+        if current_job and "_id" not in query:
+            query["_id"] = {"$lte": current_job.id}
 
         return query
 
