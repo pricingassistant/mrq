@@ -583,12 +583,12 @@ def get_config(
         merged_config.update(extra)
 
     if merged_config["profile"]:
-        import cProfile
+        import cProfile, pstats
         profiler = cProfile.Profile()
         profiler.enable()
 
         def print_profiling():
-            profiler.print_stats(sort="cumulative")
+            pstats.Stats(profiler).sort_stats("cumulative").print_stats()
 
         atexit.register(print_profiling)
 
