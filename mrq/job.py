@@ -23,6 +23,10 @@ import copyreg
 from . import context
 
 
+FINAL_STATUSES = {"timeout", "abort", "failed", "success", "interrupt", "retry", "maxretries", "maxconcurrency"}
+TRANSIENT_STATUSES = {"cancel", "queued", "started"}
+
+
 class Job(object):
 
     timeout = None
@@ -438,6 +442,11 @@ class Job(object):
         if self.id is None:
             return
 
+        # Forbid some status transitions
+        if self.data and self.data.get("status") in FINAL_STATUSES and status not in TRANSIENT_STATUSES:
+            context.log.error("Can't go from status %s to %s" % (self.data["status"], status))
+            return
+
         context.metric("jobs.status.%s" % status)
 
         if self.stored is False and self.statuses_no_storage is not None and status in self.statuses_no_storage:
@@ -476,7 +485,8 @@ class Job(object):
             db_updates["traceback"] = trace
             db_updates["exceptiontype"] = exc.__name__
 
-            self._save_traceback_history(status, trace, exc)
+        if self.data:
+            self.data.update(db_updates)
 
         # In the most common case, we allow an optimization on Mongo writes
         if status == "success":
@@ -500,8 +510,9 @@ class Job(object):
                 "_id": self.id
             }, {"$set": db_updates}, w=w, j=j, manipulate=False)
 
-        if self.data:
-            self.data.update(db_updates)
+        if exception:
+            self._save_traceback_history(status, trace, exc)
+
 
     def set_current_io(self, io_data):
 

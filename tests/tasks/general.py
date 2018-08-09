@@ -17,6 +17,16 @@ from mrq.utils import MongoJSONEncoder
 class Add(Task):
 
     def run(self, params):
+        if params.get("broadexcept"):
+            try:
+                return self._add(params)
+            except BaseException, e:  # Will catch greenlet.GreenletExit & all others
+                print("Got base exception %s" % type(e))
+                return
+        else:
+            return self._add(params)
+
+    def _add(self, params):
         log.info("adding", params)
         res = params.get("a", 0) + params.get("b", 0)
 
@@ -297,3 +307,13 @@ class SendTask(Task):
 class QueueAllKnown(Task):
     def run(self, params):
         return list(Queue.all_known())
+
+
+class Uninterruptable(Task):
+
+    def run(self, params):
+        while True:
+            try:
+                time.sleep(1)
+            except:
+                pass

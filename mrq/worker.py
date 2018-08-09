@@ -356,6 +356,28 @@ class Worker(Process):
         except Exception as e:  # pylint: disable=broad-except
             self.log.debug("Worker report failed: %s" % e)
 
+    def greenlet_timeouts(self):
+        """ This greenlet kills jobs in other greenlets if they timeout.
+        """
+
+        while True:
+            now = datetime.datetime.utcnow()
+            for greenlet in list(self.gevent_pool):
+                job = get_current_job(id(greenlet))
+                if job and job.timeout and job.datestarted:
+                    expires = job.datestarted + datetime.timedelta(seconds=job.timeout)
+                    if now > expires:
+                        greenlet.kill(block=False)
+                        if job.data["status"] != "timeout":
+                            updates = {
+                                "exceptiontype": "TimeoutInterrupt",
+                                "traceback": "".join(traceback.format_stack(greenlet.gr_frame))
+                            }
+                            job._save_status("timeout", updates=updates, exception=False)
+
+            time.sleep(1)
+
+
     def greenlet_admin(self):
         """ This greenlet is used to get status information about the worker
             when --admin_port was given
@@ -455,6 +477,8 @@ class Worker(Process):
 
         if self.config["admin_port"]:
             self.greenlets["admin"] = gevent.spawn(self.greenlet_admin)
+
+        self.greenlets["timeouts"] = gevent.spawn(self.greenlet_timeouts)
 
         if self.config["scheduler"] and self.config["scheduler_interval"] > 0:
 
@@ -645,19 +669,6 @@ class Worker(Process):
 
         set_current_job(job)
 
-        gevent_timeout = None
-        if job.timeout:
-
-            gevent_timeout = gevent.Timeout(
-                job.timeout,
-                TimeoutInterrupt(
-                    'Job exceeded maximum timeout value in greenlet (%d seconds).' %
-                    job.timeout
-                )
-            )
-
-            gevent_timeout.start()
-
         try:
             job.perform()
 
@@ -690,9 +701,6 @@ class Worker(Process):
             job._save_status("failed", exception=True)
 
         finally:
-
-            if gevent_timeout:
-                gevent_timeout.cancel()
 
             set_current_job(None)
 

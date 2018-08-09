@@ -67,7 +67,7 @@ pep8:
 autopep8:
 	autopep8 --max-line-length 99 -aaaaaaaa --in-place --recursive mrq
 
-pypi: linterrors
+pypi: linterrors linterrors3
 	python setup.py sdist upload
 
 build_docs:

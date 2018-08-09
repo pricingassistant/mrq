@@ -189,12 +189,14 @@ def test_known_queues_lifecycle(worker):
     time.sleep(1)
 
     all_known_plus_sub = worker.send_task("tests.tasks.general.QueueAllKnown", {}, queue="default")
-    assert set(all_known_plus_sub).difference(set(all_known)) == set(["test_raw/sub"])
+    assert set(all_known_plus_sub) == set(all_known).union(set(["test_raw/sub"]))
 
-    Queue("test_raw/sub").remove_raw_jobs(["a", "b", "c"])
+    # This behavious was removed in https://github.com/pricingassistant/mrq/commit/dcb7c954c998d0d8f32b799da0fb0aa11524e5b9
+    # We might restore it if we find a way to improve performance
+    # Queue("test_raw/sub").remove_raw_jobs(["a", "b", "c"])
 
-    all_known_plus_sub = worker.send_task("tests.tasks.general.QueueAllKnown", {}, queue="default")
-    assert set(all_known_plus_sub).difference(set(all_known)) == set()
+    # all_known_plus_sub = worker.send_task("tests.tasks.general.QueueAllKnown", {}, queue="default")
+    # assert set(all_known_plus_sub) == set(all_known)
 
 
 def test_general_exception_status(worker):

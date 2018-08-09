@@ -166,7 +166,7 @@ def test_scheduler_weekday_dailytime(worker):
 
 
 def test_scheduler_monthday(worker):
-    # Task is scheduled in 3 seconds
+    # Task is scheduled in 10 seconds
     worker.start(
         flags="--scheduler --config tests/fixtures/config-scheduler6.py",
         env={
@@ -183,7 +183,7 @@ def test_scheduler_monthday(worker):
     assert len(inserts) == 0
 
     # And then only once
-    time.sleep(6)
+    time.sleep(10)
     inserts = list(collection.find())
     assert len(inserts) == 1
     assert collection.find({"params.monthday": datetime.datetime.utcnow().day}).count() == 1

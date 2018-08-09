@@ -397,13 +397,16 @@
                     "failed": "failed",
                     "retry": "retry",
                     "maxretries": "maxretries",
+                    "maxconcurrency": "maxconcurrency",
                     "timeout": "timeout",
                     "interrupt": "interrupt",
                     "cancel": "cancel",
                     "abort": "abort",
                     "queued-started-success": "{OK}",
-                    "failed-retry-maxretries-timeout-interrupt-cancel-abort": "{NOT OK}",
-                    "failed-maxretries-timeout-abort": "{ERROR}"
+                    "failed-retry-maxretries-maxconcurrency-timeout-interrupt-cancel-abort": "{NOT OK}",
+                    "failed-maxretries-maxconcurrency-timeout": "{ERROR}",
+                    "failed-retry-maxretries-maxconcurrency-interrupt-timeout": "{ERROR+RETRY}",
+
                   }, function(k, i) { %>
                   <option <%= filters.status==i?"selected='selected'":"" %> value="<%= i %>"><%= k %></option>
                 <% }) %>

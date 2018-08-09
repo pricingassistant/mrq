@@ -296,6 +296,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
                   'timeout': "label-danger",
                   'failed': "label-danger",
                   'maxretries': "label-danger",
+                  'maxconcurrency': "label-danger",
                   'interrupt': "label-danger",
                   'cancel': "label-warning",
                   'abort': "label-warning",
