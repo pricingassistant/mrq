@@ -26,7 +26,7 @@ class Agent(Process):
         })
         self.config = get_current_config()
         self.status = "started"
-        metric.push({"type": "agent", "worker_group": self.worker_group, "agent_id": self.id})
+        metric({"type": "agent", "worker_group": self.worker_group, "agent_id": self.id})
         self.dateorchestrated = None
 
         # global redis key used to ensure only one agent orchestrator runs at a time
@@ -115,7 +115,7 @@ class Agent(Process):
             "datereported": datetime.datetime.utcnow(),
             "dateexpires": datetime.datetime.utcnow() + datetime.timedelta(seconds=(self.config["report_interval"] * 3) + 5)
         }
-        metric.push({"type": "agent", "worker_group": self.worker_group, "agent_id": self.id, "worker_count": len(self.pool.processes)})
+        metric({"type": "agent", "worker_group": self.worker_group, "agent_id": self.id, "worker_count": len(self.pool.processes)})
         return report
 
     def greenlet_orchestrate(self):

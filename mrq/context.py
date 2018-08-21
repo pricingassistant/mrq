@@ -13,7 +13,6 @@ import traceback
 from .utils import LazyObject, load_class_by_path
 from .config import get_config
 from .subpool import subpool_map, subpool_imap
-from metrics import Metric
 
 # This should be MRQ's only Python object shared by all the jobs in the same process
 _GLOBAL_CONTEXT = {
@@ -30,7 +29,6 @@ _GLOBAL_CONTEXT = {
 
 # Global log object, usable from all jobs
 log = logging.getLogger("mrq.current")
-metric = Metric()
 
 
 def setup_context(**kwargs):
