@@ -295,7 +295,7 @@ def test_agent_force_terminate(worker):
 
 def test_agent_multiple_processes(worker):
     worker.start(agent=True, flags="--worker_group xxx --orchestrate_interval=1 --report_interval=1")
-    pids_before = psutil.pids()g
+    pids_before = psutil.pids()
 
     connections.mongodb_jobs.mrq_workergroups.insert_one({
         "_id": "xxx",
