@@ -8,6 +8,7 @@ import math
 import shlex
 import argparse
 from ..config import add_parser_args
+from ..utils import normalize_command
 import traceback
 import datetime
 import re
@@ -84,8 +85,8 @@ class Orchestrate(Task):
             commands = []
             # Prepend all commands by their worker group.
             for command in definition.get("commands", []):
-                commands.append("MRQ_WORKER_GROUP=%s %s" % (definition["_id"], command))
-
+                simplified_command, worker_count = normalize_command(command, definition["_id"])
+                commands.extend([simplified_command] * worker_count)
             definition["commands"] = commands
 
         return definitions

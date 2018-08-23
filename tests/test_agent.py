@@ -292,3 +292,18 @@ def test_agent_force_terminate(worker):
 
     assert len(pids_after_sigkill) == len(pids_before_sigkill)
     assert set(pids_after_sigkill) != set(pids_before_sigkill)
+
+def test_agent_multiple_processes(worker):
+    worker.start(agent=True, flags="--worker_group xxx --orchestrate_interval=1 --report_interval=1")
+    pids_before = psutil.pids()g
+
+    connections.mongodb_jobs.mrq_workergroups.insert_one({
+        "_id": "xxx",
+        "commands": ["mrq-worker --processes 2 a", "mrq-worker --processes=2 b"],
+        "process_termination_timeout": 1
+    })
+    time.sleep(3)
+
+    pids_after = psutil.pids()
+    # make sure there are 4 workers running
+    assert len(pids_before) + 4 == len(pids_after)

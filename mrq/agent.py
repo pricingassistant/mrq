@@ -4,12 +4,13 @@ import datetime
 import gevent
 import argparse
 import random
+import shlex
 import traceback
 from collections import defaultdict
 from bson import ObjectId
 from redis.lock import LuaLock
 from .processes import Process, ProcessPool
-from .utils import MovingETA
+from .utils import MovingETA, normalize_command
 from .queue import Queue
 
 
@@ -195,7 +196,8 @@ class Agent(Process):
         # Prepend all commands by their worker profile.
         commands = []
         for command in definition.get("commands", []):
-            commands.append("MRQ_WORKER_GROUP=%s %s" % (self.worker_group, command))
-        definition["commands"] = commands
+            simplified_command, worker_count = normalize_command(command, self.worker_group)
+            commands.extend([simplified_command] * worker_count)
 
+        definition["commands"] = commands
         return definition
