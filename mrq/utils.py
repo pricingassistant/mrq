@@ -35,7 +35,7 @@ def normalize_command(command, worker_group):
                 continue
             simplified_command += " %s" % part
             skip_next = False
-        simplified_command = "MRQ_WORKER_GROUP=%s %s" % (worker_group, simplified_command)
+        simplified_command = "MRQ_WORKER_GROUP=%s%s" % (worker_group, simplified_command)
         return simplified_command, int(worker_count)
     return "MRQ_WORKER_GROUP=%s %s" % (worker_group, command), 1
 

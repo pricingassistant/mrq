@@ -54,7 +54,8 @@ def test_orchestration_scenarios(worker):
         }
     ]) == {
         "worker1": [
-            "MRQ_WORKER_GROUP=xx mrq-worker --processes 2 a",
+            "MRQ_WORKER_GROUP=xx mrq-worker a",
+            "MRQ_WORKER_GROUP=xx mrq-worker a",
             "MRQ_WORKER_GROUP=xx mrq-worker b"
         ]
     }
