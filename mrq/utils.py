@@ -10,10 +10,34 @@ import datetime
 from collections import deque
 from bson import ObjectId
 import uuid
+import shlex
 
 #
 # Utils are functions that should be independent from the rest of MRQ's codebase
 #
+
+
+def normalize_command(command, worker_group):
+    if "--processes" in command:
+        simplified_command = ""
+        worker_count = 0
+        skip_next = False
+        for part in shlex.split(command):
+            if skip_next:
+                worker_count = part
+                skip_next = False
+                continue
+            if part.startswith("--processes="):
+                worker_count = part.split("=")[1]
+                continue
+            if part == "--processes":
+                skip_next = True
+                continue
+            simplified_command += " %s" % part
+            skip_next = False
+        simplified_command = "MRQ_WORKER_GROUP=%s%s" % (worker_group, simplified_command)
+        return simplified_command, int(worker_count)
+    return "MRQ_WORKER_GROUP=%s %s" % (worker_group, command), 1
 
 
 def get_local_ip():

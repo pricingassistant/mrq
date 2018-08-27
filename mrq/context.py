@@ -14,7 +14,6 @@ from .utils import LazyObject, load_class_by_path
 from .config import get_config
 from .subpool import subpool_map, subpool_imap
 
-
 # This should be MRQ's only Python object shared by all the jobs in the same process
 _GLOBAL_CONTEXT = {
 

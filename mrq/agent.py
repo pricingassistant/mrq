@@ -1,15 +1,16 @@
-from .context import get_current_config, connections, log, run_task
+from .context import get_current_config, connections, log, run_task, metric
 import time
 import datetime
 import gevent
 import argparse
 import random
+import shlex
 import traceback
 from collections import defaultdict
 from bson import ObjectId
 from redis.lock import LuaLock
 from .processes import Process, ProcessPool
-from .utils import MovingETA
+from .utils import MovingETA, normalize_command
 from .queue import Queue
 
 
@@ -26,7 +27,7 @@ class Agent(Process):
         })
         self.config = get_current_config()
         self.status = "started"
-
+        metric("agent", data={"worker_group": self.worker_group, "agent_id": self.id})
         self.dateorchestrated = None
 
         # global redis key used to ensure only one agent orchestrator runs at a time
@@ -115,6 +116,7 @@ class Agent(Process):
             "datereported": datetime.datetime.utcnow(),
             "dateexpires": datetime.datetime.utcnow() + datetime.timedelta(seconds=(self.config["report_interval"] * 3) + 5)
         }
+        metric("agent", data={"worker_group": self.worker_group, "agent_id": self.id, "worker_count": len(self.pool.processes)})
         return report
 
     def greenlet_orchestrate(self):
@@ -192,7 +194,10 @@ class Agent(Process):
         definition = connections.mongodb_jobs.mrq_workergroups.find_one({"_id": self.worker_group})
 
         # Prepend all commands by their worker profile.
-        for profileid, profile in (definition or {}).get("profiles", {}).items():
-            profile["command"] = "MRQ_WORKER_PROFILE=%s %s" % (profileid, profile["command"])
+        commands = []
+        for command in definition.get("commands", []):
+            simplified_command, worker_count = normalize_command(command, self.worker_group)
+            commands.extend([simplified_command] * worker_count)
 
+        definition["commands"] = commands
         return definition

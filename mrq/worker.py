@@ -292,8 +292,7 @@ class Worker(Process):
             "local_ip",
             "external_ip",
             "agent_id",
-            "worker_group",
-            "worker_profile"
+            "worker_group"
         ]
 
         io = None
