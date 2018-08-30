@@ -27,16 +27,16 @@ def test_raw_sorted(worker, p_queue, p_pushback, p_timed, p_flags):
     # Schedule one in the past, one in the future
     worker.send_raw_tasks(p_queue, {
         "aaa": current_time - 10,
-        "bbb": current_time + 2,
-        "ccc": current_time + 5
+        "bbb": current_time + 5,
+        "ccc": current_time + 10
     }, block=False)
 
     # Re-schedule
     worker.send_raw_tasks(p_queue, {
-        "ccc": current_time + 2
+        "ccc": current_time + 6
     }, block=False)
 
-    time.sleep(1)
+    time.sleep(3)
 
     if not p_timed:
 
@@ -49,10 +49,10 @@ def test_raw_sorted(worker, p_queue, p_pushback, p_timed, p_flags):
 
     if p_pushback:
         assert Queue(p_queue).size() == 3
-        assert set(Queue(p_queue).list_raw_jobs()) == set(["bbb", "ccc", "aaa"])
+        assert set(Queue(p_queue).list_raw_jobs()) == set([b"bbb", b"ccc", b"aaa"])
     else:
         assert Queue(p_queue).size() == 2
-        assert set(Queue(p_queue).list_raw_jobs()) == set(["bbb", "ccc"])
+        assert set(Queue(p_queue).list_raw_jobs()) == set([b"bbb", b"ccc"])
 
     # The second one should not yet even exist in mrq_jobs
     assert jobs_collection.count() == 1
@@ -63,7 +63,7 @@ def test_raw_sorted(worker, p_queue, p_pushback, p_timed, p_flags):
     ]
 
     # Then wait for the second job to be done
-    time.sleep(2)
+    time.sleep(5)
 
     if p_pushback:
         assert Queue(p_queue).size() == 3
@@ -104,13 +104,20 @@ def test_raw_set(worker, has_subqueue, p_queue, p_set):
 
     assert Queue(p_queue).size() == 0
 
-    # Schedule one in the past, one in the future
     worker.send_raw_tasks(p_queue, ["aaa", "bbb", "ccc", "bbb"], block=True)
 
+    assert Queue(p_queue).size() == 0
+
     if p_set:
+        assert jobs_collection.count() == 3
+        assert jobs_collection.count({"status": "success"}) == 3
+
         assert test_collection.count() == 3
 
     else:
+        assert jobs_collection.count() == 4
+        assert jobs_collection.count({"status": "success"}) == 4
+
         assert test_collection.count() == 4
 
 
@@ -137,10 +144,12 @@ def test_raw_started(worker):
     worker.mongodb_jobs.tests_flags.insert({"flag": "f3"})
     time.sleep(1)
 
-    worker.stop(block=True)
+    worker.stop(block=True, deps=False)
 
     assert jobs_collection.find({"status": "success", "queue": "teststartedx"}).count() == 3
     assert jobs_collection.count() == 3
+
+    worker.stop_deps()
 
 
 @pytest.mark.parametrize(["p_queue"], [
@@ -179,7 +188,6 @@ def test_raw_exception(worker):
     worker.send_raw_tasks(p_queue, ["msg1"], block=True)
 
     failjob = list(jobs_collection.find())[0]
-
     assert Queue("default").size() == 0
     assert Queue(p_queue).size() == 0
     assert jobs_collection.count() == 1
@@ -201,7 +209,6 @@ def test_raw_exception(worker):
 
     assert Queue("default").size() == 0
     assert Queue(p_queue).size() == 0
-    assert Queue("testx").size() == 1
     assert jobs_collection.count() == 2
     assert list(jobs_collection.find({"_id": failjob["_id"]}))[
         0]["status"] == "queued"
@@ -212,8 +219,7 @@ def test_raw_exception(worker):
 
     worker.start(
         deps=False, flags="--greenlets 10 --config tests/fixtures/config-raw1.py", queues="default testx")
-
-    time.sleep(2)
+    worker.wait_for_idle()
 
     assert Queue(p_queue).size() == 0
     assert jobs_collection.count() == 2
@@ -253,9 +259,9 @@ def test_raw_retry(worker):
     # ["test_set test_raw default"],
     # ["test test2 test_set test_raw default"]
 ] for x2 in [
-    #[1],
+    # [1],
     [2],
-    #[10]
+    # [10]
 ]])
 def test_raw_mixed(worker, p_queue, p_greenlets):
 
@@ -277,7 +283,7 @@ def test_raw_mixed(worker, p_queue, p_greenlets):
     test_collection = worker.mongodb_logs.tests_inserts
     jobs_collection = worker.mongodb_jobs.mrq_jobs
 
-    time.sleep(1)
+    time.sleep(3)
 
     assert Queue("test_raw").size() == 0
     assert Queue("default").size() == 0

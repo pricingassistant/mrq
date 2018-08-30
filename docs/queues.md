@@ -1,6 +1,6 @@
 # Regular queues
 
-With regular queues, MRQ stores the task metadata in MongoDB and the task IDs in a Redis list. This design allows a good compromise between performance and visibility.
+With regular queues, MRQ stores the tasks in MongoDB.
 
 You can transform a queue into a [pile](https://en.wikipedia.org/wiki/LIFO_(computing)) by appending `_reverse` to its name:
 
@@ -68,4 +68,6 @@ queue_raw_jobs("myqueue_timed_set", {
 })
 ```
 
-For more examples of raw queue configuration, check [the tests](https://github.com/pricingassistant/mrq/blob/master/tests/fixtures/config-raw1.py)
+For more examples of raw queue configuration, check [the tests](https://github.com/pricingassistant/mrq/blob/master/tests/fixtures/config-raw1.py).
+
+You should also read our tutorial on [Queue performance](queue-performance.md) to get a good overview of the different queue types.

@@ -1,7 +1,6 @@
 from future import standard_library
 standard_library.install_aliases()
-from builtins import str
-from builtins import bytes
+from future.builtins import str, bytes
 from future.utils import iteritems
 import gevent
 import gevent.pool
@@ -16,20 +15,23 @@ import sys
 import json as json_stdlib
 import ujson as json
 from bson import ObjectId
+from redis.lock import LuaLock
 from collections import defaultdict
+from mrq.utils import load_class_by_path
 
 from .job import Job
 from .exceptions import (TimeoutInterrupt, StopRequested, JobInterrupt, AbortInterrupt,
                          RetryInterrupt, MaxRetriesInterrupt, MaxConcurrencyInterrupt)
 from .context import (set_current_worker, set_current_job, get_current_job, get_current_config,
-                      connections, enable_greenlet_tracing)
+                      connections, enable_greenlet_tracing, run_task, log)
 from .queue import Queue
 from .utils import MongoJSONEncoder, MovingAverage
+from .processes import Process
+from .redishelpers import redis_key
 
 
-class Worker(object):
-
-    """ Main worker class. """
+class Worker(Process):
+    """ Main worker class """
 
     # Allow easy overloading
     job_class = Job
@@ -54,17 +56,21 @@ class Worker(object):
         self.max_jobs = self.config["max_jobs"]
         self.max_time = datetime.timedelta(seconds=self.config["max_time"]) or None
 
+        self.paused_queues = set()
+
         self.connected = False  # MongoDB + Redis
 
-        self.exitcode = 0
         self.process = psutil.Process(os.getpid())
         self.greenlet = gevent.getcurrent()
         self.graceful_stop = None
 
-        self.idle_event = gevent.event.Event()
-        self.idle_wait_count = 0
+        self.work_lock = gevent.lock.Semaphore()
 
-        self.id = ObjectId()
+        if self.config.get("worker_id"):
+            self.id = ObjectId(self.config["worker_id"])
+        else:
+            self.id = ObjectId()
+
         if self.config.get("name"):
             self.name = self.config["name"]
         else:
@@ -74,15 +80,16 @@ class Worker(object):
         self.pool_size = self.config["greenlets"]
         self.pool_usage_average = MovingAverage((60 / self.config["report_interval"] or 1))
 
-        from .logger import LogHandler
-        self.log_handler = LogHandler(quiet=self.config["quiet"])
-        self.log = self.log_handler.get_logger(worker=self.id)
+        self.set_logger()
 
-        self.queues = [Queue(x, add_to_known_queues=True) for x in self.config["queues"] if x]
+        self.refresh_queues(fatal=True)
+        self.queues_with_notify = list({redis_key("notify", q) for q in self.queues if q.use_notify()})
+        self.has_subqueues = any([queue.endswith("/") for queue in self.config["queues"]])
 
         self.log.info(
-            "Starting Gevent pool with %s worker greenlets (+ report, logs, adminhttp)" %
-            self.pool_size)
+            "Starting worker on %s queues with %s greenlets" %
+            (len(self.queues), self.pool_size)
+        )
 
         self.gevent_pool = gevent.pool.Pool(self.pool_size)
 
@@ -95,6 +102,25 @@ class Worker(object):
             "tasks": defaultdict(float),
             "total": 0
         }
+
+        if self.config["ensure_indexes"]:
+            run_task("mrq.basetasks.indexes.EnsureIndexes", {})
+
+    def set_logger(self):
+        import logging
+
+        self.log = logging.getLogger(str(self.id))
+        logging.basicConfig(format=self.config["log_format"])
+        self.log.setLevel(getattr(logging, self.config["log_level"]))
+        # No need to send worker logs to mongo?
+        # logger_class = load_class_by_path(self.config["logger"])
+
+        # # All mrq handlers must have worker and collection keyword arguments
+        # if self.config["logger"].startswith("mrq"):
+        #     self.log_handler = logger_class(collection=self.config["mongodb_logs"], worker=str(self.id), **self.config["logger_config"])
+        # else:
+        #     self.log_handler = logger_class(**self.config["logger_config"])
+        # self.log.addHandler(self.log_handler)
 
     @property
     def config(self):
@@ -110,68 +136,21 @@ class Worker(object):
         self.mongodb_jobs = connections.mongodb_jobs
         self.mongodb_logs = connections.mongodb_logs
 
-        if self.mongodb_logs:
-            self.log_handler.set_collection(self.mongodb_logs.mrq_logs)
-
         self.connected = True
-
-        # Be mindful that this is done each time a worker starts
-        if not self.config["no_mongodb_ensure_indexes"]:
-            self.ensure_indexes()
-
-    def ensure_indexes(self):
-
-        if self.mongodb_logs:
-
-            self.mongodb_logs.mrq_logs.ensure_index(
-                [("job", 1)], background=False)
-            self.mongodb_logs.mrq_logs.ensure_index(
-                [("worker", 1)], background=False, sparse=True)
-
-        self.mongodb_jobs.mrq_workers.ensure_index(
-            [("status", 1)], background=False)
-        self.mongodb_jobs.mrq_workers.ensure_index(
-            [("datereported", 1)], background=False, expireAfterSeconds=3600)
-
-        self.mongodb_jobs.mrq_jobs.ensure_index(
-            [("status", 1)], background=True)
-        self.mongodb_jobs.mrq_jobs.ensure_index(
-            [("path", 1)], background=True)
-        self.mongodb_jobs.mrq_jobs.ensure_index(
-            [("worker", 1)], background=True, sparse=True)
-        self.mongodb_jobs.mrq_jobs.ensure_index(
-            [("queue", 1)], background=True)
-        self.mongodb_jobs.mrq_jobs.ensure_index(
-            [("dateexpires", 1)], sparse=True, background=False, expireAfterSeconds=0)
-        self.mongodb_jobs.mrq_jobs.ensure_index(
-            [("dateretry", 1)], sparse=True, background=False)
-
-        self.mongodb_jobs.mrq_scheduled_jobs.ensure_index(
-            [("hash", 1)], unique=True, background=False, drop_dups=True)
-
-        try:
-            # This will be default in MongoDB 2.6
-            self.mongodb_jobs.command(
-                {"collMod": "mrq_jobs", "usePowerOf2Sizes": True})
-            self.mongodb_jobs.command(
-                {"collMod": "mrq_workers", "usePowerOf2Sizes": True})
-        except:  # pylint: disable=bare-except
-            pass
 
     def greenlet_scheduler(self):
 
-        from .scheduler import Scheduler
-        scheduler = Scheduler(self.mongodb_jobs.mrq_scheduled_jobs)
-
-        scheduler.sync_tasks(self.config.get("scheduler_tasks") or [])
-
+        redis_scheduler_lock_key = "%s:schedulerlock" % get_current_config()["redis_prefix"]
         while True:
-            scheduler.check()
-            time.sleep(int(self.config["scheduler_interval"]))
+            with LuaLock(connections.redis, redis_scheduler_lock_key,
+                         timeout=self.config["scheduler_interval"] + 10, blocking=False, thread_local=False):
+                self.scheduler.check()
+
+            time.sleep(self.config["scheduler_interval"])
 
     def greenlet_report(self):
         """ This greenlet always runs in background to update current status
-            in MongoDB every 10 seconds.
+            in MongoDB every N seconds.
 
             Caution: it might get delayed when doing long blocking operations.
             Should we do this in a thread instead?
@@ -196,7 +175,7 @@ class Worker(object):
 
         while True:
             try:
-                self.flush_logs(w=0)
+                self.flush_logs()
             except Exception as e:  # pylint: disable=broad-except
                 self.log.error("When flushing logs: %s" % e)
             finally:
@@ -204,45 +183,46 @@ class Worker(object):
 
     def greenlet_subqueues(self):
 
-        has_subqueues = any([
-            queue.endswith(get_current_config().get("subqueues_delimiter"))
-            for queue in self.config["queues"]
-        ])
-
         while True:
-
-            # Update the process-local list of known queues
-            Queue.known_queues = Queue.redis_known_queues()
-
-            queues = []
-            try:
-                for queue in self.config["queues"]:
-                    if queue.endswith(get_current_config().get("subqueues_delimiter")):
-                        queues += Queue(queue, add_to_known_queues=True).redis_known_subqueues()
-                    else:
-                        queues.append(Queue(queue, add_to_known_queues=True))
-
-            except Exception as e:  # pylint: disable=broad-except
-                self.log.error("When refreshing subqueues: %s", e)
-            else:
-                self.queues = queues
-
-            # No need for this greenlet if we don't have any subqueues
-            if not has_subqueues:
-                return
-
+            self.refresh_queues()
             time.sleep(self.config["subqueues_refresh_interval"])
+
+    def refresh_queues(self, fatal=False):
+        """ Updates the list of currently known queues and subqueues """
+
+        try:
+            queues = []
+            prefixes = [q for q in self.config["queues"] if q.endswith("/")]
+            known_subqueues = Queue.all_known(prefixes=prefixes)
+
+            for q in self.config["queues"]:
+                queues.append(Queue(q))
+                if q.endswith("/"):
+                    for subqueue in known_subqueues:
+                        if subqueue.startswith(q):
+                            queues.append(Queue(subqueue))
+
+            self.queues = queues
+
+        except Exception as e:  # pylint: disable=broad-except
+            self.log.error("When refreshing subqueues: %s", e)
+            if fatal:
+                raise
+
+    def get_paused_queues(self):
+        """ Returns the set of currently paused queues """
+        return {q.decode("utf-8") for q in self.redis.smembers(redis_key("paused_queues"))}
 
     def greenlet_paused_queues(self):
 
       while True:
 
           # Update the process-local list of paused queues
-          Queue.paused_queues = Queue.redis_paused_queues()
+          self.paused_queues = self.get_paused_queues()
           time.sleep(self.config["paused_queues_refresh_interval"])
 
     def get_memory(self):
-        mmaps = self.process.get_memory_maps()
+        mmaps = self.process.memory_maps()
         mem = {
             "rss": sum([x.rss for x in mmaps]),
             "swap": sum([getattr(x, 'swap', getattr(x, 'swapped', 0)) for x in mmaps])
@@ -255,7 +235,7 @@ class Worker(object):
             its jobs. """
 
         greenlets = []
-        for greenlet in self.gevent_pool:
+        for greenlet in list(self.gevent_pool):
             g = {}
             short_stack = []
             stack = traceback.format_stack(greenlet.gr_frame)
@@ -291,23 +271,28 @@ class Worker(object):
             }
             mem = {"rss": 0, "swap": 0, "total": 0}
         else:
-            cpu_times = self.process.get_cpu_times()
+            cpu_times = self.process.cpu_times()
             cpu = {
                 "user": cpu_times.user,
                 "system": cpu_times.system,
-                "percent": self.process.get_cpu_percent(0)
+                "percent": self.process.cpu_percent(0)
             }
             mem = self.get_memory()
 
         # Avoid sharing passwords or sensitive config!
         whitelisted_config = [
             "max_jobs",
+            "max_memory"
             "greenlets",
             "processes",
             "queues",
+            "dequeue_strategy",
             "scheduler",
             "name",
-            "local_ip"
+            "local_ip",
+            "external_ip",
+            "agent_id",
+            "worker_group"
         ]
 
         io = None
@@ -319,13 +304,14 @@ class Worker(object):
                 else:
                     io[k] = sorted(list(v.items()), reverse=True, key=lambda x: x[1])
 
-        used_pool_slots = self.pool_size - self.gevent_pool.free_count()
+        used_pool_slots = len(self.gevent_pool)
+        used_avg = self.pool_usage_average.next(used_pool_slots)
 
         return {
             "status": self.status,
             "config": {k: v for k, v in iteritems(self.config) if k in whitelisted_config},
             "done_jobs": self.done_jobs,
-            "pool_usage_average": self.pool_usage_average.next(used_pool_slots),
+            "usage_avg": used_avg / self.pool_size,
             "datestarted": self.datestarted,
             "datereported": datetime.datetime.utcnow(),
             "name": self.name,
@@ -369,6 +355,28 @@ class Worker(object):
         except Exception as e:  # pylint: disable=broad-except
             self.log.debug("Worker report failed: %s" % e)
 
+    def greenlet_timeouts(self):
+        """ This greenlet kills jobs in other greenlets if they timeout.
+        """
+
+        while True:
+            now = datetime.datetime.utcnow()
+            for greenlet in list(self.gevent_pool):
+                job = get_current_job(id(greenlet))
+                if job and job.timeout and job.datestarted:
+                    expires = job.datestarted + datetime.timedelta(seconds=job.timeout)
+                    if now > expires:
+                        greenlet.kill(block=False)
+                        if job.data["status"] != "timeout":
+                            updates = {
+                                "exceptiontype": "TimeoutInterrupt",
+                                "traceback": "".join(traceback.format_stack(greenlet.gr_frame))
+                            }
+                            job._save_status("timeout", updates=updates, exception=False)
+
+            time.sleep(1)
+
+
     def greenlet_admin(self):
         """ This greenlet is used to get status information about the worker
             when --admin_port was given
@@ -383,7 +391,7 @@ class Worker(object):
             def write(self, *_):
                 pass
 
-        from gevent import wsgi
+        from gevent import pywsgi
 
         def admin_routes(env, start_response):
             path = env["PATH_INFO"]
@@ -393,16 +401,14 @@ class Worker(object):
                 report = self.get_worker_report(with_memory=(path == "/report_mem"))
                 res = bytes(json_stdlib.dumps(report, cls=MongoJSONEncoder), 'utf-8')
             elif path == "/wait_for_idle":
-                self.idle_wait_count = 0
-                self.idle_event.clear()
-                self.idle_event.wait()
-                res = "idle"
+                self.wait_for_idle()
+                res = bytes("idle", "utf-8")
             else:
                 status = "404 Not Found"
             start_response(status, [('Content-Type', 'application/json')])
             return [res]
 
-        server = wsgi.WSGIServer((self.config["admin_ip"], self.config["admin_port"]), admin_routes, log=Devnull())
+        server = pywsgi.WSGIServer((self.config["admin_ip"], self.config["admin_port"]), admin_routes, log=Devnull())
 
         try:
             self.log.debug("Starting admin server on port %s" % self.config["admin_port"])
@@ -410,8 +416,35 @@ class Worker(object):
         except Exception as e:  # pylint: disable=broad-except
             self.log.debug("Error in admin server : %s" % e)
 
-    def flush_logs(self, w=0):
-        self.log_handler.flush(w=w)
+    def flush_logs(self):
+        for handler in self.log.handlers:
+            handler.flush()
+
+    def wait_for_idle(self):
+        """ Waits until the worker has nothing more to do. Very useful in tests """
+
+        # Be mindful that this is being executed in a different greenlet than the work_* methods.
+
+        while True:
+
+            time.sleep(0.01)
+
+            with self.work_lock:
+
+                if self.status != "wait":
+                    continue
+
+                if len(self.gevent_pool) > 0:
+                    continue
+
+                # Force a refresh of the current subqueues, one might just have been created.
+                self.refresh_queues()
+
+                # We might be dequeueing a new subqueue. Double check that we don't have anything more to do
+                outcome, dequeue_jobs = self.work_once(free_pool_slots=1, max_jobs=None)
+
+                if outcome is "wait" and dequeue_jobs == 0:
+                    break
 
     def work(self):
         """Starts the work loop.
@@ -421,7 +454,7 @@ class Worker(object):
 
         self.work_loop(max_jobs=self.max_jobs, max_time=self.max_time)
 
-        return self.work_stop()
+        self.work_stop()
 
     def work_init(self):
 
@@ -430,7 +463,7 @@ class Worker(object):
         self.status = "started"
 
         # An interval of 0 disables the refresh
-        if self.config["subqueues_refresh_interval"] > 0:
+        if self.has_subqueues and self.config["subqueues_refresh_interval"] > 0:
             self.greenlets["subqueues"] = gevent.spawn(self.greenlet_subqueues)
 
         # An interval of 0 disables the refresh
@@ -441,24 +474,30 @@ class Worker(object):
             self.greenlets["report"] = gevent.spawn(self.greenlet_report)
             self.greenlets["logs"] = gevent.spawn(self.greenlet_logs)
 
-        if self.config["scheduler"] and self.config["scheduler_interval"] > 0:
-            self.greenlets["scheduler"] = gevent.spawn(self.greenlet_scheduler)
-
         if self.config["admin_port"]:
             self.greenlets["admin"] = gevent.spawn(self.greenlet_admin)
+
+        self.greenlets["timeouts"] = gevent.spawn(self.greenlet_timeouts)
+
+        if self.config["scheduler"] and self.config["scheduler_interval"] > 0:
+
+            from .scheduler import Scheduler
+            self.scheduler = Scheduler(self.mongodb_jobs.mrq_scheduled_jobs, self.config.get("scheduler_tasks") or [])
+
+            self.scheduler.check_config_integrity()  # If this fails, we won't dequeue any jobs
+
+            self.greenlets["scheduler"] = gevent.spawn(self.greenlet_scheduler)
 
         self.install_signal_handlers()
 
     def work_loop(self, max_jobs=None, max_time=None):
 
         self.done_jobs = 0
-        self.idle_wait_count = 0
-
-        # has_raw = any(q.is_raw or q.is_sorted for q in [Queue(x) for x in self.queues])
+        self.datestarted_work_loop = datetime.datetime.utcnow()
+        self.queue_offset = 0
 
         try:
 
-            queue_offset = 0
             max_time_reached = False
 
             while True:
@@ -466,9 +505,9 @@ class Worker(object):
                 if self.graceful_stop:
                     break
 
-                # If the scheduler greenlet are crashed, fail loudly.
+                # If the scheduler greenlet is crashed, fail loudly.
                 if self.config["scheduler"] and not self.greenlets["scheduler"]:
-                    self.exitcode = 6
+                    self.exitcode = 1
                     break
 
                 while True:
@@ -485,82 +524,27 @@ class Worker(object):
                         total_started = (self.pool_size - free_pool_slots) + self.done_jobs
                         free_pool_slots = min(free_pool_slots, max_jobs - total_started)
                         if free_pool_slots == 0:
-                            self.exitcode = 5
                             break
 
                     if free_pool_slots > 0:
-                        self.status = "wait"
                         break
+
                     self.status = "full"
-                    gevent.sleep(0.01)
+                    self.gevent_pool.wait_available(timeout=60)
 
                 if max_time_reached:
                     break
 
-                jobs = []
+                self.status = "spawn"
+                with self.work_lock:
+                    outcome, dequeue_jobs = self.work_once(free_pool_slots=free_pool_slots, max_jobs=max_jobs)
+                self.status = "wait"
 
-                available_queues = [
-                    queue for queue in self.queues
-                    if queue.root_id not in Queue.paused_queues and
-                    queue.id not in Queue.paused_queues
-                ]
-
-                for queue_i in range(len(available_queues)):
-
-                    queue = available_queues[(queue_i + queue_offset) % len(available_queues)]
-
-                    max_jobs_per_queue = free_pool_slots - len(jobs)
-
-                    if max_jobs_per_queue <= 0:
-                        queue_i -= 1
-                        break
-
-                    if self.config["dequeue_strategy"] == "parallel":
-                        max_jobs_per_queue = max(1, int(max_jobs_per_queue / (len(available_queues) - queue_i)))
-
-                    jobs += queue.dequeue_jobs(
-                        max_jobs=max_jobs_per_queue,
-                        job_class=self.job_class,
-                        worker=self
-                    )
-
-                # At the next pass, start at the next queue to avoid always dequeuing the same one
-                if self.config["dequeue_strategy"] == "parallel":
-                    queue_offset = (queue_offset + queue_i + 1) % len(self.queues)
-
-                for job in jobs:
-
-                    # TODO investigate spawn_raw?
-                    self.gevent_pool.spawn(self.perform_job, job)
-
-                # TODO consider this when dequeuing jobs to have strict limits
-                if max_jobs and self.done_jobs >= max_jobs:
-                    self.log.info("Reached max_jobs=%s" % self.done_jobs)
+                if outcome == "break":
                     break
 
-                # We seem to have exhausted available jobs, we can sleep for a
-                # while.
-                if len(jobs) == 0:
-
-                    if self.config["dequeue_strategy"] == "burst":
-                        self.log.info("Burst mode: stopping now because queues were empty")
-                        break
-
-                    if (
-                        not self.idle_event.is_set() and
-                        len(jobs) == 0 and
-                        free_pool_slots == self.pool_size and
-                        self.idle_wait_count > 0
-                    ):
-                        self.idle_event.set()
-
-                    self.status = "wait"
-                    self.idle_wait_count += 1
-                    gevent.sleep(min(self.config["max_latency"], 0.001 * self.idle_wait_count))
-
-                # We got some jobs, reset the idle counter.
-                else:
-                    self.idle_wait_count = 0
+                if outcome == "wait":
+                    self.work_wait()
 
         except StopRequested:
             pass
@@ -571,11 +555,82 @@ class Worker(object):
 
                 self.log.debug("Joining the greenlet pool...")
                 self.status = "join"
+
                 self.gevent_pool.join(timeout=None, raise_error=False)
                 self.log.debug("Joined.")
 
             except StopRequested:
                 pass
+
+        self.datestopped_work_loop = datetime.datetime.utcnow()
+        lifetime = self.datestopped_work_loop - self.datestarted_work_loop
+        job_rate = float(self.done_jobs) / lifetime.total_seconds()
+        self.log.info("Worker spent %.3f seconds performing %s jobs (%.3f jobs/second)" % (
+            lifetime.total_seconds(), self.done_jobs, job_rate
+        ))
+
+    def work_once(self, free_pool_slots=1, max_jobs=None):
+        """ Does one lookup for new jobs, inside the inner work loop """
+
+        dequeued_jobs = 0
+
+        available_queues = [
+            queue for queue in self.queues
+            if queue.root_id not in self.paused_queues and
+            queue.id not in self.paused_queues
+        ]
+
+        for queue_i in range(len(available_queues)):
+
+            queue = available_queues[(queue_i + self.queue_offset) % len(available_queues)]
+
+            max_jobs_per_queue = free_pool_slots - dequeued_jobs
+
+            if max_jobs_per_queue <= 0:
+                queue_i -= 1
+                break
+
+            if self.config["dequeue_strategy"] == "parallel":
+                max_jobs_per_queue = max(1, int(max_jobs_per_queue / (len(available_queues) - queue_i)))
+
+            for job in queue.dequeue_jobs(
+                max_jobs=max_jobs_per_queue,
+                job_class=self.job_class,
+                worker=self
+            ):
+                dequeued_jobs += 1
+
+                self.gevent_pool.spawn(self.perform_job, job)
+
+        # At the next pass, start at the next queue to avoid always dequeuing the same one
+        if self.config["dequeue_strategy"] == "parallel":
+            self.queue_offset = (self.queue_offset + queue_i + 1) % len(self.queues)
+
+        # TODO consider this when dequeuing jobs to have strict limits
+        if max_jobs and self.done_jobs >= max_jobs:
+            self.log.info("Reached max_jobs=%s" % self.done_jobs)
+            return "break", dequeued_jobs
+
+        # We seem to have exhausted available jobs, we can sleep for a
+        # while.
+        if dequeued_jobs == 0:
+
+            if self.config["dequeue_strategy"] == "burst":
+                self.log.info("Burst mode: stopping now because queues were empty")
+                return "break", dequeued_jobs
+
+            return "wait", dequeued_jobs
+
+        return None, dequeued_jobs
+
+    def work_wait(self):
+        """ Wait for new jobs to arrive """
+
+        if len(self.queues_with_notify) > 0:
+            # https://github.com/antirez/redis/issues/874
+            connections.redis.blpop(*(self.queues_with_notify + [max(1, int(self.config["max_latency"]))]))
+        else:
+            gevent.sleep(self.config["max_latency"])
 
     def work_stop(self):
 
@@ -594,15 +649,13 @@ class Worker(object):
         self.status = "stop"
 
         self.report_worker(w=1)
-        self.flush_logs(w=1)
+        self.flush_logs()
 
         g_time = getattr(self.greenlet, "_trace_time", 0)
         g_switches = getattr(self.greenlet, "_trace_switches", None)
         self.log.debug(
             "Exiting main worker greenlet (%0.5fs, %s switches)." %
             (g_time, g_switches))
-
-        return self.exitcode
 
     def perform_job(self, job):
         """ Wraps a job.perform() call with timeout logic and exception handlers.
@@ -614,19 +667,6 @@ class Worker(object):
             job.trace_memory_start()
 
         set_current_job(job)
-
-        gevent_timeout = None
-        if job.timeout:
-
-            gevent_timeout = gevent.Timeout(
-                job.timeout,
-                TimeoutInterrupt(
-                    'Job exceeded maximum timeout value in greenlet (%d seconds).' %
-                    job.timeout
-                )
-            )
-
-            gevent_timeout.start()
 
         try:
             job.perform()
@@ -661,9 +701,6 @@ class Worker(object):
 
         finally:
 
-            if gevent_timeout:
-                gevent_timeout.cancel()
-
             set_current_job(None)
 
             self.done_jobs += 1
@@ -674,17 +711,10 @@ class Worker(object):
     def shutdown_graceful(self):
         """ Graceful shutdown: waits for all the jobs to finish. """
 
-        # This is in the 'exitcodes' list in supervisord so processes
-        # exiting gracefully won't be restarted.
-        self.exitcode = 2
-
         self.log.info("Graceful shutdown...")
         raise StopRequested()  # pylint: disable=nonstandard-exception
 
     def shutdown_max_memory(self):
-
-        # Not in the exitcodes list: we want it to be restarted.
-        self.exitcode = 4
 
         self.log.info("Max memory reached, shutdown...")
         self.graceful_stop = True
@@ -692,36 +722,9 @@ class Worker(object):
     def shutdown_now(self):
         """ Forced shutdown: interrupts all the jobs. """
 
-        # This is in the 'exitcodes' list in supervisord so processes
-        # exiting gracefully won't be restarted.
-        self.exitcode = 3
-
         self.log.info("Forced shutdown...")
         self.status = "killing"
 
         self.gevent_pool.kill(exception=JobInterrupt, block=False)
 
         raise StopRequested()  # pylint: disable=nonstandard-exception
-
-    def install_signal_handlers(self):
-        """ Handle events like Ctrl-C from the command line. """
-
-        self.graceful_stop = False
-
-        def request_shutdown_now():
-            self.shutdown_now()
-
-        def request_shutdown_graceful():
-
-            # Second time CTRL-C, shutdown now
-            if self.graceful_stop:
-                request_shutdown_now()
-            else:
-                self.graceful_stop = True
-                self.shutdown_graceful()
-
-        # First time CTRL-C, try to shutdown gracefully
-        gevent.signal(signal.SIGINT, request_shutdown_graceful)
-
-        # User (or Heroku) requests a stop now, just mark tasks as interrupted.
-        gevent.signal(signal.SIGTERM, request_shutdown_now)

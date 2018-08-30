@@ -7,19 +7,16 @@ import time
 from mrq.queue import Queue
 import pytest
 import os
+import random
 
-try:
-    import subprocess32 as subprocess
-except:
-    import subprocess
 
 @pytest.mark.parametrize(["p_max_latency", "p_min_observed_latency", "p_max_observed_latency"], [
-    [1, 0.021, 1],
+    [1, -0.3, 1],
     [0.01, -1, 0.02]
 ])
 def test_job_max_latency(worker, p_max_latency, p_min_observed_latency, p_max_observed_latency):
 
-    worker.start(flags=" --greenlets=1 --max_latency=%s" % (p_max_latency), trace=False)
+    worker.start(flags=" --ensure_indexes --greenlets=1 --max_latency=%s" % (p_max_latency), trace=False)
 
     def get_latency():
         t = time.time()
@@ -55,12 +52,12 @@ def test_job_max_latency(worker, p_max_latency, p_min_observed_latency, p_max_ob
 
 @pytest.mark.parametrize(["p_latency", "p_min", "p_max"], [
     [0, 0, 3],
-    ["0.05", 4, 20],
-    ["0.05-0.1", 4, 20]
+    ["0.05", 4, 30],
+    ["0.05-0.1", 4, 40]
 ])
 def test_network_latency(worker, p_latency, p_min, p_max):
 
-    worker.start(flags=" --mongodb_logs 0 --report_interval 10000 --no_mongodb_ensure_indexes --add_network_latency=%s" % (p_latency), trace=False)
+    worker.start(flags=" --max_latency=1 --mongodb_logs 0 --report_interval 10000 --add_network_latency=%s" % (p_latency), trace=False)
 
     start_time = time.time()
 
@@ -74,7 +71,7 @@ def test_network_latency(worker, p_latency, p_min, p_max):
 
 def benchmark_task(worker, taskpath, taskparams, tasks=1000, greenlets=50, processes=0, max_seconds=10, profile=False, quiet=True, raw=False, queues="default", config=None):
 
-    worker.start(flags="--processes %s --greenlets %s%s%s%s" % (
+    worker.start(flags="--ensure_indexes --processes %s --greenlets %s%s%s%s" % (
         processes,
         greenlets,
         " --profile" if profile else "",
@@ -110,7 +107,7 @@ def benchmark_task(worker, taskpath, taskparams, tasks=1000, greenlets=50, proce
     return result, total_time
 
 
-@pytest.mark.parametrize(["p_processes"], [[0], [2]])
+@pytest.mark.parametrize(["p_processes"], [[0], [5]])
 def test_performance_simpleadds_regular(worker, p_processes):
 
     n_tasks = 10000
@@ -123,6 +120,7 @@ def test_performance_simpleadds_regular(worker, p_processes):
                                         [{"a": i, "b": 0, "sleep": 0}
                                             for i in range(n_tasks)],
                                         tasks=n_tasks,
+                                        profile=False,
                                         greenlets=n_greenlets,
                                         processes=n_processes,
                                         max_seconds=max_seconds)
@@ -309,3 +307,56 @@ def test_performance_queue_cancel_requeue(worker):
     assert Queue("noexec").size() == n_tasks
 
     assert res["requeued"] == n_tasks
+
+
+@pytest.mark.parametrize(["p_queue_type", "p_greenlets", "p_min_efficiency"], [
+    ["regular", 30, 0.8],
+    ["raw", 30, 0.8],
+    ["raw_nostorage", 30, 0.9]
+])
+def test_worker_efficiency(worker, p_queue_type, p_greenlets, p_min_efficiency):
+
+    if p_queue_type == "regular":
+        worker.start(trace=False, flags="--ensure_indexes --greenlets %s" % p_greenlets, queues="default")
+    elif p_queue_type == "raw":
+        worker.start(trace=False, flags="--ensure_indexes --greenlets %s --config tests/fixtures/config-raw1.py" % p_greenlets,
+                     queues="testperformance_efficiency_raw")
+    elif p_queue_type == "raw_nostorage":
+        worker.start(trace=False, flags="--greenlets %s --config tests/fixtures/config-raw1.py" % p_greenlets,
+                     queues="testperformance_efficiency_nostorage_raw")
+
+    sleep_times = [float(ms) * 4 / 1000 for ms in range(0, 500)]
+    random.shuffle(sleep_times)
+    total_sleep_time = sum(sleep_times)
+    count_jobs = len(sleep_times)
+
+    start_time = time.time()
+
+    if p_queue_type == "regular":
+        worker.send_tasks(
+            "tests.tasks.general.Add",
+            [{"a": 1, "b": 2, "sleep": s} for s in sleep_times]
+        )
+    elif p_queue_type == "raw":
+        worker.send_raw_tasks("testperformance_efficiency_raw", sleep_times)
+    elif p_queue_type == "raw_nostorage":
+        worker.send_raw_tasks("testperformance_efficiency_nostorage_raw", sleep_times)
+
+    total_time = time.time() - start_time
+
+    if p_queue_type == "raw_nostorage":
+        assert worker.mongodb_jobs.mrq_jobs.count() == 0
+    else:
+        assert worker.mongodb_jobs.mrq_jobs.find({"status": "success"}).count() == count_jobs
+
+    perfect_time = (total_sleep_time / p_greenlets) + 1  # + 1 to compensate for the worker stopping time w/ decreasing job count
+
+    print("Total time for %d jobs with %0.4fs of sleeping time + %d greenlets : %0.4fs (%0.2f%% efficiency)" % (
+        count_jobs, total_sleep_time, p_greenlets, total_time, perfect_time * 100 / total_time
+    ))
+
+    # We can't be perfectly efficient!
+    assert (perfect_time - 1) < total_time
+
+    # But we should be at least 80% efficient
+    assert perfect_time > total_time * p_min_efficiency

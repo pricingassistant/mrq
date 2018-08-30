@@ -48,3 +48,24 @@ def test_config(worker):
     assert cfg.get("additional_unexpected_config") == "1"
 
     worker.stop()
+
+
+    # Command line flags with default values should be able to overwrite file config
+    # Here we have LOG_LEVEL="INFO" in the file, and DEBUG is default
+    worker.start(flags="--config tests/fixtures/config2.py")
+
+    cfg = json.loads(
+        worker.send_task("tests.tasks.general.GetConfig", {}, block=True))
+
+    assert cfg["log_level"] == "INFO"
+
+    worker.stop()
+
+    worker.start(flags="--config tests/fixtures/config2.py --log_level DEBUG")
+
+    cfg = json.loads(
+        worker.send_task("tests.tasks.general.GetConfig", {}, block=True))
+
+    assert cfg["log_level"] == "DEBUG"
+
+    worker.stop()

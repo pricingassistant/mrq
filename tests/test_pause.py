@@ -47,8 +47,6 @@ def test_pause_resume(worker):
 
     assert worker.mongodb_jobs.tests_inserts.count() == 2
 
-    worker.stop()
-
 
 def test_pause_refresh_interval(worker):
 
@@ -73,8 +71,6 @@ def test_pause_refresh_interval(worker):
 
     assert job1["status"] == "success"
     assert job1["result"] == {"a": 41}
-
-    worker.stop()
 
 
 def test_pause_subqueue(worker):
@@ -126,5 +122,3 @@ def test_pause_subqueue(worker):
     assert job2["result"] == {"a": 43}
 
     assert worker.mongodb_jobs.tests_inserts.count() == 2
-
-    worker.stop()

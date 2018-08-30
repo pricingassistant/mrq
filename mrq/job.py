@@ -1,7 +1,6 @@
 from future import standard_library
 standard_library.install_aliases()
-from builtins import str
-from builtins import object
+from future.builtins import str, object
 import datetime
 from bson import ObjectId
 from redis.exceptions import LockError
@@ -22,6 +21,10 @@ import fnmatch
 import encodings
 import copyreg
 from . import context
+
+
+FINAL_STATUSES = {"timeout", "abort", "failed", "success", "interrupt", "retry", "maxretries", "maxconcurrency"}
+TRANSIENT_STATUSES = {"cancel", "queued", "started"}
 
 
 class Job(object):
@@ -80,9 +83,8 @@ class Job(object):
 
     @property
     def redis_max_concurrency_key(self):
-        """ Returns the global redis key used to store started job ids """
-        return "%s:c:%s" % (context.get_current_config()["redis_prefix"],
-            self.data["path"])
+        """ Returns the global redis key used to control job concurrency """
+        return "%s:c:%s" % (context.get_current_config()["redis_prefix"], self.data["path"])
 
     def exists(self):
         """ Returns True if a job with the current _id exists in MongoDB. """
@@ -104,11 +106,10 @@ class Job(object):
                 "path": 1,
                 "params": 1,
                 "status": 1,
-                "retry_count": 1
+                "retry_count": 1,
             }
 
         if start:
-
             self.datestarted = datetime.datetime.utcnow()
             self.set_data(self.collection.find_and_modify(
                 {
@@ -119,6 +120,9 @@ class Job(object):
                     "status": "started",
                     "datestarted": self.datestarted,
                     "worker": self.worker.id
+                },
+                "$unset": {
+                    "dateexpires": 1 # we don't want started jobs to expire unexpectedly
                 }},
                 projection=fields)
             )
@@ -155,7 +159,8 @@ class Job(object):
             task_def = self.get_task_config()
 
             self.timeout = task_def.get("timeout", cfg["default_job_timeout"])
-            self.result_ttl = task_def.get("result_ttl", cfg["default_job_result_ttl"])
+            self.default_ttl = task_def.get("default_ttl", cfg["default_job_ttl"])
+            self.result_ttl = task_def.get("result_ttl", cfg["default_job_result_ttl"]) # success ttl
             self.abort_ttl = task_def.get("abort_ttl", cfg["default_job_abort_ttl"])
             self.cancel_ttl = task_def.get("cancel_ttl", cfg["default_job_cancel_ttl"])
             self.max_retries = task_def.get("max_retries", cfg["default_job_max_retries"])
@@ -263,17 +268,11 @@ class Job(object):
                 self.fetch(full_data={"_id": 0, "queue": 1, "path": 1})
             queue = self.data["queue"]
 
-        from .queue import Queue
-        queue_obj = Queue(queue, add_to_known_queues=True)
-
         self._save_status("queued", updates={
             "queue": queue,
+            "datequeued": datetime.datetime.utcnow(),
             "retry_count": retry_count
         })
-
-        # Between these two lines, jobs can become "lost" too.
-
-        queue_obj.enqueue_job_ids([str(self.id)])
 
     def perform(self):
         """ Loads and starts the main task for this job, the saves the result. """
@@ -288,25 +287,29 @@ class Job(object):
 
         self.task.is_main_task = True
 
-        try:
+        if not self.task.max_concurrency:
+
+            result = self.task.run_wrapped(self.data["params"])
+
+        else:
+
+            if self.task.max_concurrency > 1:
+                raise NotImplementedError()
+
             lock = None
-
-            if self.task.max_concurrency:
-
-                if self.task.max_concurrency > 1:
-                    raise NotImplementedError()
+            try:
 
                 # TODO: implement a semaphore
                 lock = context.connections.redis.lock(self.redis_max_concurrency_key, timeout=self.timeout + 5)
                 if not lock.acquire(blocking=True, blocking_timeout=0):
                     raise MaxConcurrencyInterrupt()
 
-            result = self.task.run_wrapped(self.data["params"])
+                result = self.task.run_wrapped(self.data["params"])
 
-        finally:
-            if lock:
+            finally:
                 try:
-                    lock.release()
+                    if lock:
+                        lock.release()
                 except LockError:
                     pass
 
@@ -364,8 +367,7 @@ class Job(object):
 
             time.sleep(poll_interval)
 
-        raise Exception(
-            "Waited for job result for %ss seconds, timeout." % timeout)
+        raise Exception("Waited for job result for %s seconds, timeout." % timeout)
 
     def save_retry(self, retry_exc):
 
@@ -440,6 +442,11 @@ class Job(object):
         if self.id is None:
             return
 
+        # Forbid some status transitions
+        if self.data and self.data.get("status") in FINAL_STATUSES and status not in TRANSIENT_STATUSES:
+            context.log.error("Can't go from status %s to %s" % (self.data["status"], status))
+            return
+
         context.metric("jobs.status.%s" % status)
 
         if self.stored is False and self.statuses_no_storage is not None and status in self.statuses_no_storage:
@@ -450,6 +457,11 @@ class Job(object):
             "status": status,
             "dateupdated": now
         }
+
+        # we don't want started jobs to expire unexpectedly
+        if status not in ["started", "success", "abort", "cancel"] and hasattr(self, "default_ttl") and self.default_ttl is not None:
+            db_updates["dateexpires"] = (self.data.get("datequeued") or now) + datetime.timedelta(seconds=self.default_ttl)
+
         db_updates.update(updates or {})
 
         if self.datestarted:
@@ -467,13 +479,14 @@ class Job(object):
         if exception:
             trace = traceback.format_exc()
             context.log.error(trace)
+            exc, value = sys.exc_info()[0:2]
+            if hasattr(value, "subpool_traceback"):
+                trace = "Exception first caught in a subpool. Traceback:\n%s\n%s" % (value.subpool_traceback, trace)
             db_updates["traceback"] = trace
-            exc = sys.exc_info()[0]
             db_updates["exceptiontype"] = exc.__name__
 
-            if context.get_current_config().get("save_traceback_history"):
-
-                self._save_traceback_history(status, trace, exc)
+        if self.data:
+            self.data.update(db_updates)
 
         # In the most common case, we allow an optimization on Mongo writes
         if status == "success":
@@ -497,8 +510,9 @@ class Job(object):
                 "_id": self.id
             }, {"$set": db_updates}, w=w, j=j, manipulate=False)
 
-        if self.data:
-            self.data.update(db_updates)
+        if exception:
+            self._save_traceback_history(status, trace, exc)
+
 
     def set_current_io(self, io_data):
 
@@ -531,12 +545,13 @@ class Job(object):
         if hasattr(fnmatch, "purge"):
             fnmatch.purge()  # pylint: disable=no-member
         elif hasattr(fnmatch, "_purge"):
-            fnmatch._purge()
+            fnmatch._purge()  # pylint: disable=no-member
 
         if hasattr(encodings, "_cache") and len(encodings._cache) > 0:
             encodings._cache = {}
 
-        context.log.handler.flush()
+        for handler in context.log.handlers:
+            handler.flush()
 
     def trace_memory_start(self):
         """ Starts measuring memory consumption """
@@ -601,7 +616,7 @@ def queue_raw_jobs(queue, params_list, **kwargs):
     """ Queue some jobs on a raw queue """
 
     from .queue import Queue
-    queue_obj = Queue(queue, add_to_known_queues=True)
+    queue_obj = Queue(queue)
     queue_obj.enqueue_raw_jobs(params_list, **kwargs)
 
 
@@ -622,7 +637,7 @@ def queue_jobs(main_task_path, params_list, queue=None, batch_size=1000):
         queue = task_def.get("queue", "default")
 
     from .queue import Queue
-    queue_obj = Queue(queue, add_to_known_queues=True)
+    queue_obj = Queue(queue)
 
     if queue_obj.is_raw:
         raise Exception("Can't queue regular jobs on a raw queue")
@@ -638,18 +653,12 @@ def queue_jobs(main_task_path, params_list, queue=None, batch_size=1000):
             "path": main_task_path,
             "params": params,
             "queue": queue,
+            "datequeued": datetime.datetime.utcnow(),
             "status": "queued"
         } for params in params_group], w=1, return_jobs=False)
 
-        # Between these 2 calls, a task can be inserted in MongoDB but not queued in Redis.
-        # This is the same as dequeueing a task from Redis and being stopped before updating
-        # the "started" flag in MongoDB.
-        #
-        # These jobs will be collected by mrq.basetasks.cleaning.RequeueLostJobs
-
-        # Insert the job ID in Redis
-        queue_obj.enqueue_job_ids([str(x) for x in job_ids])
-
         all_ids += job_ids
+
+    queue_obj.notify(len(all_ids))
 
     return all_ids

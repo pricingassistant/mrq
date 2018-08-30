@@ -1,18 +1,18 @@
 from future import standard_library
 standard_library.install_aliases()
-from builtins import next
-from builtins import map
+from future.builtins import next, map
 from past.builtins import basestring
-from .logger import Logger
+import logging
 import gevent
 import gevent.pool
 import urllib.parse
+import sys
 import time
 import pymongo
 import traceback
 from .utils import LazyObject, load_class_by_path
-from itertools import count as itertools_count
 from .config import get_config
+from .subpool import subpool_map, subpool_imap
 
 # This should be MRQ's only Python object shared by all the jobs in the same process
 _GLOBAL_CONTEXT = {
@@ -28,7 +28,7 @@ _GLOBAL_CONTEXT = {
 }
 
 # Global log object, usable from all jobs
-log = Logger(None, job="current")
+log = logging.getLogger("mrq.current")
 
 
 def setup_context(**kwargs):
@@ -65,10 +65,30 @@ def set_current_worker(worker):
 def get_current_worker():
     return _GLOBAL_CONTEXT["worker"]
 
+def set_logger_config():
+    config = _GLOBAL_CONTEXT["config"]
+    if config.get("quiet"):
+        log.disabled = True
+    else:
+        log_format = config["log_format"]
+        logging.basicConfig(format=log_format)
+        log.setLevel(getattr(logging, config["log_level"]))
+
+        handlers = config["log_handlers"].keys() if config["log_handlers"] else [config["log_handler"]]
+        for handler in handlers:
+            handler_class = load_class_by_path(handler)
+            handler_config = config["log_handlers"].get(handler, {})
+            handler_format = handler_config.pop("format", log_format)
+            handler_level = getattr(logging, handler_config.pop("level", config["log_level"]))
+            log_handler = handler_class(**handler_config)
+            formatter = logging.Formatter(handler_format)
+            log_handler.setFormatter(formatter)
+            log_handler.setLevel(handler_level)
+            log.addHandler(log_handler)
+
 
 def set_current_config(config):
     _GLOBAL_CONTEXT["config"] = config
-    log.quiet = config["quiet"]
 
     if config["add_network_latency"] != "0" and config["add_network_latency"]:
         from mrq.monkey import patch_network_latency
@@ -82,11 +102,11 @@ def set_current_config(config):
         from mrq.monkey import patch_io_all
         patch_io_all(config)
 
-    if config["mongodb_logs"] == "0":
-        log.handler.collection = False
-
 
 def get_current_config():
+    if not _GLOBAL_CONTEXT["config"]:
+        log.warning("get_current_config was called before setup of MRQ's environment. "
+                    "Use context.setup_context() for setting up MRQ's environment.")
     return _GLOBAL_CONTEXT["config"]
 
 
@@ -130,7 +150,7 @@ def _connections_factory(attr):
                 password=redis_url.password,
                 max_connections=int(config.get("redis_max_connections")),
                 timeout=int(config.get("redis_timeout")),
-                decode_responses=True
+                decode_responses=False
             )
             return pyredis.StrictRedis(connection_pool=redis_pool)
 
@@ -201,121 +221,6 @@ def enable_greenlet_tracing():
     trace.last_switch = time.time()
 
     greenlet.settrace(trace)  # pylint: disable=no-member
-
-
-def subpool_map(pool_size, func, iterable):
-    """ Starts a Gevent pool and run a map. Takes care of setting current_job and cleaning up. """
-
-    if not pool_size:
-        return [func(*args) for args in iterable]
-
-    counter = itertools_count()
-
-    current_job = get_current_job()
-
-    def inner_func(*args):
-        """ As each call to 'func' will be done in a random greenlet of the subpool, we need to
-            register their IDs with set_current_job() to make get_current_job() calls work properly
-            inside 'func'.
-        """
-        next(counter)
-        if current_job:
-            set_current_job(current_job)
-
-        try:
-          ret = func(*args)
-        except Exception as exc:
-          trace = traceback.format_exc()
-          log.error("Error in subpool: %s \n%s" % (exc, trace))
-          raise
-
-        if current_job:
-            set_current_job(None)
-        return ret
-
-    def inner_iterable():
-        """ This will be called inside the pool's main greenlet, which ID also needs to be registered """
-        if current_job:
-            set_current_job(current_job)
-
-        for x in iterable:
-            yield x
-
-        if current_job:
-            set_current_job(None)
-
-    start_time = time.time()
-    pool = gevent.pool.Pool(size=pool_size)
-    ret = pool.map(inner_func, inner_iterable())
-    pool.join(raise_error=True)
-    total_time = time.time() - start_time
-
-    log.debug("SubPool ran %s greenlets in %0.6fs" % (counter, total_time))
-
-    return ret
-
-
-def subpool_imap(pool_size, func, iterable, flatten=False, unordered=False, buffer_size=None):
-  """ Generator version of subpool_map. Should be used with unordered=True for optimal performance """
-
-  if not pool_size:
-    for args in iterable:
-      yield func(*args)
-
-  counter = itertools_count()
-
-  current_job = get_current_job()
-
-  def inner_func(*args):
-    """ As each call to 'func' will be done in a random greenlet of the subpool, we need to
-        register their IDs with set_current_job() to make get_current_job() calls work properly
-        inside 'func'.
-    """
-    next(counter)
-    if current_job:
-      set_current_job(current_job)
-
-    try:
-      ret = func(*args)
-    except Exception as exc:
-      trace = traceback.format_exc()
-      log.error("Error in subpool: %s \n%s" % (exc, trace))
-      raise
-
-    if current_job:
-      set_current_job(None)
-    return ret
-
-  def inner_iterable():
-    """ This will be called inside the pool's main greenlet, which ID also needs to be registered """
-    if current_job:
-      set_current_job(current_job)
-
-    for x in iterable:
-      yield x
-
-    if current_job:
-      set_current_job(None)
-
-  start_time = time.time()
-  pool = gevent.pool.Pool(size=pool_size)
-
-  if unordered:
-    iterator = pool.imap_unordered(inner_func, inner_iterable(), maxsize=buffer_size or pool_size)
-  else:
-    iterator = pool.imap(inner_func, inner_iterable())
-
-  for x in iterator:
-    if flatten:
-      for y in x:
-        yield y
-    else:
-      yield x
-
-  pool.join(raise_error=True)
-  total_time = time.time() - start_time
-
-  log.debug("SubPool ran %s greenlets in %0.6fs" % (counter, total_time))
 
 
 def run_task(path, params):

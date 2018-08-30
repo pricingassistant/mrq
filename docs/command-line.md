@@ -16,7 +16,6 @@ The following general flags can be passed as command-line arguments to either **
  - `--mongodb_jobs, --mongodb`: MongoDB URI for the jobs, scheduled_jobs & workers database. Defaults to **mongodb://127.0.0.1:27017/mrq**.
  - `--mongodb_logs` :MongoDB URI for the logs database."0" will disable remote logs, "1" will use main MongoDB. Defaults to **1**
  - `--mongodb_logs_size`: If provided, sets the log collection to capped to that amount of bytes.
- - `--no_mongodb_ensure_indexes`: If provided, skip the creation of MongoDB indexes at worker startup.
  - `--redis`: Redis URI. Defaults to **redis://127.0.0.1:6379**.
  - `--redis_prefix`: Redis key prefix. Defaults to "mrq".
  - `--redis_max_connections`: Redis max connection pool size. Defaults to **1000**.
@@ -46,16 +45,14 @@ You can pass additional configuration flags:
 
  - `--max_jobs`: Gevent:max number of jobs to do before quitting. Use as a workaround for memory leaks in your tasks. Defaults to **0**
  - `--max_memory`: Max memory (in Mb) after which the process will be shut down. Use with `--processes [1-N]`
-                  to have supervisord automatically respawn the worker when this happens. Defaults to **1**
+                  to have the worker automatically respawn when this happens. Defaults to **1**
  - `--grenlets, --gevent, --g`: Max number of greenlets to use. Defaults to **1**.
- - `--processes, --p`: Number of processes to launch with supervisord. Defaults to **0** (no supervisord).
- - `--supervisord_template`: Path of supervisord template to use. Defaults to **supervisord_templates/default.conf**.
+ - `--processes, --p`: Number of processes to launch . Defaults to **0**.
  - `--scheduler`: Run the scheduler. Defaults to **false**.
  - `--scheduler_interval`: Seconds between scheduler checks. Defaults to **60** seconds, only ints are acceptable.
  - `--report_interval`: Seconds between worker reports to MongoDB. Defaults to **10** seconds, floats are acceptable too.
  - `--report_file`: Filepath of a json dump of the worker status. Disabled if none.
  - `--subqueues_refresh_interval`: Seconds between worker refreshes of the known subqueues.
- - `--subqueues_delimiter`: Delimiter between main queue and subqueue names.
  - `--paused_queues_refresh_interval`: Seconds between worker refreshes of the paused queues list.
  - `--admin_port`: Start an admin server on this port, if provided. Incompatible with --processes. Defaults to **0**
  - `--admin_ip`: IP for the admin server to listen on. Use "0.0.0.0" to allow access from outside. Defaults to **127.0.0.1**.
@@ -71,7 +68,7 @@ The default is to run tasks one at a time. You should obviously change this beha
 
 This will start 30 greenlets over 3 UNIX processes. Each of them will run 10 jobs at the same time.
 
-As soon as you use the `--processes` option (even with `--processes=1`) then supervisord will be used to control the processes. It is quite useful to manage long-running instances.
+The worker is autonomous to handle its processes. It is quite useful to manage long-running instances.
 
 ### Simulating network latency
 

@@ -1,12 +1,14 @@
 from __future__ import print_function
-from builtins import str
+from future.builtins import str
 import argparse
 import os
 import sys
 import re
+import psutil
 from .version import VERSION
-from .utils import get_local_ip, DelimiterArgParser
+from .utils import get_local_ip
 import atexit
+import logging
 
 
 def add_parser_args(parser, config_type):
@@ -70,21 +72,6 @@ def add_parser_args(parser, config_type):
              ' "0" will disable remote logs, "1" will use main MongoDB.')
 
     parser.add_argument(
-        '--mongodb_logs_size',
-        action='store',
-        default=16 *
-        1024 *
-        1024,
-        type=int,
-        help='If provided, sets the log collection to capped to that amount of bytes.')
-
-    parser.add_argument(
-        '--no_mongodb_ensure_indexes',
-        action='store_true',
-        default=False,
-        help='If provided, skip the creation of MongoDB indexes at worker startup.')
-
-    parser.add_argument(
         '--redis',
         action='store',
         default="redis://127.0.0.1:6379",
@@ -117,12 +104,6 @@ def add_parser_args(parser, config_type):
         help='Specify a different name')
 
     parser.add_argument(
-        '--quiet',
-        default=False,
-        action='store_true',
-        help='Don\'t output task logs')
-
-    parser.add_argument(
         '--config',
         '-c',
         default=None,
@@ -134,6 +115,30 @@ def add_parser_args(parser, config_type):
         default="mrq.worker.Worker",
         action="store",
         help='Path to a custom worker class')
+
+    parser.add_argument(
+        '--quiet',
+        default=False,
+        action='store_true',
+        help='Don\'t output task logs')
+
+    parser.add_argument(
+        '--log_handler',
+        default="mrq.logger.MongoHandler",
+        action="store",
+        help='Path to a log handler class')
+
+    parser.add_argument(
+        '--log_format',
+        default="%(asctime)s [%(levelname)s] %(message)s",
+        action="store",
+        help='log format')
+
+    parser.add_argument(
+        '--log_level',
+        default="DEBUG",
+        action="store",
+        help='set the logging level')
 
     parser.add_argument(
         '--version',
@@ -154,6 +159,13 @@ def add_parser_args(parser, config_type):
         action='store',
         type=str,
         help='Adds random latency to the network calls, zero to N seconds. Can be a range (1-2)')
+
+    parser.add_argument(
+        '--default_job_ttl',
+        default=180 * 24 * 3600,
+        action='store',
+        type=float,
+        help='Seconds the tasks are kept in MongoDB when statuses are not success, abort, cancel and started')
 
     parser.add_argument(
         '--default_job_result_ttl',
@@ -255,8 +267,52 @@ def add_parser_args(parser, config_type):
             type=str,
             help='Bind the dashboard to this IP. Default is "0.0.0.0", use "127.0.0.1" to restrict access.')
 
-    # Worker-specific args
+    # Agent-specific args
+    elif config_type == "agent":
 
+        parser.add_argument(
+            '--worker_group',
+            default="default",
+            action="store",
+            type=str,
+            help='The name of the worker group to manage')
+
+        parser.add_argument(
+            '--total_memory',
+            default=int(psutil.virtual_memory().total * 0.8 / (1024 * 1024)),
+            action="store",
+            type=int,
+            help="How much memory MB this agent's workers can use. Used for scheduling, not a hard limit.")
+
+        parser.add_argument(
+            '--total_cpu',
+            default=psutil.cpu_count(logical=True) * 1024,
+            action="store",
+            type=int,
+            help="How much CPU units this agent's workers can use. We recommend using 1024 per CPU.")
+
+        parser.add_argument(
+            '--orchestrate_interval',
+            default=30,
+            action="store",
+            type=float,
+            help="How much seconds to wait between orchestration runs.")
+
+        parser.add_argument(
+            '--report_interval',
+            default=10,
+            action='store',
+            type=float,
+            help='Seconds between agent reports to MongoDB')
+
+        parser.add_argument(
+            '--autoscaling_taskpath',
+            default=None,
+            action='store',
+            type=str,
+            help='Path to a task that can perform autoscaling actions during orchestration')
+
+    # Worker-specific args
     elif config_type == "worker":
 
         parser.add_argument(
@@ -279,8 +335,8 @@ def add_parser_args(parser, config_type):
             default=0,
             type=int,
             action='store',
-            help='Max memory (in Mb) after which the process will be shut down. Use with --processes [1-N]' +
-                 'to have supervisord automatically respawn the worker when this happens')
+            help='Max memory (in Mb) after which the process will be shut down. Use with mrq-agent' +
+                 'to automatically respawn the worker when this happens')
 
         parser.add_argument(
             '--greenlets',
@@ -297,24 +353,19 @@ def add_parser_args(parser, config_type):
             default=0,
             type=int,
             action='store',
-            help='Number of processes to launch with supervisord')
-
-        default_template = os.path.abspath(os.path.join(
-            os.path.dirname(__file__),
-            "supervisord_templates/default.conf"
-        ))
-
-        parser.add_argument(
-            '--supervisord_template',
-            default=default_template,
-            action='store',
-            help='Path of supervisord template to use')
+            help='Number of processes to launch')
 
         parser.add_argument(
             '--scheduler',
             default=False,
             action='store_true',
             help='Run the scheduler')
+
+        parser.add_argument(
+            '--ensure_indexes',
+            default=False,
+            action='store_true',
+            help='Ensures the internal MongoDB indexes of MRQ are built, or does so in the background')
 
         parser.add_argument(
             '--scheduler_interval',
@@ -338,6 +389,41 @@ def add_parser_args(parser, config_type):
             help='Filepath of a json dump of the worker status. Disabled if none')
 
         parser.add_argument(
+            '--agent_id',
+            default="",
+            action='store',
+            type=str,
+            help='ID of the Agent this worker process is linked to')
+
+        parser.add_argument(
+            '--worker_id',
+            default="",
+            action='store',
+            type=str,
+            help='ID of this worker process. Should be left empty to be autogenerated in most cases.')
+
+        parser.add_argument(
+            '--worker_group',
+            default="",
+            action='store',
+            type=str,
+            help='Worker group of the agent this worker was launched from')
+
+        parser.add_argument(
+            '--task_whitelist',
+            default="",
+            action='store',
+            type=str,
+            help='Comma-separated list of task paths to do exclusively on this worker. Only for regular queues.')
+
+        parser.add_argument(
+            '--task_blacklist',
+            default="",
+            action='store',
+            type=str,
+            help='Comma-separated list of task paths to do exclude from this worker. Only for regular queues.')
+
+        parser.add_argument(
             'queues',
             nargs='*',
             default=["default"],
@@ -345,7 +431,7 @@ def add_parser_args(parser, config_type):
 
         parser.add_argument(
             '--subqueues_refresh_interval',
-            default=10,
+            default=60,
             action='store',
             type=float,
             help="Seconds between worker refreshes of the known subqueues")
@@ -356,12 +442,6 @@ def add_parser_args(parser, config_type):
             action='store',
             type=float,
             help="Seconds between worker refreshes of the paused queues list")
-
-        parser.add_argument(
-            '--subqueues_delimiter',
-            default='/',
-            help='Delimiter between main queue and subqueue names',
-            action=DelimiterArgParser)
 
         parser.add_argument(
             '--admin_port',
@@ -385,6 +465,13 @@ def add_parser_args(parser, config_type):
             help='Overwrite the local IP, to be displayed in the dashboard.')
 
         parser.add_argument(
+            '--external_ip',
+            default=None,
+            action="store",
+            type=str,
+            help='Overwrite the external IP, to be displayed in the dashboard.')
+
+        parser.add_argument(
             '--max_latency',
             default=1.,
             type=float,
@@ -399,6 +486,12 @@ def add_parser_args(parser, config_type):
             action='store',
             help='Strategy for dequeuing multiple queues. Default is \'sequential\',' +
                  'to dequeue them in command-line order.')
+
+
+class ArgumentParserIgnoringDefaults(argparse.ArgumentParser):
+    def add_argument(self, *args, **kwargs):
+        kwargs.pop("default", None)
+        return argparse.ArgumentParser.add_argument(self, *args, **kwargs)
 
 
 def get_config(
@@ -425,15 +518,15 @@ def get_config(
 
     # Keys that can't be passed from the command line
     default_config["tasks"] = {}
+    default_config["log_handlers"] = {}
     default_config["scheduled_tasks"] = {}
 
-    # Only keep values different from config, actually passed on the command
-    # line
+    # Only keep values actually passed on the command line
     from_args = {}
     if "args" in sources:
-        for k, v in parser.parse_args().__dict__.items():
-            if default_config[k] != v:
-                from_args[k] = v
+        cmdline_parser = ArgumentParserIgnoringDefaults(argument_default=argparse.SUPPRESS)
+        add_parser_args(cmdline_parser, config_type)
+        from_args = cmdline_parser.parse_args().__dict__
 
     # If we were given another config file, use it
 
@@ -483,12 +576,12 @@ def get_config(
         merged_config.update(extra)
 
     if merged_config["profile"]:
-        import cProfile
+        import cProfile, pstats
         profiler = cProfile.Profile()
         profiler.enable()
 
         def print_profiling():
-            profiler.print_stats(sort="cumulative")
+            pstats.Stats(profiler).sort_stats("cumulative").print_stats()
 
         atexit.register(print_profiling)
 

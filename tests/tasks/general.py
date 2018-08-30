@@ -3,11 +3,13 @@ standard_library.install_aliases()
 from builtins import range
 from mrq.task import Task
 from mrq.context import (log, retry_current_job, connections, get_current_config, get_current_job,
-                         subpool_map, abort_current_job, set_current_job_progress)
+                         subpool_map, subpool_imap, abort_current_job, set_current_job_progress)
 from mrq.job import queue_job
+from mrq.queue import Queue
 import urllib.request, urllib.error, urllib.parse
 import json
 import time
+import random
 import copy
 from mrq.utils import MongoJSONEncoder
 
@@ -15,14 +17,29 @@ from mrq.utils import MongoJSONEncoder
 class Add(Task):
 
     def run(self, params):
+        if params.get("broadexcept"):
+            try:
+                return self._add(params)
+            except BaseException, e:  # Will catch greenlet.GreenletExit & all others
+                print("Got base exception %s" % type(e))
+                return
+        else:
+            return self._add(params)
+
+    def _add(self, params):
         log.info("adding", params)
         res = params.get("a", 0) + params.get("b", 0)
 
         if params.get("sleep", 0):
-            log.info("sleeping", params.get("sleep", 0))
+            log.info("sleeping %s", params.get("sleep", 0))
             time.sleep(params.get("sleep", 0))
 
         return res
+
+
+class Square(Task):
+    def run(self, params):
+        return int(params["n"]) ** 2
 
 
 class TimeoutFromConfig(Add):
@@ -68,6 +85,13 @@ class Leak(Task):
             time.sleep(params.get("sleep", 0))
 
         return params.get("return")
+
+
+# Dangerous task! Will block a CPU forever. Must be interrupted by force.
+class CPULoop(Task):
+    def run(self, params):
+        while True:
+            pass
 
 
 class Retry(Task):
@@ -231,7 +255,7 @@ class SubPool(Task):
             return True
 
         if x == "exception":
-            raise Exception(x)
+            raise Exception(x)  # __INNER_EXCEPTION_LINE__
 
         time.sleep(x)
 
@@ -240,7 +264,10 @@ class SubPool(Task):
     def run(self, params):
         self.job = get_current_job()
 
-        return subpool_map(params["pool_size"], self.inner, params["inner_params"])
+        if params.get("imap"):
+            return subpool_map(params["pool_size"], self.inner, params["inner_params"])
+        else:
+            return list(subpool_imap(params["pool_size"], self.inner, params["inner_params"]))
 
 
 class GetMetrics(Task):
@@ -266,7 +293,6 @@ class GetIoHookEvents(Task):
                 evt["args"] = repr(evt["args"])
                 evt.pop("options", None)
 
-            # print evt
             evts.append(evt)
 
         return json.dumps(evts, cls=MongoJSONEncoder)
@@ -275,4 +301,19 @@ class GetIoHookEvents(Task):
 class SendTask(Task):
 
     def run(self, params):
-        return queue_job(params["path"], params["params"])
+        return queue_job(params["path"], params["params"], queue=params.get("queue"))
+
+
+class QueueAllKnown(Task):
+    def run(self, params):
+        return list(Queue.all_known())
+
+
+class Uninterruptable(Task):
+
+    def run(self, params):
+        while True:
+            try:
+                time.sleep(1)
+            except:
+                pass

@@ -7,15 +7,23 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models", "moment
     template:"#tpl-page-workers",
 
     events:{
-      "change .js-datatable-filters-showstopped": "filterschanged",
-      "click .js-workers-io": "showworkerio",
+      "click .js-workers-io": "showworkerio"
     },
 
-    initFilters: function() {
+    filterschanged:function(evt) {
 
-      this.filters = {
-        "showstopped": this.options.params.showstopped||""
-      };
+      var self = this;
+
+      if (evt) {
+        evt.preventDefault();
+        evt.stopPropagation();
+      }
+
+      _.each(self.filters, function(v, k) {
+        self.filters[k] = self.$(".js-workers-datatable-filters-"+k).val();
+      });
+
+      window.location = window.location.toString().replace(/\#.*/, "#workers?"+$.param(self.filters, true).replace(/\+/g, "%20"));
 
     },
 
@@ -23,6 +31,15 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models", "moment
       this.options = options;
       this.initFilters();
       this.flush();
+    },
+
+    initFilters: function() {
+      this.filters = {
+        "status": this.options.params.status || "",
+        "queue": this.options.params.queue || "",
+        "ip": this.options.params.ip || "",
+        "id": this.options.params.id || ""
+      };
     },
 
     showworkerio: function(evt) {
@@ -58,7 +75,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models", "moment
             "sType":"string",
             "sWidth":"150px",
             "mData":function(source, type/*, val*/) {
-              return "<a href='/#jobs?worker="+source._id+"'>"+source.name+"</a><br/><small>"+source.config.local_ip + " " + source._id+"</small>";
+              return "<a href='/#jobs?worker="+source._id+"'>"+source.name+"</a><br/><small>"+ (source.config.external_ip || source.config.local_ip) + " " + source._id+"</small>";
             }
           },
           {

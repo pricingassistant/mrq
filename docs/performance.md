@@ -1,4 +1,4 @@
-# Performance
+# Worker performance
 
 Performance is an explicit goal of MRQ as it was first developed at [Pricing Assistant](http://www.pricingassistant.com/) for crawling billions of web pages.
 
@@ -7,6 +7,8 @@ Performance is an explicit goal of MRQ as it was first developed at [Pricing Ass
 On a regular Macbook Pro, we see 1300 jobs/second in a single worker process with very simple jobs that store results, to measure the overhead of MRQ.
 
 However what we are really measuring there is MongoDB's write performance. An install of MRQ with properly scaled MongoDB and Redis instances is be capable of much more.
+
+For more, see our tutorial on [Queue performance](queue-performance.md).
 
 ## PyPy support
 

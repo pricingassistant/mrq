@@ -1,7 +1,5 @@
 from __future__ import division
-from builtins import str
-from builtins import range
-from builtins import object
+from future.builtins import str, range, object
 from past.utils import old_div
 import re
 import importlib
@@ -9,13 +7,37 @@ import time
 import math
 import json
 import datetime
-import argparse
 from collections import deque
 from bson import ObjectId
+import uuid
+import shlex
 
 #
 # Utils are functions that should be independent from the rest of MRQ's codebase
 #
+
+
+def normalize_command(command, worker_group):
+    if "--processes" in command:
+        simplified_command = ""
+        worker_count = 0
+        skip_next = False
+        for part in shlex.split(command):
+            if skip_next:
+                worker_count = part
+                skip_next = False
+                continue
+            if part.startswith("--processes="):
+                worker_count = part.split("=")[1]
+                continue
+            if part == "--processes":
+                skip_next = True
+                continue
+            simplified_command += " %s" % part
+            skip_next = False
+        simplified_command = "MRQ_WORKER_GROUP=%s%s" % (worker_group, simplified_command)
+        return simplified_command, int(worker_count)
+    return "MRQ_WORKER_GROUP=%s %s" % (worker_group, command), 1
 
 
 def get_local_ip():
@@ -184,6 +206,8 @@ class MongoJSONEncoder(json.JSONEncoder):
             return obj.isoformat()
         elif isinstance(obj, ObjectId):
             return str(obj)
+        elif isinstance(obj, uuid.UUID):
+            return str(obj)
         elif isinstance(obj, bytes):
             return obj.decode('utf-8')
         return json.JSONEncoder.default(self, obj)
@@ -204,9 +228,62 @@ class MovingAverage(object):
         return 1.0 * self.__sum / len(self.__q)
 
 
-class DelimiterArgParser(argparse.Action):
-    def __call__(self, parser, namespace, value, option_string):
-        if value == '_':
-            parser.error("Cannot use '%s' as a subqueue delimiter" % value)
+class MovingETA(object):
 
-        setattr(namespace, self.dest, value)
+    def __init__(self, size):
+        self.__size = size
+        self.__q = deque([])
+        self.__t = deque([])
+
+    def next(self, val, t=None):
+
+        if t is None:
+            t = time.time()
+
+        if len(self.__q) == self.__size:
+            self.__q.popleft()
+            self.__t.popleft()
+        self.__q.append(val)
+        self.__t.append(t)
+
+        if len(self.__q) == 1:
+            return None
+
+        mean_q = sum(self.__q) / len(self.__q)
+        mean_t = sum(self.__t) / len(self.__t)
+
+        def std(lst, m):
+            return math.sqrt(sum((pow(x - m, 2) for x in lst)) / (len(lst) - 1))
+
+        def pearson_r(list_t, list_q):
+
+            sum_xy = 0
+            sum_sq_v_x = 0
+            sum_sq_v_y = 0
+
+            for (x, y) in zip(list_t, list_q):
+                var_x = x - mean_t
+                var_y = y - mean_q
+                sum_xy += var_x * var_y
+                sum_sq_v_x += pow(var_x, 2)
+                sum_sq_v_y += pow(var_y, 2)
+
+            if sum_sq_v_x * sum_sq_v_y == 0:
+                return None
+
+            return sum_xy / math.sqrt(sum_sq_v_x * sum_sq_v_y)
+
+        r = pearson_r(self.__t, self.__q)
+
+        if r is None:
+            return None
+
+        # ax + b
+        a = r * (std(self.__q, mean_q) / std(self.__t, mean_t))
+        b = mean_q - a * mean_t
+
+        # ETA is ax + b = 0
+        if a == 0:
+            return None
+
+        return (-b / a) - t

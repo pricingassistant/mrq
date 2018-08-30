@@ -1,5 +1,4 @@
 include *.md
-recursive-include mrq/supervisord_templates *
 include requirements*
 recursive-include mrq/dashboard/static *
 recursive-include mrq/dashboard/templates *

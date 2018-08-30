@@ -20,7 +20,6 @@ Remember, put mrq-config.py in your workers directory.
 MONGODB_JOBS = "mongodb://127.0.0.1:27017/mrq" # MongoDB URI for the jobs, scheduled_jobs & workers database.Defaults to mongodb://127.0.0.1:27017/mrq
 MONGODB_LOGS = 1 #MongoDB URI for the logs database."0" will disable remote logs, "1" will use main MongoDB.Defaults to 1
 MONGODB_LOGS_SIZE = None #If provided, sets the log collection to capped to that amount of bytes.
-NO_MONGODB_ENSURE_INDEXES = None #If provided, skip the creation of MongoDB indexes at worker startup.
 
 #Redis settings
 REDIS = "redis://127.0.0.1:6379" #Redis URI.Defaults to redis://127.0.0.1:6379
@@ -57,10 +56,9 @@ USE_LARGE_JOB_IDS = False #Do not use compacted job IDs in Redis. For compatibil
 QUEUES = ("default",) # The queues to listen on.Defaults to default , which will listen on all queues.
 MAX_JOBS = 0 #Gevent:max number of jobs to do before quitting. Workaround for memory leaks in your tasks. Defaults to 0
 MAX_TIME = 0 # max number of seconds a worker runs before quitting
-MAX_MEMORY = 1 #Max memory (in Mb) after which the process will be shut down. Use with PROCESS = [1-N] to have supervisord automatically respawn the worker when this happens.Defaults to 1
+MAX_MEMORY = 1 #Max memory (in Mb) after which the process will be shut down. Use with PROCESS = [1-N] to have the worker automatically respawned when this happens.Defaults to 1
 GRENLETS = 1 #Max number of greenlets to use.Defaults to 1.
-PROCESSES = 0 #Number of processes to launch with supervisord.Defaults to 0.
-SUPERVISORD_TEMPLATE = "supervisord_templates/default.conf" #Path of supervisord template to use. Defaults to supervisord_templates/default.conf.
+PROCESSES = 0 #Number of processes to launch.Defaults to 0.
 SCHEDULER = False #Run the scheduler.Defaults to False.
 SCHEDULER_INTERVAL = 60 #Seconds between scheduler checks.Defaults to 60 seconds, only ints are acceptable.
 REPORT_INTERVAL = 10.5 #Seconds between worker reports to MongoDB.Defaults to 10 seconds, floats are acceptable too.

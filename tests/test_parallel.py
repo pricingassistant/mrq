@@ -12,6 +12,8 @@ def test_parallel_100sleeps(worker, p_flags):
 
     worker.start(flags=p_flags)
 
+    print("Worker started. Queueing sleeps")
+
     start_time = time.time()
 
     # This will sleep a total of 100 seconds
@@ -20,6 +22,8 @@ def test_parallel_100sleeps(worker, p_flags):
 
     total_time = time.time() - start_time
 
+    print("Total time for 100 parallel sleeps: %s" % total_time)
+
     # But should be done quickly!
     assert total_time < 15
 
@@ -27,56 +31,48 @@ def test_parallel_100sleeps(worker, p_flags):
     assert result == list(range(100))
 
 
-@pytest.mark.parametrize(["p_greenlets"], [
-    [1],
-    [2]
+@pytest.mark.parametrize(["p_greenlets", "p_strategy"], [
+    [g, s]
+    for g in [1, 2]
+    for s in ["", "parallel", "burst"]
 ])
-def test_dequeue_strategy(worker, p_greenlets):
+def test_dequeue_strategy(worker, p_greenlets, p_strategy):
 
     worker.start_deps(flush=True)
 
     worker.send_task(
-        "tests.tasks.general.MongoInsert", {"a": 41, "sleep": 2}, queue="q1", block=False, start=False)
+        "tests.tasks.general.MongoInsert", {"a": 41, "sleep": 1}, queue="q1", block=False, start=False)
     worker.send_task(
-        "tests.tasks.general.MongoInsert", {"a": 42, "sleep": 2}, queue="q2", block=False, start=False)
+        "tests.tasks.general.MongoInsert", {"a": 42, "sleep": 1}, queue="q2", block=False, start=False)
     worker.send_task(
-        "tests.tasks.general.MongoInsert", {"a": 41, "sleep": 2}, queue="q1", block=False, start=False)
+        "tests.tasks.general.MongoInsert", {"a": 43, "sleep": 1}, queue="q1", block=False, start=False)
     worker.send_task(
-        "tests.tasks.general.MongoInsert", {"a": 42, "sleep": 2}, queue="q2", block=False, start=False)
+        "tests.tasks.general.MongoInsert", {"a": 44, "sleep": 1}, queue="q2", block=False, start=False)
     worker.send_task(
-        "tests.tasks.general.MongoInsert", {"a": 43, "sleep": 2}, queue="q3", block=False, start=False)
-    worker.send_task(
-        "tests.tasks.general.MongoInsert", {"a": 43, "sleep": 2}, queue="q3", block=False, start=False)
+        "tests.tasks.general.MongoInsert", {"a": 45, "sleep": 1}, queue="q3", block=False, start=False)
 
-    time.sleep(0.1)
+    time.sleep(0.5)
 
-    worker.start(flags="--dequeue_strategy parallel --greenlets %s" % p_greenlets, queues="q1 q2", deps=False, start=False)
+    flags = "--greenlets %s" % p_greenlets
+    if p_strategy:
+        flags += " --dequeue_strategy %s" % p_strategy
 
-    if p_greenlets == 1:
-        time.sleep(1 + 2)
+    print("Worker has flags %s" % flags)
+    worker.start(flags=flags, queues="q1 q2", deps=False, block=False)
+
+    gotit = worker.wait_for_idle(timeout=10)
+
+    if p_strategy == "burst":
+        assert not gotit  # because worker should be stopped already
     else:
-        time.sleep(1)
+        assert gotit
 
-    # Should be dequeued in parallel
-    assert connections.mongodb_jobs.tests_inserts.count({"params.a": 41}) == 1
-    assert connections.mongodb_jobs.tests_inserts.count({"params.a": 42}) == 1
-    assert connections.mongodb_jobs.tests_inserts.count() == 2
+    inserts = list(connections.mongodb_jobs.tests_inserts.find(sort=[("_id", 1)]))
+    order = [row["params"]["a"] for row in inserts]
 
-    worker.stop(deps=False, sig=9)
-    time.sleep(1)
-
-    worker.start(flags="--dequeue_strategy burst --greenlets 2", queues="q3", deps=False)
-
-    time.sleep(3)
-
-    assert connections.mongodb_jobs.tests_inserts.count({"params.a": 43}) == 2
-
-    # Worker should be stopped now so even if we queue nothing will happen.
-    worker.send_task(
-        "tests.tasks.general.MongoInsert", {"a": 43, "sleep": 2}, queue="q3", block=False, start=False)
-
-    time.sleep(2)
-
-    assert connections.mongodb_jobs.tests_inserts.count({"params.a": 43}) == 2
-
-    worker.stop()
+    if p_strategy == "parallel":
+        assert set(order[0:2]) == set([41, 42])
+        assert set(order[2:4]) == set([43, 44])
+    else:
+        assert set(order[0:2]) == set([41, 43])
+        assert set(order[2:4]) == set([42, 44])

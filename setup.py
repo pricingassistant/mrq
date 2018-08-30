@@ -18,7 +18,7 @@ def use_package(package):
 
 def get_requirements():
     reqs = []
-    for filename in ["requirements-base.txt", "requirements-dashboard.txt", "requirements-setuptools.txt"]:
+    for filename in ["requirements-base.txt", "requirements-dashboard.txt"]:
         with open(filename, "r") as f:
             reqs += [x.strip().split(";")[0] for x in f.readlines() if use_package(x.strip())]
     return reqs
@@ -49,6 +49,7 @@ setup(
         'console_scripts': [
             'mrq-worker = mrq.bin.mrq_worker:main',
             'mrq-run = mrq.bin.mrq_run:main',
+            'mrq-agent = mrq.bin.mrq_agent:main',
             'mrq-dashboard = mrq.dashboard.app:main'
         ]
     },
@@ -63,6 +64,7 @@ setup(
         "Programming Language :: Python :: 3.4",
         "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
         #'Development Status :: 1 - Planning',
         #'Development Status :: 2 - Pre-Alpha',
         #'Development Status :: 3 - Alpha',

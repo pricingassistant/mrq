@@ -2,24 +2,29 @@ from __future__ import print_function
 from builtins import range
 import time
 import pytest
+import os
 
 
 def test_max_memory_restart(worker):
 
-    N = 20
+    N = 10
 
     worker.start(
-        flags="--processes 1 --greenlets 1 --max_memory 50 --report_interval 1")
+        flags=" --processes 1 --greenlets 1 --max_memory 50 --report_interval 1")
 
     worker.send_tasks(
         "tests.tasks.general.Leak",
         [{"size": 1000000, "sleep": 1} for _ in range(N)],
         queue="default",
-        block=True
+        block=False
     )
 
-    assert worker.mongodb_jobs.mrq_jobs.find(
-        {"status": "success"}).count() == N
+    i = 0
+    while worker.mongodb_jobs.mrq_jobs.find({"status": "success"}).count() != N:
+        time.sleep(1)
+        i += 1
+        if i % 5 == 0:
+            os.system("ps -ef")
 
     # We must have been restarted at least once.
     assert worker.mongodb_jobs.mrq_workers.find().count() > 1

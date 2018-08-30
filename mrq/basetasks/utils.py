@@ -1,10 +1,10 @@
 from __future__ import print_function
 from future.utils import itervalues
-from builtins import str
+from future.builtins import str
 from mrq.task import Task
 from mrq.queue import Queue
 from bson import ObjectId
-from mrq.context import connections, get_current_config
+from mrq.context import connections, get_current_config, get_current_job
 from collections import defaultdict
 from mrq.utils import group_iter
 import datetime
@@ -33,6 +33,8 @@ class JobAction(Task):
 
     def build_query(self):
         query = {}
+        current_job = get_current_job()
+
         if self.params.get("id"):
             query["_id"] = ObjectId(self.params.get("id"))
 
@@ -49,12 +51,17 @@ class JobAction(Task):
                     query[k] = {"$in": list(self.params[k])}
                 else:
                     query[k] = self.params[k]
+            if query.get("worker"):
+                query["worker"] = ObjectId(query["worker"])
 
         if self.params.get("params"):
             params_dict = json.loads(self.params.get("params"))  # pylint: disable=no-member
 
             for key in params_dict:
                 query["params.%s" % key] = params_dict[key]
+                
+        if current_job and "_id" not in query:
+            query["_id"] = {"$lte": current_job.id}
 
         return query
 
@@ -120,6 +127,7 @@ class JobAction(Task):
 
                     updates = {
                         "status": "queued",
+                        "datequeued": datetime.datetime.utcnow(),
                         "dateupdated": datetime.datetime.utcnow()
                     }
 
@@ -132,12 +140,5 @@ class JobAction(Task):
                     self.collection.update({
                         "_id": {"$in": jobs_by_queue[queue]}
                     }, {"$set": updates}, multi=True)
-
-                    # Between these two lines, jobs can become "lost" too.
-
-                    Queue(destination_queue or queue, add_to_known_queues=True).enqueue_job_ids(
-                        [str(x) for x in jobs_by_queue[queue]])
-
-        print(stats)
 
         return stats

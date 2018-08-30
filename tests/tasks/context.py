@@ -1,5 +1,6 @@
 from mrq.task import Task
 from mrq.context import log, get_current_job, get_current_worker, get_current_config
+import os
 
 
 class GetContext(Task):
@@ -9,5 +10,6 @@ class GetContext(Task):
         return {
             "job_id": get_current_job().id,
             "worker_id": get_current_worker().id,
-            "config": get_current_config()
+            "config": get_current_config(),
+            "environ": os.environ
         }
