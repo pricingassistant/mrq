@@ -62,7 +62,11 @@ def test_network_latency(worker, p_latency, p_min, p_max):
     start_time = time.time()
 
     for _ in range(5):
-        worker.send_task("tests.tasks.general.MongoInsert", {"x": 1})
+        worker.send_task("tests.tasks.general.MongoInsert",
+                         {"x": 1},
+                         block=False)
+
+    worker.wait_for_idle()
 
     total_time = time.time() - start_time
 
