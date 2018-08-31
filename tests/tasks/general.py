@@ -20,7 +20,7 @@ class Add(Task):
         if params.get("broadexcept"):
             try:
                 return self._add(params)
-            except BaseException, e:  # Will catch greenlet.GreenletExit & all others
+            except BaseException as e:  # Will catch greenlet.GreenletExit & all others
                 print("Got base exception %s" % type(e))
                 return
         else:
