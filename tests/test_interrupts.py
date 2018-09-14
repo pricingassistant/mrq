@@ -224,6 +224,28 @@ def test_interrupt_worker_sigkill(worker, p_flags):
     assert job["queue"] == "default"
 
 
+def test_worker_crash(worker):
+    """ Test that when a worker crashes its running jobs are requeued """
+
+    worker.start(queues=["default"])
+    worker.send_task(
+        "tests.tasks.general.Add", {"a": 41, "b": 1, "sleep": 20}, block=False, queue="default")
+
+    worker.stop(block=True, sig=9, deps=False)
+
+    time.sleep(1)
+
+    # simulate worker crash
+    worker.mongodb_jobs.mrq_workers.delete_many({})
+    worker.start(queues="cleaning", deps=False, flush=False)
+
+    res = worker.send_task("mrq.basetasks.cleaning.RequeueStartedJobs", {
+                           "timeout": 90}, block=True, queue="cleaning")
+
+    assert res["requeued"] == 1
+    assert res["started"] == 1
+    assert Queue("default").size() == 1
+
 # def test_interrupt_redis_flush(worker):
 #     """ Test what happens when we flush redis after queueing jobs.
 

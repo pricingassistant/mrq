@@ -56,7 +56,9 @@ class RequeueStartedJobs(Task):
         # There shouldn't be that much "started" jobs so we can quite safely
         # iterate over them.
 
-        fields = {"_id": 1, "datestarted": 1, "queue": 1, "path": 1, "retry_count": 1}
+        fields = {
+            "_id": 1, "datestarted": 1, "queue": 1, "path": 1, "retry_count": 1, "worker": 1
+        }
         for job_data in connections.mongodb_jobs.mrq_jobs.find(
                 {"status": "started"}, projection=fields):
             job = Job(job_data["_id"])
@@ -67,7 +69,14 @@ class RequeueStartedJobs(Task):
             expire_date = datetime.datetime.utcnow(
             ) - datetime.timedelta(seconds=job.timeout + additional_timeout)
 
-            if job_data["datestarted"] < expire_date:
+            requeue = job_data["datestarted"] < expire_date
+
+            if not requeue:
+                # Check that the supposedly running worker still exists
+                requeue = not connections.mongodb_jobs.mrq_workers.find_one(
+                    {"_id": job_data["worker"]}, projection={"_id": 1})
+
+            if requeue:
                 log.debug("Requeueing job %s" % job.id)
                 job.requeue()
                 stats["requeued"] += 1
