@@ -54,9 +54,12 @@ class QueueRegular(Queue):
             if len(subqueues) == 0:
                 return 0
             else:
-                return self.collection.count({"status": "queued", "queue": {"$in": list(subqueues)}})
+                with context.connections.redis.pipeline(transaction=False) as pipe:
+                    for subqueue in subqueues:
+                        pipe.get("queuesize:%s" % subqueue)
+                    return [int(size or 0) for size in pipe.execute()]
         else:
-            return self.collection.count({"status": "queued", "queue": self.id})
+            return int(context.connections.redis.get("queuesize:%s" % self.id) or 0)
 
     def list_job_ids(self, skip=0, limit=20):
         """ Returns a list of job ids on a queue """

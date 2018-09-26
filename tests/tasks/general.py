@@ -46,6 +46,12 @@ class TimeoutFromConfig(Add):
     pass
 
 
+class Wait(Task):
+
+    def run(self, params):
+        return time.sleep(2)
+
+
 class GetTime(Task):
 
     def run(self, params):

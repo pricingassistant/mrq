@@ -452,6 +452,15 @@ class Job(object):
         if self.stored is False and self.statuses_no_storage is not None and status in self.statuses_no_storage:
             return
 
+        with context.connections.redis.pipeline(transaction=False) as pipe:
+            if status != "started":
+                if status == "queued":
+                    pipe.incr("queuesize:%s" % self.data["queue"])
+                else:
+                    pipe.decr("queuesize:%s" % self.data["queue"])
+                pipe.expire("queuesize:%s" % self.data["queue"], context.get_current_config().get("queue_ttl"))
+            pipe.execute()
+
         now = datetime.datetime.utcnow()
         db_updates = {
             "status": status,
@@ -618,20 +627,20 @@ def queue_raw_jobs(queue, params_list, **kwargs):
     from .queue import Queue
     queue_obj = Queue(queue)
     queue_obj.enqueue_raw_jobs(params_list, **kwargs)
-
+    # No need to store queue size as we already have a fast way to get raw queue size
 
 def queue_job(main_task_path, params, **kwargs):
     """ Queue one job on a regular queue """
 
     return queue_jobs(main_task_path, [params], **kwargs)[0]
 
+def set_queue_size(queue, size):
+    context.connections.redis.setex("queuesize:%s" % queue, context.get_current_config().get("queue_ttl"), size)
 
 def queue_jobs(main_task_path, params_list, queue=None, batch_size=1000):
     """ Queue multiple jobs on a regular queue """
-
     if len(params_list) == 0:
         return []
-
     if queue is None:
         task_def = context.get_current_config().get("tasks", {}).get(main_task_path) or {}
         queue = task_def.get("queue", "default")
@@ -660,5 +669,6 @@ def queue_jobs(main_task_path, params_list, queue=None, batch_size=1000):
         all_ids += job_ids
 
     queue_obj.notify(len(all_ids))
+    set_queue_size(queue, len(all_ids))
 
     return all_ids

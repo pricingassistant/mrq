@@ -123,6 +123,13 @@ def add_parser_args(parser, config_type):
         help='Don\'t output task logs')
 
     parser.add_argument(
+        '--queue_ttl',
+        default=24 * 60 * 60,
+        action='store',
+        help='Seconds the Queue size is stored in redis'
+    )
+
+    parser.add_argument(
         '--log_handler',
         default="mrq.logger.MongoHandler",
         action="store",
