@@ -57,7 +57,7 @@ class RequeueStartedJobs(Task):
         # iterate over them.
 
         fields = {
-            "_id": 1, "datestarted": 1, "queue": 1, "path": 1, "retry_count": 1, "worker": 1
+            "_id": 1, "datestarted": 1, "queue": 1, "path": 1, "retry_count": 1, "worker": 1, "status": 1
         }
         for job_data in connections.mongodb_jobs.mrq_jobs.find(
                 {"status": "started"}, projection=fields):

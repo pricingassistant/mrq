@@ -5,6 +5,7 @@ from mrq.task import Task
 from mrq.queue import Queue
 from bson import ObjectId
 from mrq.context import connections, get_current_config, get_current_job
+from mrq.job import set_queues_size
 from collections import defaultdict
 from mrq.utils import group_iter
 import datetime
@@ -59,7 +60,7 @@ class JobAction(Task):
 
             for key in params_dict:
                 query["params.%s" % key] = params_dict[key]
-                
+
         if current_job and "_id" not in query:
             query["_id"] = {"$lte": current_job.id}
 
@@ -91,12 +92,23 @@ class JobAction(Task):
                 result_ttl = max([default_job_timeout] + tasks_ttls)
 
             now = datetime.datetime.utcnow()
+
+            size_by_queues = defaultdict(int)
+            if "queue" not in query:
+                for job in self.collection.find(query, projection={"queue": 1}):
+                    size_by_queues[job["queue"]] += 1
+
             ret = self.collection.update(query, {"$set": {
                 "status": "cancel",
                 "dateexpires": now + datetime.timedelta(seconds=result_ttl),
                 "dateupdated": now
             }}, multi=True)
             stats["cancelled"] = ret["n"]
+
+            if "queue" in query:
+                if isinstance(query["queue"], str):
+                    size_by_queues[query["queue"]] = ret["n"]
+            set_queues_size(size_by_queues, action="decr")
 
             # Special case when emptying just by queue name: empty it directly!
             # In this case we could also loose some jobs that were queued after
@@ -123,22 +135,23 @@ class JobAction(Task):
                     jobs_by_queue[job["queue"]].append(job["_id"])
                     stats["requeued"] += 1
 
-                for queue in jobs_by_queue:
+                    for queue in jobs_by_queue:
+                        updates = {
+                            "status": "queued",
+                            "datequeued": datetime.datetime.utcnow(),
+                            "dateupdated": datetime.datetime.utcnow()
+                        }
 
-                    updates = {
-                        "status": "queued",
-                        "datequeued": datetime.datetime.utcnow(),
-                        "dateupdated": datetime.datetime.utcnow()
-                    }
+                        if destination_queue is not None:
+                            updates["queue"] = destination_queue
 
-                    if destination_queue is not None:
-                        updates["queue"] = destination_queue
+                        if action == "requeue":
+                            updates["retry_count"] = 0
 
-                    if action == "requeue":
-                        updates["retry_count"] = 0
+                        self.collection.update({
+                            "_id": {"$in": jobs_by_queue[queue]}
+                        }, {"$set": updates}, multi=True)
 
-                    self.collection.update({
-                        "_id": {"$in": jobs_by_queue[queue]}
-                    }, {"$set": updates}, multi=True)
+                set_queues_size({queue: len(jobs) for queue, jobs in jobs_by_queue.iteritems()})
 
         return stats

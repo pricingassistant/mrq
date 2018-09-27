@@ -453,10 +453,12 @@ class Job(object):
             return
 
         with context.connections.redis.pipeline(transaction=False) as pipe:
-            if status != "started":
-                if status == "queued":
+            if status != "started" and "raw_queue" not in self.data:
+                if status == "queued" and self.data["status"] != "started":
+                    print("INCR", self.data["queue"])
                     pipe.incr("queuesize:%s" % self.data["queue"])
                 else:
+                    print("DECR", self.data["queue"], self.data)
                     pipe.decr("queuesize:%s" % self.data["queue"])
                 pipe.expire("queuesize:%s" % self.data["queue"], context.get_current_config().get("queue_ttl"))
             pipe.execute()
@@ -634,8 +636,14 @@ def queue_job(main_task_path, params, **kwargs):
 
     return queue_jobs(main_task_path, [params], **kwargs)[0]
 
-def set_queue_size(queue, size):
-    context.connections.redis.setex("queuesize:%s" % queue, context.get_current_config().get("queue_ttl"), size)
+def set_queues_size(size_by_queues, action="incr"):
+    print("BLA", size_by_queues, action)
+    if len(size_by_queues) > 0:
+        with context.connections.redis.pipeline(transaction=False) as pipe:
+            for queue in size_by_queues:
+                getattr(pipe, action)("queuesize:%s" % queue, amount=size_by_queues[queue])
+                pipe.expire("queuesize:%s" % queue, context.get_current_config().get("queue_ttl"))
+            pipe.execute()
 
 def queue_jobs(main_task_path, params_list, queue=None, batch_size=1000):
     """ Queue multiple jobs on a regular queue """
@@ -669,6 +677,6 @@ def queue_jobs(main_task_path, params_list, queue=None, batch_size=1000):
         all_ids += job_ids
 
     queue_obj.notify(len(all_ids))
-    set_queue_size(queue, len(all_ids))
+    set_queues_size({queue: len(all_ids)})
 
     return all_ids
