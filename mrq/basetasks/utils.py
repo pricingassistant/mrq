@@ -135,22 +135,22 @@ class JobAction(Task):
                     jobs_by_queue[job["queue"]].append(job["_id"])
                     stats["requeued"] += 1
 
-                    for queue in jobs_by_queue:
-                        updates = {
-                            "status": "queued",
-                            "datequeued": datetime.datetime.utcnow(),
-                            "dateupdated": datetime.datetime.utcnow()
-                        }
+                for queue in jobs_by_queue:
+                    updates = {
+                        "status": "queued",
+                        "datequeued": datetime.datetime.utcnow(),
+                        "dateupdated": datetime.datetime.utcnow()
+                    }
 
-                        if destination_queue is not None:
-                            updates["queue"] = destination_queue
+                    if destination_queue is not None:
+                        updates["queue"] = destination_queue
 
-                        if action == "requeue":
-                            updates["retry_count"] = 0
+                    if action == "requeue":
+                        updates["retry_count"] = 0
 
-                        self.collection.update({
-                            "_id": {"$in": jobs_by_queue[queue]}
-                        }, {"$set": updates}, multi=True)
+                    self.collection.update({
+                        "_id": {"$in": jobs_by_queue[queue]}
+                    }, {"$set": updates}, multi=True)
 
                 set_queues_size({queue: len(jobs) for queue, jobs in jobs_by_queue.iteritems()})
 

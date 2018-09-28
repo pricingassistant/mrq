@@ -227,6 +227,7 @@ class QueueRaw(Queue):
 
         job_data = [job_factory(p) for p in params]
         for j in job_data:
+            print("J")
             j["status"] = "started"
             j["queue"] = retry_queue
             j["datequeued"] = datetime.now()

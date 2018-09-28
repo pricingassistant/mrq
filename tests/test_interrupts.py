@@ -192,7 +192,7 @@ def test_interrupt_worker_sigkill(worker, p_flags):
         "datestarted": datetime.datetime.utcnow() - datetime.timedelta(seconds=300)
     }})
 
-    assert Queue("default").size() == 0
+    assert Queue("default").size() == 1
 
     worker.start(queues="cleaning", deps=False, flush=False,
                  flags=" --config tests/fixtures/config-shorttimeout.py")
@@ -203,7 +203,7 @@ def test_interrupt_worker_sigkill(worker, p_flags):
     assert res["requeued"] == 0
     assert res["started"] == 2  # current job should count too
 
-    assert Queue("default").size() == 0
+    assert Queue("default").size() == 1
 
     job = Job(job_id).fetch().data
     assert job["status"] == "started"

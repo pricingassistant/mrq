@@ -453,14 +453,26 @@ class Job(object):
             return
 
         with context.connections.redis.pipeline(transaction=False) as pipe:
-            if status != "started" and "raw_queue" not in self.data:
-                if status == "queued" and self.data["status"] != "started":
-                    print("INCR", self.data["queue"])
-                    pipe.incr("queuesize:%s" % self.data["queue"])
-                else:
-                    print("DECR", self.data["queue"], self.data)
+            queue = (updates or {}).get("queue") or self.data["queue"]
+            if status != "started":
+                # Queue change
+                if queue != self.data["queue"]:
                     pipe.decr("queuesize:%s" % self.data["queue"])
-                pipe.expire("queuesize:%s" % self.data["queue"], context.get_current_config().get("queue_ttl"))
+                    if status == "queued":
+                        pipe.incr("queuesize:%s" % queue)
+
+                # Regular queues
+                elif status == "queued" and self.data.get("status") != "started":
+                    pipe.incr("queuesize:%s" % queue)
+
+                elif status != "queued" and not self.data.get("raw_queue"):
+                    pipe.decr("queuesize:%s" % queue)
+
+                # Raw queues retries
+                elif (updates or {}).get("retry_count", 0) > self.data.get("retry_count", 0):
+                    pipe.incr("queuesize:%s" % queue)
+
+                pipe.expire("queuesize:%s" % queue, context.get_current_config().get("queue_ttl"))
             pipe.execute()
 
         now = datetime.datetime.utcnow()
@@ -637,7 +649,6 @@ def queue_job(main_task_path, params, **kwargs):
     return queue_jobs(main_task_path, [params], **kwargs)[0]
 
 def set_queues_size(size_by_queues, action="incr"):
-    print("BLA", size_by_queues, action)
     if len(size_by_queues) > 0:
         with context.connections.redis.pipeline(transaction=False) as pipe:
             for queue in size_by_queues:
