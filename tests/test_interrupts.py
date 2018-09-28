@@ -227,9 +227,15 @@ def test_interrupt_worker_sigkill(worker, p_flags):
 def test_worker_crash(worker):
     """ Test that when a worker crashes its running jobs are requeued """
 
-    worker.start(queues=["default"])
+    worker.start(queues="default")
     worker.send_task(
-        "tests.tasks.general.Add", {"a": 41, "b": 1, "sleep": 20}, block=False, queue="default")
+        "tests.tasks.general.Add",
+        {"a": 41, "b": 1, "sleep": 10},
+        block=False,
+        queue="default"
+    )
+
+    time.sleep(5)
 
     worker.stop(block=True, sig=9, deps=False)
 
@@ -243,7 +249,7 @@ def test_worker_crash(worker):
                            "timeout": 90}, block=True, queue="cleaning")
 
     assert res["requeued"] == 1
-    assert res["started"] == 1
+    assert res["started"] == 2
     assert Queue("default").size() == 1
 
 # def test_interrupt_redis_flush(worker):
