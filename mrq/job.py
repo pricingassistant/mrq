@@ -366,7 +366,6 @@ class Job(object):
                 return job_data
 
             time.sleep(poll_interval)
-
         raise Exception("Waited for job result for %s seconds, timeout." % timeout)
 
     def save_retry(self, retry_exc):
@@ -452,29 +451,6 @@ class Job(object):
         if self.stored is False and self.statuses_no_storage is not None and status in self.statuses_no_storage:
             return
 
-        with context.connections.redis.pipeline(transaction=False) as pipe:
-            queue = (updates or {}).get("queue") or self.data["queue"]
-            if status != "started":
-                # Queue change
-                if queue != self.data["queue"]:
-                    pipe.decr("queuesize:%s" % self.data["queue"])
-                    if status == "queued":
-                        pipe.incr("queuesize:%s" % queue)
-
-                # Regular queues
-                elif status == "queued" and self.data.get("status") != "started":
-                    pipe.incr("queuesize:%s" % queue)
-
-                elif status != "queued" and not self.data.get("raw_queue"):
-                    pipe.decr("queuesize:%s" % queue)
-
-                # Raw queues retries
-                elif (updates or {}).get("retry_count", 0) > self.data.get("retry_count", 0):
-                    pipe.incr("queuesize:%s" % queue)
-
-                pipe.expire("queuesize:%s" % queue, context.get_current_config().get("queue_ttl"))
-            pipe.execute()
-
         now = datetime.datetime.utcnow()
         db_updates = {
             "status": status,
@@ -536,6 +512,28 @@ class Job(object):
         if exception:
             self._save_traceback_history(status, trace, exc)
 
+        with context.connections.redis.pipeline(transaction=False) as pipe:
+            queue = (updates or {}).get("queue") or self.data["queue"]
+            if status != "started":
+                # Queue change
+                if queue != self.data["queue"]:
+                    pipe.decr("queuesize:%s" % self.data["queue"])
+                    if status == "queued":
+                        pipe.incr("queuesize:%s" % queue)
+
+                # Regular queues
+                elif status == "queued" and self.data.get("status") != "started":
+                    pipe.incr("queuesize:%s" % queue)
+
+                elif status != "queued" and not self.data.get("raw_queue"):
+                    pipe.decr("queuesize:%s" % queue)
+
+                # Raw queues retries
+                elif (updates or {}).get("retry_count", 0) > self.data.get("retry_count", 0):
+                    pipe.incr("queuesize:%s" % queue)
+
+                pipe.expire("queuesize:%s" % queue, context.get_current_config().get("queue_ttl"))
+            pipe.execute()
 
     def set_current_io(self, io_data):
 
