@@ -655,8 +655,9 @@ def queue_job(main_task_path, params, **kwargs):
 def set_queues_size(size_by_queues, action="incr"):
     if len(size_by_queues) > 0:
         with context.connections.redis.pipeline(transaction=False) as pipe:
+            action_func = getattr(pipe, action)
             for queue in size_by_queues:
-                getattr(pipe, action)("queuesize:%s" % queue, amount=size_by_queues[queue])
+                action_func("queuesize:%s" % queue, amount=size_by_queues[queue])
                 pipe.expire("queuesize:%s" % queue, context.get_current_config().get("queue_ttl"))
             pipe.execute()
 
