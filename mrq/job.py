@@ -484,15 +484,14 @@ class Job(object):
             db_updates["traceback"] = trace
             db_updates["exceptiontype"] = exc.__name__
 
-        # get all data before updating them
-        current_queue = (db_updates or {}).get("queue") or self.data["queue"]
-        old_queue = self.data.get("queue")
-        old_status = self.data.get("status")
-        raw_queue = self.data.get("raw_queue")
-        retry_count = self.data.get("retry_count", 0)
-
         if self.data:
             self.data.update(db_updates)
+            # get all data before updating them
+            current_queue = (db_updates or {}).get("queue") or self.data["queue"]
+            old_queue = self.data.get("queue")
+            old_status = self.data.get("status")
+            raw_queue = self.data.get("raw_queue")
+            retry_count = self.data.get("retry_count", 0)
 
         # In the most common case, we allow an optimization on Mongo writes
         if status == "success":
@@ -519,27 +518,28 @@ class Job(object):
         if exception:
             self._save_traceback_history(status, trace, exc)
 
-        with context.connections.redis.pipeline(transaction=False) as pipe:
-            if status != "started":
-                # Queue change
-                if current_queue != old_queue:
-                    pipe.decr("queuesize:%s" % old_queue)
-                    if status == "queued":
+        if self.data:
+            with context.connections.redis.pipeline(transaction=False) as pipe:
+                if status != "started":
+                    # Queue change
+                    if current_queue != old_queue:
+                        pipe.decr("queuesize:%s" % old_queue)
+                        if status == "queued":
+                            pipe.incr("queuesize:%s" % current_queue)
+
+                    # Regular queues
+                    elif status == "queued" and old_status != "started":
                         pipe.incr("queuesize:%s" % current_queue)
 
-                # Regular queues
-                elif status == "queued" and old_status != "started":
-                    pipe.incr("queuesize:%s" % current_queue)
+                    elif status != "queued" and not raw_queue:
+                        pipe.decr("queuesize:%s" % current_queue)
 
-                elif status != "queued" and not raw_queue:
-                    pipe.decr("queuesize:%s" % current_queue)
+                    # Raw queues retries
+                    elif (db_updates or {}).get("retry_count", 0) > retry_count:
+                        pipe.incr("queuesize:%s" % current_queue)
 
-                # Raw queues retries
-                elif (db_updates or {}).get("retry_count", 0) > retry_count:
-                    pipe.incr("queuesize:%s" % current_queue)
-
-                pipe.expire("queuesize:%s" % current_queue, context.get_current_config().get("queue_ttl"))
-            pipe.execute()
+                    pipe.expire("queuesize:%s" % current_queue, context.get_current_config().get("queue_ttl"))
+                pipe.execute()
 
     def set_current_io(self, io_data):
 
