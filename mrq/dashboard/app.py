@@ -15,6 +15,7 @@ from bson import ObjectId
 import json
 import argparse
 from werkzeug.serving import run_simple
+from future.builtins import str
 
 sys.path.insert(0, os.getcwd())
 
@@ -113,6 +114,7 @@ def api_taskpaths():
     return jsonify(data)
 
 
+# Route to be deprecated!
 @app.route('/workers')
 @requires_auth
 def get_workers():
@@ -120,6 +122,24 @@ def get_workers():
     cursor = collection.find({"status": {"$ne": "stop"}})
     data = {"workers": list(cursor)}
     return jsonify(data)
+
+
+@app.route('/api/workergroups', methods=["GET"])
+@requires_auth
+def get_workergroups():
+    collection = connections.mongodb_jobs.mrq_workergroups
+    data = {"workergroups": {str(row.pop("_id")): row for row in collection.find(sort=[("_id", 1)])}}
+    return jsonify(data)
+
+
+@app.route('/api/workergroups', methods=["POST"])
+@requires_auth
+def post_workergroups():
+    workergroups = json.loads(request.form["workergroups"])
+    for k, v in workergroups.iteritems():
+        connections.mongodb_jobs.mrq_workergroups.update_one({"_id": k}, {"$set": v}, upsert=True)
+
+    return jsonify({"status": "ok"})
 
 
 def build_api_datatables_query(req):
@@ -133,10 +153,14 @@ def build_api_datatables_query(req):
         for param in ["queue", "path", "exceptiontype"]:
             if req.args.get(param):
                 if "*" in req.args[param]:
-                    regexp = "^%s$" % re.escape(req.args[param]).replace("*", ".*")
-                    query[param] = re.compile(regexp)
+                    regexp = "^%s$" % req.args[param].replace("*", ".*")
+                    query[param] = {"$regex": regexp}
                 else:
                     query[param] = req.args[param]
+
+        if req.args.get("queue") and req.args["queue"].endswith("/"):
+            subqueues = Queue(req.args["queue"]).get_known_subqueues()
+            query["queue"] = {"$in": list(subqueues)}
 
         if req.args.get("status"):
             statuses = req.args["status"].split("-")
@@ -172,7 +196,6 @@ def api_datatables(unit):
     sort = None
     skip = int(request.args.get("iDisplayStart", 0))
     limit = int(request.args.get("iDisplayLength", 20))
-    with_mongodb_size = bool(request.args.get("with_mongodb_size"))
 
     if unit == "queues":
 
@@ -180,16 +203,8 @@ def api_datatables(unit):
         for name in Queue.all_known():
             queue = Queue(name)
 
-            jobs = None
-            if with_mongodb_size:
-                jobs = connections.mongodb_jobs.mrq_jobs.count({
-                    "queue": name,
-                    "status": request.args.get("status") or "queued"
-                })
-
             q = {
                 "name": name,
-                "jobs": jobs,  # MongoDB size
                 "size": queue.size(),  # Redis size
                 "is_sorted": queue.is_sorted,
                 "is_timed": queue.is_timed,
@@ -198,7 +213,7 @@ def api_datatables(unit):
             }
 
             if queue.is_sorted:
-                raw_config = cfg.get("raw_queues", {}).get(name, {})
+                raw_config = queue.get_config()
                 q["graph_config"] = raw_config.get("dashboard_graph", lambda: {
                     "start": time.time() - (7 * 24 * 3600),
                     "stop": time.time() + (7 * 24 * 3600),
@@ -216,7 +231,7 @@ def api_datatables(unit):
 
             queues.append(q)
 
-        queues.sort(key=lambda x: -((x["jobs"] or 0) + x["size"]))
+        queues.sort(key=lambda x: -x["size"])
 
         data = {
             "aaData": queues,
@@ -225,8 +240,25 @@ def api_datatables(unit):
 
     elif unit == "workers":
         fields = None
-        query = {"status": {"$nin": ["stop"]}}
         collection = connections.mongodb_jobs.mrq_workers
+        sort = [("datestarted", -1)]
+
+        query = {}
+        if request.args.get("id"):
+            query["_id"] = ObjectId(request.args["id"])
+        else:
+            if request.args.get("status"):
+                statuses = request.args["status"].split("-")
+                query["status"] = {"$in": statuses}
+            if request.args.get("ip"):
+                query["$or"] = [{"config.local_ip": request.args["ip"]}, {"config.external_ip": request.args["ip"]}]
+            if request.args.get("queue"):
+                query["config.queues"] = request.args["queue"]
+
+    elif unit == "agents":
+        fields = None
+        query = {"status": {"$nin": ["stop"]}}
+        collection = connections.mongodb_jobs.mrq_agents
         sort = [("datestarted", -1)]
 
         if request.args.get("showstopped"):
@@ -241,7 +273,7 @@ def api_datatables(unit):
 
         fields = None
         query = build_api_datatables_query(request)
-        sort = [("_id", 1)]
+        sort = None  # TODO [("_id", 1)]
 
         # We can't search easily params because we store it as decoded JSON in mongo :(
         # Add a string index?
@@ -291,27 +323,14 @@ def api_job_result(job_id):
 @requires_auth
 def api_job_traceback(job_id):
     collection = connections.mongodb_jobs.mrq_jobs
-    if get_current_config().get("save_traceback_history"):
-
-        field_sent = "traceback_history"
-    else:
-        field_sent = "traceback"
 
     job_data = collection.find_one(
-        {"_id": ObjectId(job_id)}, projection=[field_sent])
+        {"_id": ObjectId(job_id)}, projection=["traceback_history", "traceback"])
 
     if not job_data:
-        # If a job has no traceback history, we fallback onto traceback
-        if field_sent == "traceback_history":
-            field_sent = "traceback"
-            job_data = collection.find_one(
-                {"_id": ObjectId(job_id)}, projection=[field_sent])
-        if not job_data:
-            job_data = {}
+        return jsonify({"traceback": "No exception raised"})
 
-    return jsonify({
-        field_sent: job_data.get(field_sent, "No exception raised")
-    })
+    return jsonify(job_data)
 
 
 @app.route('/api/jobaction', methods=["POST"])

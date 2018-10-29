@@ -17,10 +17,10 @@ def test_current_job_inspect(worker):
     job_id = worker.send_task(
         "tests.tasks.general.MongoInsert", {"a": 41, "b": 1, "sleep": 3}, block=False)
 
-    time.sleep(1)
+    time.sleep(2)
 
     # Test the HTTP admin API
-    admin_worker = json.loads(urllib.request.urlopen("http://localhost:20020").read().decode('utf-8'))
+    admin_worker = json.loads(urllib.request.urlopen("http://localhost:%s" % worker.admin_port).read().decode('utf-8'))
 
     assert admin_worker["status"] == "full"
     assert len(admin_worker["jobs"]) == 1
@@ -35,9 +35,9 @@ def test_current_job_inspect(worker):
 
     time.sleep(3)
 
-    admin_worker = json.loads(urllib.request.urlopen("http://localhost:20020").read().decode('utf-8'))
+    admin_worker = json.loads(urllib.request.urlopen("http://localhost:%s" % worker.admin_port).read().decode('utf-8'))
 
-    assert admin_worker["status"] == "wait"
+    assert admin_worker["status"] in ["wait", "spawn"]
     assert len(admin_worker["jobs"]) == 0
     assert admin_worker["done_jobs"] == 1
 
@@ -79,7 +79,7 @@ def test_current_job_trace_io(worker, p_testtype, p_testparams, p_type, p_data, 
     if os.path.isfile(report_file):
         os.remove(report_file)
 
-    worker.start(flags="--trace_io --no_mongodb_ensure_indexes --add_network_latency=0.2 --report_interval=0.1 --report_file=%s" % report_file)
+    worker.start(flags="--trace_io --add_network_latency=0.2 --report_interval=0.1 --report_file=%s" % report_file)
 
     worker.send_task(
         "tests.tasks.io.TestIo",
@@ -102,9 +102,10 @@ def test_current_job_trace_io(worker, p_testtype, p_testparams, p_type, p_data, 
                     admin_worker = {}
                 if len(admin_worker.get("jobs", [])) > 0:
                     io = admin_worker["jobs"][0].get("io")
+
                     # Don't take MRQ's IOs as regular IO
                     if io:
-                        if io["type"] == "mongodb" and io["data"]["collection"] in ["mrq.mrq_jobs", "mrq.mrq_logs"]:
+                        if io["type"].startswith("mongodb") and io["data"]["collection"] in ["mrq.mrq_jobs", "mrq.mrq_logs"]:
                             io = False
                         else:
                             break
@@ -141,7 +142,7 @@ def test_trace_long_fetch(worker, httpbin):
         admin_worker = json.loads(read)
 
     # Test the HTTP admin API
-    # admin_worker = json.load(urllib2.urlopen("http://localhost:20020/"))
+    # admin_worker = json.load(urllib2.urlopen("http://localhost:%s" % worker.admin_port))
 
     assert admin_worker["jobs"][0]["io"]["type"] == "http.get"
 

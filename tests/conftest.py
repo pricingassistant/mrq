@@ -31,6 +31,10 @@ set_current_config(get_config(sources=("env")))
 
 os.system("rm -rf dump.rdb")
 
+PYTHON_BIN = "python"
+if os.environ.get("PYTHON_BIN"):
+    PYTHON_BIN = os.environ["PYTHON_BIN"]
+
 
 class ProcessFixture(object):
 
@@ -77,11 +81,11 @@ class ProcessFixture(object):
         if expected_children > 0:
             psutil_process = psutil.Process(self.process.pid)
 
-            # print "Expecting %s children, got %s" % (expected_children,
-            # psutil_process.get_children(recursive=False))
             while True:
-                self.process_children = psutil_process.get_children(
-                    recursive=True)
+                self.process_children = psutil_process.children(recursive=True)
+                # print("Expecting %s children of pid %s, got %s" % (
+                #     expected_children, self.process.pid, len(self.process_children))
+                # )
                 if len(self.process_children) >= expected_children:
                     break
                 time.sleep(0.1)
@@ -96,11 +100,13 @@ class ProcessFixture(object):
         # Call this only one time.
         if self.stopped and not force:
             return
+
         self.stopped = True
         self.started = False
 
-        if self.process is not None:
+        if self.process is not None and self.process.returncode is None:
 
+            print("Sending signal %s to pid %s" % (sig, self.process.pid))
             os.kill(self.process.pid, sig)
 
             # When sending a sigkill to the process, we also want to kill the
@@ -112,21 +118,8 @@ class ProcessFixture(object):
             if not block:
                 return
 
-            for _ in range(2000):
-
-                try:
-                    p = psutil.Process(self.process.pid)
-                    if p.status == "zombie":
-                        # print "process %s zombie OK" % self.cmdline
-                        return
-                except psutil.NoSuchProcess:
-                    # print "process %s exit OK" % self.cmdline
-                    return
-
-                time.sleep(0.01)
-
-            assert False, "Process '%s' was still in state %s after 20 seconds..." % (
-                self.cmdline, p.status)
+            # Will raise TimeoutExpired
+            self.process.wait(timeout=20)
 
 
 class WorkerFixture(ProcessFixture):
@@ -136,34 +129,52 @@ class WorkerFixture(ProcessFixture):
 
         self.fixture_mongodb = kwargs["mongodb"]
         self.fixture_redis = kwargs["redis"]
+        self.admin_port = kwargs.get("admin_port")
 
         self.started = False
+        self.agent = False
 
-    def start(self, flush=True, deps=True, trace=True, **kwargs):
+    def start(self, flush=True, deps=True, trace=True, agent=False, **kwargs):
 
         self.started = True
+        self.agent = agent
 
         if deps:
             self.start_deps(flush=flush)
 
         processes = 0
-        m = re.search(r"--processes (\d+)", kwargs.get("flags", ""))
-        if m:
-            processes = int(m.group(1))
 
-        cmdline = "python mrq/bin/mrq_worker.py --mongodb_logs_size 0 %s %s %s %s" % (
-            "--admin_port 20020" if (processes <= 1) else "",
-            "--trace_io --trace_greenlets" if trace else "",
-            kwargs.get("flags", ""),
-            kwargs.get("queues", "high default low")
-        )
+        if self.agent:
 
-        # +1 because of supervisord itself
-        if processes > 0:
-            processes += 1
+            cmdline = "%s mrq/bin/mrq_agent.py %s" % (PYTHON_BIN, kwargs.get("flags", ""))
+
+        else:
+
+            m = re.search(r"--processes (\d+)", kwargs.get("flags", ""))
+            if m:
+                processes = int(m.group(1))
+
+            cmdline = "%s mrq/bin/mrq_worker.py %s %s %s %s" % (
+                PYTHON_BIN,
+                "--admin_port %s" % self.admin_port if (processes <= 1) else "",
+                "--trace_io --trace_greenlets" if trace else "",
+                kwargs.get("flags", ""),
+                kwargs.get("queues", "high default low")
+            )
+
+        env = kwargs.get("env") or {}
+        env.setdefault("MRQ_MAX_LATENCY", "0.1")
+
+        # Pass coverage-related environment variables
+        for k, v in os.environ.items():
+            if k.startswith("COV_"):
+                env[k] = v
 
         print(cmdline)
-        ProcessFixture.start(self, cmdline=cmdline, env=kwargs.get("env"), expected_children=processes)
+        ProcessFixture.start(self, cmdline=cmdline, env=env, expected_children=processes)
+
+        if kwargs.get("block") is False:
+            self.wait_for_idle()
 
     def start_deps(self, flush=True):
 
@@ -198,6 +209,8 @@ class WorkerFixture(ProcessFixture):
         if not block:
             return job_ids
 
+        self.wait_for_idle()
+
         results = []
 
         for job_id in job_ids:
@@ -216,14 +229,7 @@ class WorkerFixture(ProcessFixture):
         queue_raw_jobs(queue, params_list)
 
         if block:
-            # Wait for the queue to be empty. Might be error-prone when tasks
-            # are in-memory between the 2
-            q = Queue(queue)
-            while q.size() > 0 or self.mongodb_jobs.mrq_jobs.find({"status": "started"}).count() > 0:
-                # print "S", q.size(),
-                # self.mongodb_jobs.mrq_jobs.find({"status":
-                # "started"}).count()
-                time.sleep(0.1)
+            self.wait_for_idle()
 
     def send_tasks(self, path, params_list, block=True, queue=None, accept_statuses=["success"], start=True):
         if not self.started and start:
@@ -238,7 +244,7 @@ class WorkerFixture(ProcessFixture):
 
     def send_task_cli(self, path, params, queue=None, **kwargs):
 
-        cli = ["python", "mrq/bin/mrq_run.py", "--quiet"]
+        cli = [PYTHON_BIN, "mrq/bin/mrq_run.py", "--quiet"]
         if queue:
             cli += ["--queue", queue]
         cli += [path, json.dumps(params)]
@@ -249,20 +255,40 @@ class WorkerFixture(ProcessFixture):
         return out
 
     def get_report(self, with_memory=False):
-        wait_for_net_service("127.0.0.1", 20020, poll_interval=0.01)
-        f = urllib.request.urlopen("http://127.0.0.1:20020/report%s" % ("_mem" if with_memory else ""))
+        wait_for_net_service("127.0.0.1", self.admin_port, poll_interval=0.01)
+        f = urllib.request.urlopen("http://127.0.0.1:%s/report%s" % (self.admin_port, "_mem" if with_memory else ""))
         data = json.loads(f.read().decode('utf-8'))
         f.close()
         return data
+
+    def wait_for_idle(self, timeout=None):
+
+        if "--processes" in self.cmdline:
+            print("Warning: wait_for_idle() doesn't support multiprocess workers yet")
+            return False
+
+        if self.agent:
+            print("Warning: wait_for_idle() doesn't support agent yet")
+            return False
+
+        if self.process.returncode is not None:
+            return True
+
+        try:
+            wait_for_net_service("127.0.0.1", self.admin_port, poll_interval=0.01, timeout=timeout)
+            f = urllib.request.urlopen("http://127.0.0.1:%s/wait_for_idle" % self.admin_port)
+            data = f.read().decode('utf-8')
+            assert data == "idle"
+            return True
+        except Exception as e:
+            print("Couldn't wait_for_idle: %s" % e)
+            return False
 
 
 class RedisFixture(ProcessFixture):
 
     def flush(self):
         connections.redis.flushall()
-
-        # Empty local known_queues cache too
-        Queue.known_queues = {}
 
 
 class MongoFixture(ProcessFixture):
@@ -274,6 +300,7 @@ class MongoFixture(ProcessFixture):
                     if not c.startswith("system."):
                         mongodb.drop_collection(c)
 
+
 class ApiFixture(ProcessFixture):
 
     def __init__(self, *args, **kwargs):
@@ -283,7 +310,7 @@ class ApiFixture(ProcessFixture):
         self.wait_port = 5555
         self.host = "127.0.0.1"
         self.url = "http://%s:%s" % (self.host, self.wait_port)
-        self.cmdline = "python mrq/dashboard/app.py"
+        self.cmdline = "%s mrq/dashboard/app.py" % PYTHON_BIN
 
     def start(self, *args, **kwargs):
 
@@ -370,14 +397,18 @@ def redis(request):
 
 @pytest.fixture(scope="function")
 def worker(request, mongodb, redis):
+    return WorkerFixture(request, mongodb=mongodb, redis=redis, admin_port=20020)
 
-    return WorkerFixture(request, mongodb=mongodb, redis=redis)
+
+@pytest.fixture(scope="function")
+def worker2(request, mongodb, redis):
+    return WorkerFixture(request, mongodb=mongodb, redis=redis, admin_port=20021)
 
 
 @pytest.fixture(scope="function")
 def worker_mongodb_with_journal(request, mongodb_with_journal, redis):
 
-    return WorkerFixture(request, mongodb=mongodb_with_journal, redis=redis)
+    return WorkerFixture(request, mongodb=mongodb_with_journal, redis=redis, admin_port=20022)
 
 
 @pytest.fixture(scope="function")

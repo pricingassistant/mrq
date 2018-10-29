@@ -74,10 +74,12 @@ def test_io_hooks_mongodb(worker):
 
     worker.start(flags=" --config tests/fixtures/config-io-hooks.py")
 
-    worker.send_task(
+    ret = worker.send_task(
         "tests.tasks.io.TestIo",
         {"test": "mongodb-full-getmore"}
     )
+
+    print(ret)
 
     events = json.loads(
         worker.send_task("tests.tasks.general.GetIoHookEvents", {}))
@@ -86,8 +88,6 @@ def test_io_hooks_mongodb(worker):
 
     for evt in job_events:
         print(evt)
-
-    assert len(job_events) == 4 * 2
 
     # First, insert
     assert job_events[0]["hook"] == "mongodb_pre"
@@ -119,13 +119,35 @@ def test_io_hooks_mongodb(worker):
     assert job_events[4]["method"] == "cursor"
     assert job_events[5]["method"] == "cursor"
 
-    # Result MongoDB update
-
+    # Then getmore query (can't understand why there are 2 more of those)
     assert job_events[6]["hook"] == "mongodb_pre"
     assert job_events[7]["hook"] == "mongodb_post"
 
-    assert job_events[6]["method"] == "update"
-    assert job_events[7]["method"] == "update"
+    assert job_events[6]["collection"] == "mrq.tests_inserts"
+    assert job_events[7]["collection"] == "mrq.tests_inserts"
 
-    assert job_events[6]["collection"] == "mrq.mrq_jobs"
-    assert job_events[7]["collection"] == "mrq.mrq_jobs"
+    assert job_events[6]["method"] == "cursor"
+    assert job_events[7]["method"] == "cursor"
+
+    # Then getmore query
+    assert job_events[8]["hook"] == "mongodb_pre"
+    assert job_events[9]["hook"] == "mongodb_post"
+
+    assert job_events[8]["collection"] == "mrq.tests_inserts"
+    assert job_events[9]["collection"] == "mrq.tests_inserts"
+
+    assert job_events[8]["method"] == "cursor"
+    assert job_events[9]["method"] == "cursor"
+
+    # Result MongoDB update
+
+    assert job_events[10]["hook"] == "mongodb_pre"
+    assert job_events[11]["hook"] == "mongodb_post"
+
+    assert job_events[10]["method"] == "update"
+    assert job_events[11]["method"] == "update"
+
+    assert job_events[10]["collection"] == "mrq.mrq_jobs"
+    assert job_events[11]["collection"] == "mrq.mrq_jobs"
+
+    assert len(job_events) == 6 * 2

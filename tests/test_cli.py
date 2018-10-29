@@ -27,5 +27,3 @@ def test_cli_run_nonblocking(worker):
 
     assert job1.data["status"] == "success"
     assert job1.data["result"] == 42
-
-    worker.stop()

@@ -1,10 +1,11 @@
 from __future__ import print_function
 from future.utils import itervalues
-from builtins import str
+from future.builtins import str
 from mrq.task import Task
 from mrq.queue import Queue
 from bson import ObjectId
-from mrq.context import connections, get_current_config
+from mrq.context import connections, get_current_config, get_current_job
+from mrq.job import set_queues_size
 from collections import defaultdict
 from mrq.utils import group_iter
 import datetime
@@ -33,6 +34,8 @@ class JobAction(Task):
 
     def build_query(self):
         query = {}
+        current_job = get_current_job()
+
         if self.params.get("id"):
             query["_id"] = ObjectId(self.params.get("id"))
 
@@ -49,12 +52,17 @@ class JobAction(Task):
                     query[k] = {"$in": list(self.params[k])}
                 else:
                     query[k] = self.params[k]
+            if query.get("worker"):
+                query["worker"] = ObjectId(query["worker"])
 
         if self.params.get("params"):
             params_dict = json.loads(self.params.get("params"))  # pylint: disable=no-member
 
             for key in params_dict:
                 query["params.%s" % key] = params_dict[key]
+
+        if current_job and "_id" not in query:
+            query["_id"] = {"$lte": current_job.id}
 
         return query
 
@@ -84,12 +92,23 @@ class JobAction(Task):
                 result_ttl = max([default_job_timeout] + tasks_ttls)
 
             now = datetime.datetime.utcnow()
+
+            size_by_queues = defaultdict(int)
+            if "queue" not in query:
+                for job in self.collection.find(query, projection={"queue": 1}):
+                    size_by_queues[job["queue"]] += 1
+
             ret = self.collection.update(query, {"$set": {
                 "status": "cancel",
                 "dateexpires": now + datetime.timedelta(seconds=result_ttl),
                 "dateupdated": now
             }}, multi=True)
             stats["cancelled"] = ret["n"]
+
+            if "queue" in query:
+                if isinstance(query["queue"], str):
+                    size_by_queues[query["queue"]] = ret["n"]
+            set_queues_size(size_by_queues, action="decr")
 
             # Special case when emptying just by queue name: empty it directly!
             # In this case we could also loose some jobs that were queued after
@@ -117,9 +136,9 @@ class JobAction(Task):
                     stats["requeued"] += 1
 
                 for queue in jobs_by_queue:
-
                     updates = {
                         "status": "queued",
+                        "datequeued": datetime.datetime.utcnow(),
                         "dateupdated": datetime.datetime.utcnow()
                     }
 
@@ -133,11 +152,6 @@ class JobAction(Task):
                         "_id": {"$in": jobs_by_queue[queue]}
                     }, {"$set": updates}, multi=True)
 
-                    # Between these two lines, jobs can become "lost" too.
-
-                    Queue(destination_queue or queue, add_to_known_queues=True).enqueue_job_ids(
-                        [str(x) for x in jobs_by_queue[queue]])
-
-        print(stats)
+                set_queues_size({queue: len(jobs) for queue, jobs in jobs_by_queue.iteritems()})
 
         return stats

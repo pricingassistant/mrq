@@ -23,7 +23,7 @@ def test_abort(worker):
 
 def test_abort_traceback_history(worker):
 
-    worker.start(flags="--config tests/fixtures/config-tracebackhistory.py")
+    worker.start()
 
     worker.send_task("tests.tasks.general.Abort", {"a": 41}, block=True, accept_statuses=["abort"])
 

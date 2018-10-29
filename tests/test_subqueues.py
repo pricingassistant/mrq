@@ -17,8 +17,9 @@ def test_matchable_subqueues(worker, queues, enqueue_on):
         job_id = worker.send_task("tests.tasks.general.GetTime", {}, queue=subqueue, block=False)
         job_ids.append(job_id)
 
-    assert all([Job(j).wait(poll_interval=0.01, timeout=3) for j in job_ids])
-    worker.stop()
+    for i, job_id in enumerate(job_ids):
+        print("Checking queue %s" % enqueue_on[i])
+        assert Job(job_id).wait(poll_interval=0.01, timeout=5)
 
 
 @pytest.mark.parametrize(["queue", "enqueue_on"], [
@@ -40,20 +41,6 @@ def test_unmatchable_subqueues(worker, queue, enqueue_on):
     # ensure tasks are not consumed by a worker
     assert results == ["queued"] * len(results)
 
-    worker.stop()
-
-
-@pytest.mark.parametrize(["delimiter"], ["/", ".", "-"])
-def test_custom_delimiters(worker, delimiter):
-
-    queue = "main" + delimiter
-    subqueue = queue + "subqueue"
-
-    worker.start(queues=queue, flags="--subqueues_refresh_interval=0.1 --subqueues_delimiter=%s" % delimiter)
-    job_id = worker.send_task("tests.tasks.general.GetTime", {}, queue=subqueue, block=False)
-    Job(job_id).wait(poll_interval=0.01)
-    worker.stop()
-
 
 def test_refresh_interval(worker):
 
@@ -72,5 +59,3 @@ def test_refresh_interval(worker):
     job1 = Job(job_id1).fetch().data
 
     assert job1["status"] == "queued"
-
-    worker.stop()

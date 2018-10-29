@@ -1,11 +1,12 @@
 pytest==2.9.1
-pylint==1.5.2
-pytest-cov==1.8.1
+pylint==1.7.1
+pytest-cov==2.4.0
 pytest-instafail==0.3.0
-pytest-html==1.8.0
+pytest-html==1.14.2
 pytest-httpbin==0.2.0
+pytest-timeout==1.2.0
 
-subprocess32==3.2.5; python_version < '3.2'
+subprocess32>=3.2.7; python_version < '3.2'
 # git+https://github.com/srlindsay/gevent-profiler@master#egg=gevent-profiler==0.2
 
 # Used to test IO tracing

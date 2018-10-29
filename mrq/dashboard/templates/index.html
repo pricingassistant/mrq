@@ -4,11 +4,7 @@
     <meta charset="utf-8">
     <title>MRQ Dashboard</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="/static/css/jquery.circliful.css" media="screen">
-    <link rel="stylesheet" href="/static/css/bootstrap-theme.min.css" media="screen">
-    <link rel="stylesheet" href="/static/css/datatables.css" media="screen">
-    <link rel="stylesheet" href="/static/css/mrq-dashboard.css" media="screen">
-    <link rel="icon" href="/static/images/favicon.ico" type="image/x-icon" />
+    <link rel="icon" href="static/images/favicon.ico" type="image/x-icon" />
 
     <script>
       window.MRQ_CONFIG = {{ MRQ_CONFIG|safe }};
@@ -19,7 +15,7 @@
     <div class="navbar navbar-default navbar-top">
       <div class="container">
         <div class="navbar-header">
-          <a href="/#" class="navbar-brand">MRQ Dashboard</a>
+          <a href="#" class="navbar-brand">MRQ Dashboard</a>
           <button class="navbar-toggle" type="button" data-toggle="collapse" data-target="#navbar-main">
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
@@ -30,28 +26,34 @@
           <ul class="nav navbar-nav">
 
             <li class="js-nav-status">
-              <a href="/#status">Statuses</a>
+              <a href="#status">Statuses</a>
             </li>
             <li class="js-nav-queues">
-              <a href="/#queues">Queues</a>
+              <a href="#queues">Queues</a>
             </li>
             <li class="js-nav-workers">
-              <a href="/#workers">Workers</a>
+              <a href="#workers">Workers</a>
+            </li>
+            <li class="js-nav-workergroups">
+              <a href="#workergroups">Worker groups</a>
+            </li>
+              <li class="js-nav-agents">
+              <a href="#agents">Agents</a>
             </li>
             <li class="js-nav-taskpaths">
-              <a href="/#taskpaths">Paths</a>
+              <a href="#taskpaths">Paths</a>
             </li>
             <li class="js-nav-taskexceptions">
-              <a href="/#taskexceptions">Exceptions</a>
+              <a href="#taskexceptions">Exceptions</a>
             </li>
             <li class="js-nav-jobs">
-              <a href="/#jobs">Jobs</a>
+              <a href="#jobs">Jobs</a>
             </li>
             <li class="js-nav-scheduledjobs">
-              <a href="/#scheduledjobs">Scheduled Jobs</a>
+              <a href="#scheduledjobs">Scheduled Jobs</a>
             </li>
             <li class="js-nav-scheduledjobs">
-              <a href="/#io">I/O</a>
+              <a href="#io">I/O</a>
             </li>
 
             <!--
@@ -72,13 +74,13 @@
             <li><a>Autorefresh <select class="js-autorefresh">
               <option value="1">1s</option>
               <option value="3">3s</option>
-              <option selected="selected" value="5">5s</option>
+              <option value="5">5s</option>
               <option value="10">10s</option>
               <option value="20">20s</option>
               <option value="60">1m</option>
               <option value="300">5m</option>
               <option value="600">10m</option>
-              <option value="-1">Disabled</option>
+              <option selected="selected" value="-1">Disabled</option>
             </select></a>
             </li>
 
@@ -114,6 +116,8 @@
         <div class="js-page-taskpaths"></div>
         <div class="js-page-taskexceptions"></div>
         <div class="js-page-io"></div>
+        <div class="js-page-workergroups"></div>
+        <div class="js-page-agents"></div>
 
 
       </script>
@@ -190,16 +194,48 @@
           <form class="form-inline js-datatable-filters pull-left" role="form">
             <br/>
             Filter by: &nbsp;
-
             <div class="form-group">
-              <div class="checkbox">
-                <label>
-                  <input type="checkbox" class="js-datatable-filters-showstopped" <%= filters.showstopped?'checked="checked"':'' %>> Show stopped
-                </label>
-              </div>
+              <label class="sr-only" for="jobs-form-id">ID</label>
+              <input type="text" class="form-control input-sm js-workers-datatable-filters-id" id="jobs-form-id" placeholder="Worker ID" value="<%- filters.id %>">
             </div>
+            <div class="form-group">
+              <label class="sr-only" for="jobs-form-queue">IP</label>
+              <input type="text" class="form-control input-sm js-workers-datatable-filters-ip" id="jobs-form-ip" placeholder="Worker IP" value="<%- filters.ip %>">
+            </div>
+            <div class="form-group">
+              <label class="sr-only" for="jobs-form-queue">IP</label>
+              <input type="text" class="form-control input-sm js-workers-datatable-filters-queue" id="jobs-form-queue" placeholder="Queue" value="<%- filters.queue %>">
+            </div>
+            <div class="form-group">
+              <select class="form-control input-sm js-workers-datatable-filters-status" id="jobs-form-status">
+                <option <%= filters.status==""?"selected='selected'":"" %> value="">-statuses-</option>
+                <% _.each({
+                    "spawn": "spawn",
+                    "started": "started",
+                    "wait": "wait",
+                    "full": "full",
+                    "join": "join",
+                    "stop": "stop",
+                    "killing": "killing",
+                    "kill": "kill",
+                    "spawn-started-wait-full-join": "{RUNNING}",
+                    "stop-killing-kill": "{NOT_RUNNING}"
+                  }, function(k, i) { %>
+                  <option <%= filters.status==i?"selected='selected'":"" %> value="<%= i %>"><%= k %></option>
+                <% }) %>
+              </select>
+            </div>
+            <!--
+            <div class="checkbox">
+              <label>
+                <input type="checkbox"> Remember me
+              </label>
+            </div
+            -->
+            <button type="submit" class="btn btn-default js-datatable-filters-submit input-sm" style="padding:5px">OK</button>
 
           </form>
+
         </div>
 
         <div class="container">
@@ -239,6 +275,42 @@
       <script id="tpl-page-io" type="text/template">
 
         <h3>Current I/O operations</h3>
+
+        <div class="container">
+          <table cellpadding="0" cellspacing="0" border="0" class="datatable table table-striped table-bordered js-datatable">
+          </table>
+        </div>
+      </script>
+
+      <script id="tpl-page-workergroups" type="text/template">
+
+        <h3>Worker groups</h3>
+        <div class="container">
+          <div class="row">
+            <textarea style="width:100%;height:400px;font-family:monospace;" onkeydown="if(event.keyCode===9){var v=this.value,s=this.selectionStart,e=this.selectionEnd;this.value=v.substring(0, s)+'\t'+v.substring(e);this.selectionStart=this.selectionEnd=s+1;return false;}"></textarea>
+            <button class="submit">Save</button>
+          </div>
+        </div>
+      </script>
+
+      <script id="tpl-page-agents" type="text/template">
+
+        <div class="container" style="margin-bottom:5px;">
+
+          <form class="form-inline js-datatable-filters pull-left" role="form">
+            <br/>
+            Filter by: &nbsp;
+
+            <div class="form-group">
+              <div class="checkbox">
+                <label>
+                  <input type="checkbox" class="js-datatable-filters-showstopped" <%= filters.showstopped?'checked="checked"':'' %>> Show stopped
+                </label>
+              </div>
+            </div>
+
+          </form>
+        </div>
 
         <div class="container">
           <table cellpadding="0" cellspacing="0" border="0" class="datatable table table-striped table-bordered js-datatable">
@@ -325,13 +397,16 @@
                     "failed": "failed",
                     "retry": "retry",
                     "maxretries": "maxretries",
+                    "maxconcurrency": "maxconcurrency",
                     "timeout": "timeout",
                     "interrupt": "interrupt",
                     "cancel": "cancel",
                     "abort": "abort",
                     "queued-started-success": "{OK}",
-                    "failed-retry-maxretries-timeout-interrupt-cancel-abort": "{NOT OK}",
-                    "failed-maxretries-timeout-abort": "{ERROR}"
+                    "failed-retry-maxretries-maxconcurrency-timeout-interrupt-cancel-abort": "{NOT OK}",
+                    "failed-maxretries-maxconcurrency-timeout": "{ERROR}",
+                    "failed-retry-maxretries-maxconcurrency-interrupt-timeout": "{ERROR+RETRY}",
+
                   }, function(k, i) { %>
                   <option <%= filters.status==i?"selected='selected'":"" %> value="<%= i %>"><%= k %></option>
                 <% }) %>
@@ -379,9 +454,7 @@
     </div>
 
 
-    <!-- build:js scripts/amd-app.js -->
-    <script data-main="/static/js/config" src="/static/js/vendor/require.js"></script>
-    <!-- endbuild -->
+    <script src="static/bin/bundle.js"></script>
 
 
   </body>

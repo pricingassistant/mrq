@@ -108,5 +108,3 @@ This was a preview on the very basic features of MRQ. What makes it actually use
 * You can run multiple workers in parallel. Each worker can also run multiple greenlets in parallel.
 * Workers can dequeue from multiple queues
 * You can queue jobs from your Python code to avoid using `mrq-run` from the command-line.
-
-These features will be demonstrated in a future example of a simple web crawler.

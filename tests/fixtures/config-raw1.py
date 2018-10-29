@@ -26,6 +26,7 @@ RAW_QUEUES = {
         }
     },
     "test_raw": {
+        "has_subqueues": True,
         "job_factory": lambda rawparam: {
             "path": "tests.tasks.general.MongoInsert",
             "params": {
@@ -34,6 +35,7 @@ RAW_QUEUES = {
         }
     },
     "test_set": {
+        "has_subqueues": True,
         "job_factory": lambda rawparam: {
             "path": "tests.tasks.general.MongoInsert",
             "params": {
@@ -105,6 +107,27 @@ RAW_QUEUES = {
                 "a": int(rawparam),
                 "b": 0,
                 "sleep": 0
+            }
+        }
+    },
+    "testperformance_efficiency_raw": {
+        "job_factory": lambda rawparam: {
+            "path": "tests.tasks.general.Add",
+            "params": {
+                "a": 1,
+                "b": 2,
+                "sleep": float(rawparam)
+            }
+        }
+    },
+    "testperformance_efficiency_nostorage_raw": {
+        "statuses_no_storage": ("started", "success"),
+        "job_factory": lambda rawparam: {
+            "path": "tests.tasks.general.Add",
+            "params": {
+                "a": 1,
+                "b": 2,
+                "sleep": float(rawparam)
             }
         }
     },

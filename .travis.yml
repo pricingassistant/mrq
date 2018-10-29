@@ -6,6 +6,7 @@ services:
 env:
   - PYTHON_BIN=python
   - PYTHON_BIN=python3
+  - PYTHON_BIN=/pypy/bin/pypy
 
 before_install:
   - docker ps
@@ -15,5 +16,6 @@ before_install:
 
 # TODO: coveralls?
 script:
-  - docker run -i -t -v `pwd`:/app:rw -w /app mrq_local $PYTHON_BIN -m pylint --errors-only --init-hook="import sys; sys.path.append('.')" -d E1103 --rcfile .pylintrc mrq
-  - docker run -i -t -v `pwd`:/app:rw -w /app mrq_local $PYTHON_BIN -m pytest tests/ -v --junitxml=pytest-report.xml --cov mrq --cov-report term
+  - docker run -i -t -v `pwd`:/app:rw -w /app pricingassistant/mrq $PYTHON_BIN -m pylint --errors-only --init-hook="import sys; sys.path.append('.')" -d E1103 --rcfile .pylintrc mrq
+#  - docker run -i -t -v `pwd`:/app:rw -w /app mrq_local $PYTHON_BIN -m pytest tests/ --collect-only
+  - docker run -i -t -v `pwd`:/app:rw -w /app pricingassistant/mrq $PYTHON_BIN -m pytest tests/ -v --junitxml=pytest-report.xml --cov mrq --cov-report term --timeout-method=thread --timeout=240

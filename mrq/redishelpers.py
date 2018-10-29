@@ -1,6 +1,20 @@
-from builtins import range
+from future.builtins import range
 from .utils import memoize
 from . import context
+
+
+def redis_key(name, *args):
+  prefix = context.get_current_config()["redis_prefix"]
+  if name == "known_subqueues":
+    return "%s:ksq:%s" % (prefix, args[0].root_id)
+  elif name == "queue":
+     return "%s:q:%s" % (prefix, args[0].id)
+  elif name == "started_jobs":
+    return "%s:s:started" % prefix
+  elif name == "paused_queues":
+    return "%s:s:paused" % prefix
+  elif name == "notify":
+     return "%s:notify:%s" % (prefix, args[0].root_id)
 
 
 @memoize

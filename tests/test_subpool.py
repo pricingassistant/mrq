@@ -49,12 +49,21 @@ def test_subpool_simple(worker, use_worker):
         assert total_time < 2
 
 
-def test_subpool_exception(worker):
+@pytest.mark.parametrize(["p_imap"], [
+    [True],
+    [False]
+])
+def test_subpool_exception(worker, p_imap):
 
-    # Exception
+    # An exception in the subpool is raised outside the pool
     worker.send_task("tests.tasks.general.SubPool", {
-        "pool_size": 20, "inner_params": ["exception"]
+        "pool_size": 20, "inner_params": ["exception"], "imap": p_imap
     }, accept_statuses=["failed"])
+
+    job = worker.mongodb_jobs.mrq_jobs.find_one()
+    assert job
+    assert job["status"] == "failed"
+    assert "__INNER_EXCEPTION_LINE__" in job["traceback"]
 
 
 @pytest.mark.parametrize(["p_size"], [
