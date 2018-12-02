@@ -139,6 +139,36 @@ $ mrq-worker fetches
 
 You can interrupt the worker with Ctrl-C once it is finished.
 
+### Run it via the built-in scheduler
+
+Create a `schedule.py` file with the following code:
+
+```
+SCHEDULER_TASKS = [
+    {
+        "path": "fetches tasks.Fetch",
+        "params": {
+            "url": "http://www.google.com"
+        },
+        "queue": "fetch_queue",
+        "interval": 5 # Run every 5 seconds
+    }
+]
+
+SCHEDULER_INTERVAL = 0.1
+```
+Run the schedule using:
+
+```
+mrq-run --scheduler --config schedule.py
+```
+
+Also start a queue to process the jobs scheduled by the scheduler:
+
+```
+mrq-worker fetch_queue
+```
+
 ## Going further
 
 This was a preview on the very basic features of MRQ. What makes it actually useful is that:
