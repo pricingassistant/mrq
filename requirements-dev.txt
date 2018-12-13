@@ -10,7 +10,7 @@ subprocess32>=3.2.7; python_version < '3.2'
 # git+https://github.com/srlindsay/gevent-profiler@master#egg=gevent-profiler==0.2
 
 # Used to test IO tracing
-requests==2.9.1
+requests>=2.20.0
 
 mkdocs==0.15.3
 mistune==0.7.3
