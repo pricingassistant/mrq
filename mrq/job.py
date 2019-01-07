@@ -368,6 +368,27 @@ class Job(object):
             time.sleep(poll_interval)
         raise Exception("Waited for job result for %s seconds, timeout." % timeout)
 
+    def kill(self, block=False, reason="unknown"):
+        """ Forcefully kill all greenlets associated with this job """
+
+        current_greenletid = id(gevent.getcurrent())
+
+        trace = "Job killed: %s" % reason
+        for greenlet, job in context._GLOBAL_CONTEXT["greenlets"].values():
+            greenletid = id(greenlet)
+            if job and job.id == self.id and greenletid != current_greenletid:
+                greenlet.kill(block=block)
+                trace += "\n\n--- Greenlet %s ---\n" % greenletid
+                trace += "".join(traceback.format_stack(greenlet.gr_frame))
+            context._GLOBAL_CONTEXT["greenlets"].pop(greenletid, None)
+
+        if reason == "timeout" and self.data["status"] != "timeout":
+            updates = {
+                "exceptiontype": "TimeoutInterrupt",
+                "traceback": trace
+            }
+            self._save_status("timeout", updates=updates, exception=False)
+
     def save_retry(self, retry_exc):
 
         # If delay=0, requeue right away, don't go through the "retry" status

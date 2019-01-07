@@ -366,13 +366,7 @@ class Worker(Process):
                 if job and job.timeout and job.datestarted:
                     expires = job.datestarted + datetime.timedelta(seconds=job.timeout)
                     if now > expires:
-                        greenlet.kill(block=False)
-                        if job.data["status"] != "timeout":
-                            updates = {
-                                "exceptiontype": "TimeoutInterrupt",
-                                "traceback": "".join(traceback.format_stack(greenlet.gr_frame))
-                            }
-                            job._save_status("timeout", updates=updates, exception=False)
+                        job.kill(block=False, reason="timeout")
 
             time.sleep(1)
 
