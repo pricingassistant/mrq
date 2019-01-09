@@ -1,5 +1,5 @@
 argparse>=1.1
-redis==2.10.5
+redis==2.10.6
 pymongo>=3.0.1
 gevent>=1.2.2
 ujson>=1.33
