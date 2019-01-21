@@ -33,6 +33,8 @@ class EnsureIndexes(Task):
             [("datequeued", 1)], background=True)
         connections.mongodb_jobs.mrq_jobs.ensure_index(
             [("queue", 1), ("status", 1), ("datequeued", 1), ("_id", 1)], background=True)
+        connections.mongodb_jobs.mrq_jobs.ensure_index(
+            [("status", 1), ("queue", 1), ("path", 1)], background=True)
 
         connections.mongodb_jobs.mrq_scheduled_jobs.ensure_index(
             [("hash", 1)], unique=True, background=False)
