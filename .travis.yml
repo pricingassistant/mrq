@@ -1,21 +1,24 @@
 sudo: required
-
 services:
-  - docker
-
+- docker
 env:
-  - PYTHON_BIN=python
-  - PYTHON_BIN=python3
-  - PYTHON_BIN=/pypy/bin/pypy
-
+- PYTHON_BIN=python
+- PYTHON_BIN=python3
+- PYTHON_BIN=/pypy/bin/pypy
 before_install:
-  - docker ps
-  - docker info
-  - docker version
-  - make docker
-
-# TODO: coveralls?
+- docker ps
+- docker info
+- docker version
+- make docker
 script:
-  - docker run -i -t -v `pwd`:/app:rw -w /app pricingassistant/mrq $PYTHON_BIN -m pylint --errors-only --init-hook="import sys; sys.path.append('.')" -d E1103 --rcfile .pylintrc mrq
-#  - docker run -i -t -v `pwd`:/app:rw -w /app mrq_local $PYTHON_BIN -m pytest tests/ --collect-only
-  - docker run -i -t -v `pwd`:/app:rw -w /app pricingassistant/mrq $PYTHON_BIN -m pytest tests/ -v --junitxml=pytest-report.xml --cov mrq --cov-report term --timeout-method=thread --timeout=240
+- docker run -i -t -v `pwd`:/app:rw -w /app pricingassistant/mrq $PYTHON_BIN -m pylint
+  --errors-only --init-hook="import sys; sys.path.append('.')" -d E1103 --rcfile .pylintrc
+  mrq
+- docker run -i -t -v `pwd`:/app:rw -w /app pricingassistant/mrq $PYTHON_BIN -m pytest
+  tests/ -v --junitxml=pytest-report.xml --cov mrq --cov-report term --timeout-method=thread
+  --timeout=240
+notifications:
+  slack:
+    secure: gWywakbRDFB/fPCHO9gB8mpDuBn8tSQcza+JwJ4rFnr2icuGvmLIhu608g/W18XxqCz+MMhBeHizT7XTiNOW3+YSH/z3Wk4ARkN/BlL15sSrb5TUjb+4gOV9zPfuIs7Jh0xArxNnVjKdZ+dM/MBqYwa1oud53un2eF3Vnaipc6v34WWfFfkmOYecG5rFZSFYJlK/mYtujvzcGXavdFqEJb2jLg1JPKB69271QZ2VvrdxZd4Yt8LNbXri3NITZp2eabCNg5mSeIOxhPJnZcDfZh8IMJX0CssYt0Pdnm5+0ef1RMYQAEE+VnIJHaDlFiPdsKPuSk9JlhyzglxL8aGSyUECmp9N0B+xnrHblDsgYkCURyELciTUE+iCqgn7sIjweK6jqZySgyoAB3aXEvMTYhRreo5TmVwNgGpkikaipPuRPDVBMYzCjAc3rTYCz3AMlTt8kHlkR18TyocClyJAKvuuxyicvHBr+uNkNZvci5394lBGEyNrONvQ+xJCYikBOzCV0pk754oA13o1riLFTfFEJeHIBle9yUWya3AERWHOq/Fve3SzlYvE5Xhb2lPdW7y3/mRlhWOEqH9PDzB9n5hNyzNRU0uz2xOB6wRbMmJ/aDF8fAYcfqUS0/0hgeSyduRENRLXuvNj3X/UnATJgzmtDJZ49YQAGdXu2tMb2rg=
+    on_success: change
+    on_failure: always
