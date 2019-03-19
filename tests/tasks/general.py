@@ -323,3 +323,14 @@ class Uninterruptable(Task):
                 time.sleep(1)
             except:
                 pass
+
+
+class ListJobsByGreenlets(Task):
+
+    def run(self, params):
+        from mrq.context import _GLOBAL_CONTEXT
+
+        return {
+            "current_job_id": str(get_current_job().id),
+            "job_ids": [str(job[1].id) for job in _GLOBAL_CONTEXT["greenlets"].values()]
+        }

@@ -117,7 +117,7 @@ def test_performance_simpleadds_regular(worker, p_processes):
     n_tasks = 10000
     n_greenlets = 30
     n_processes = p_processes
-    max_seconds = 35
+    max_seconds = 36
 
     result, total_time = benchmark_task(worker,
                                         "tests.tasks.general.Add",

@@ -136,8 +136,20 @@ def get_workergroups():
 @requires_auth
 def post_workergroups():
     workergroups = json.loads(request.form["workergroups"])
+    collection = connections.mongodb_jobs.mrq_workergroups
+    current = [
+      str(row.pop("_id"))
+      for row in collection.find(sort=[("_id", 1)], projection=["_id"])
+    ]
+
+    # delete groups that are not present any more
+    for k in current:
+        if k not in workergroups:
+            collection.remove({"_id": k})
+
+    # upsert groups
     for k, v in workergroups.iteritems():
-        connections.mongodb_jobs.mrq_workergroups.update_one({"_id": k}, {"$set": v}, upsert=True)
+        collection.update_one({"_id": k}, {"$set": v}, upsert=True)
 
     return jsonify({"status": "ok"})
 
