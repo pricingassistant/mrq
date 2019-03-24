@@ -347,6 +347,9 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
                 if (source.time) {
                   display.push("cputime "+String(source.time).substring(0,6)+"s ("+source.switches+" switches)");
                 }
+                if (source.status === 'retry' || source.status === 'delayed') {
+                  display.push("requeue "+moment.utc(source.dateretry).fromNow());
+                }
 
                 return "<small>" + display.join("<br/>") + "</small>";
 
