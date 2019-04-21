@@ -57,7 +57,7 @@ QUEUES = ("default",) # The queues to listen on.Defaults to default , which will
 MAX_JOBS = 0 #Gevent:max number of jobs to do before quitting. Workaround for memory leaks in your tasks. Defaults to 0
 MAX_TIME = 0 # max number of seconds a worker runs before quitting
 MAX_MEMORY = 1 #Max memory (in Mb) after which the process will be shut down. Use with PROCESS = [1-N] to have the worker automatically respawned when this happens.Defaults to 1
-GRENLETS = 1 #Max number of greenlets to use.Defaults to 1.
+GREENLETS = 1 #Max number of greenlets to use.Defaults to 1.
 PROCESSES = 0 #Number of processes to launch.Defaults to 0.
 SCHEDULER = False #Run the scheduler.Defaults to False.
 SCHEDULER_INTERVAL = 60 #Seconds between scheduler checks.Defaults to 60 seconds, only ints are acceptable.
