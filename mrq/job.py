@@ -21,6 +21,7 @@ import fnmatch
 import encodings
 import copyreg
 from . import context
+from pymongo import DESCENDING
 
 
 FINAL_STATUSES = {"timeout", "abort", "failed", "success", "interrupt", "retry", "maxretries", "maxconcurrency", "delayed"}
@@ -653,12 +654,15 @@ class Job(object):
             w=1
         )
 
+def get_latest_job_with_status(status, path):
+        jobs = context.connections.mongodb_jobs.mrq_jobs
+        task = jobs.find_one({'path': path, 'status': status}, sort=[('datequeued', DESCENDING)])
+        return task
 
 def get_job_result(job_id):
     job = Job(job_id)
     job.fetch(full_data={"result": 1, "status": 1, "_id": 0})
     return job.data
-
 
 def queue_raw_jobs(queue, params_list, **kwargs):
     """ Queue some jobs on a raw queue """

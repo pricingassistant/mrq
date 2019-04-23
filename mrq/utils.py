@@ -11,17 +11,9 @@ from collections import deque
 from bson import ObjectId
 import uuid
 import shlex
-from pymongo import DESCENDING
-from . import context
 #
 # Utils are functions that should be independent from the rest of MRQ's codebase
 #
-
-
-def get_latest_mrq_job_with_status(status, path):
-        jobs = context.connections.mongodb_jobs.mrq_jobs
-        task = jobs.find_one({'path': path, 'status': status}, sort=[('datequeued', DESCENDING)])
-        return task
 
 
 def normalize_command(command, worker_group):
