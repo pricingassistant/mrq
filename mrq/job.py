@@ -654,9 +654,9 @@ class Job(object):
             w=1
         )
 
-def get_latest_job_with_status(status, path):
+def get_latest_job_with_query(query):
         jobs = context.connections.mongodb_jobs.mrq_jobs
-        task = jobs.find_one({'path': path, 'status': status}, sort=[('datequeued', DESCENDING)])
+        task = jobs.find_one(query, sort=[('datequeued', DESCENDING)])
         return task
 
 def get_job_result(job_id):
