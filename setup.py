@@ -33,7 +33,7 @@ def get_version():
     raise RuntimeError('No version info found.')
 
 setup(
-    name="mrq",
+    name="mrq-custom",
     include_package_data=True,
     packages=['mrq', 'mrq.basetasks', 'mrq.bin', 'mrq.dashboard'],  # find_packages(exclude=['tests', 'tests.tasks']),
     version=get_version(),
