@@ -45,6 +45,7 @@ class JobAction(Task):
                 "status",
                 "worker",
                 "path",
+                "dateexpires",
                 "dateretry",
                 "exceptiontype"]:
             if self.params.get(k):
@@ -70,7 +71,8 @@ class JobAction(Task):
 
         stats = {
             "requeued": 0,
-            "cancelled": 0
+            "cancelled": 0,
+            "deleted": 0
         }
 
         if action == "cancel":
@@ -153,5 +155,8 @@ class JobAction(Task):
                     }, {"$set": updates}, multi=True)
 
                 set_queues_size({queue: len(jobs) for queue, jobs in jobs_by_queue.iteritems()})
-
+        elif action == 'delete':
+            amount_delete = self.collection.delete_many(query)
+            stats["deleted"] = amount_delete.deleted_count
         return stats
+
