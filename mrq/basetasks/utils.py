@@ -1,3 +1,4 @@
+import sys
 from __future__ import print_function
 from future.utils import itervalues
 from future.builtins import str
@@ -153,8 +154,10 @@ class JobAction(Task):
                     self.collection.update({
                         "_id": {"$in": jobs_by_queue[queue]}
                     }, {"$set": updates}, multi=True)
-
-                set_queues_size({queue: len(jobs) for queue, jobs in jobs_by_queue.iteritems()})
+                if sys.version_info.major > 2
+                    set_queues_size({queue: len(jobs) for queue, jobs in jobs_by_queue.items()})
+                else:
+                    set_queues_size({queue: len(jobs) for queue, jobs in jobs_by_queue.iteritems()})
         elif action == 'delete':
             amount_delete = self.collection.delete_many(query)
             stats["deleted"] = amount_delete.deleted_count
