@@ -1,4 +1,3 @@
-import sys
 from __future__ import print_function
 from future.utils import itervalues
 from future.builtins import str
@@ -11,6 +10,7 @@ from collections import defaultdict
 from mrq.utils import group_iter
 import datetime
 import ujson as json
+import sys
 
 
 def get_task_cfg(taskpath):
