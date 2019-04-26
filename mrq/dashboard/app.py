@@ -54,7 +54,7 @@ def root():
 @requires_auth
 def api_task_exceptions():
     stats = list(connections.mongodb_jobs.mrq_jobs.aggregate([
-        {"$match": {"status": "failed"}},
+        {"$match": {"status": ["failed","maxretries"]}},
         {"$group": {"_id": {"path": "$path", "exceptiontype": "$exceptiontype"},
                     "jobs": {"$sum": 1}}},
     ]))
