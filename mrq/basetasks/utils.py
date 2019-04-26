@@ -154,7 +154,7 @@ class JobAction(Task):
                     self.collection.update({
                         "_id": {"$in": jobs_by_queue[queue]}
                     }, {"$set": updates}, multi=True)
-                if sys.version_info.major > 2
+                if sys.version_info.major > 2:
                     set_queues_size({queue: len(jobs) for queue, jobs in jobs_by_queue.items()})
                 else:
                     set_queues_size({queue: len(jobs) for queue, jobs in jobs_by_queue.iteritems()})
