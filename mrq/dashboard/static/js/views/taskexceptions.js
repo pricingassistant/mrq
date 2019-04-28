@@ -32,7 +32,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
             "sClass": "col-exception",
             "sType":"numeric",
             "mData":function(source, type, val) {
-              return "<a href='/#jobs?path="+source._id.path+"&status=failed&exceptiontype="+source._id.exceptiontype+ "'>"+source._id.exceptiontype+"</a>"
+              return "<a href='/#jobs?path=" + source._id.path + "&status=" + source._id.status +"&exceptiontype="+source._id.exceptiontype+ "'>"+source._id.exceptiontype+"</a>"
             }
           },
           {
@@ -43,7 +43,7 @@ define(["jquery", "underscore", "views/generic/datatablepage", "models"],functio
               var cnt = source.jobs || 0;
 
               if (type == "display") {
-                return "<a href='/#jobs?path="+source._id.path+"&status=failed&exceptiontype="+source._id.exceptiontype+"'>"+cnt+"</a>"
+                return "<a href='/#jobs?path=" + source._id.path + "&status=" + source._id.status +"&exceptiontype="+source._id.exceptiontype+"'>"+cnt+"</a>"
                  + "<br/>"
                  + '<span class="inlinesparkline" values="'+self.addToCounter("taskexceptions."+source._id.path+" "+source._id.exceptiontype, cnt, 50).join(",")+'"></span>';
               } else {
