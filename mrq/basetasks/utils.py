@@ -116,7 +116,7 @@ class JobAction(Task):
             # In this case we could also loose some jobs that were queued after
             # the MongoDB update. They will be "lost" and requeued later like the other case
             # after the Redis BLPOP
-            if list(query.keys()) == ["queue"]:
+            if list(query.keys()) == ["queue"] and isinstance(query["queue"], basestring):
                 Queue(query["queue"]).empty()
 
         elif action in ("requeue", "requeue_retry"):
