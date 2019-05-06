@@ -50,6 +50,8 @@ class JobAction(Task):
             if self.params.get(k):
                 if isinstance(self.params[k], (list, tuple)):
                     query[k] = {"$in": list(self.params[k])}
+                elif k == "queue" and self.params[k][-1] == "/":
+                    query[k] = {"$regex": "^%s" % self.params[k]}
                 else:
                     query[k] = self.params[k]
             if query.get("worker"):
