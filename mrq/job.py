@@ -656,7 +656,7 @@ class Job(object):
 
 def get_latest_jobs_with_query(query):
         jobs = context.connections.mongodb_jobs.mrq_jobs
-        tasks = jobs.find(query)
+        tasks = jobs.find(query, sort=[('datequeued', DESCENDING)])
         return tasks
 
 def get_latest_job_with_query(query):
