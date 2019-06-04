@@ -46,7 +46,7 @@ You can pass additional configuration flags:
  - `--max_jobs`: Gevent:max number of jobs to do before quitting. Use as a workaround for memory leaks in your tasks. Defaults to **0**
  - `--max_memory`: Max memory (in Mb) after which the process will be shut down. Use with `--processes [1-N]`
                   to have the worker automatically respawn when this happens. Defaults to **1**
- - `--grenlets, --gevent, --g`: Max number of greenlets to use. Defaults to **1**.
+ - `--greenlets, --gevent, --g`: Max number of greenlets to use. Defaults to **1**.
  - `--processes, --p`: Number of processes to launch . Defaults to **0**.
  - `--scheduler`: Run the scheduler. Defaults to **false**.
  - `--scheduler_interval`: Seconds between scheduler checks. Defaults to **60** seconds, only ints are acceptable.
