@@ -391,6 +391,7 @@
               <select class="form-control input-sm js-datatable-filters-status" id="jobs-form-status">
                 <option <%= filters.status==""?"selected='selected'":"" %> value="">-statuses-</option>
                 <% _.each({
+                    "delayed": "delayed",
                     "queued": "queued",
                     "started": "started",
                     "success": "success",

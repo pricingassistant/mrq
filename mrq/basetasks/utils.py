@@ -10,6 +10,7 @@ from collections import defaultdict
 from mrq.utils import group_iter
 import datetime
 import ujson as json
+import sys
 
 
 def get_task_cfg(taskpath):
@@ -45,6 +46,7 @@ class JobAction(Task):
                 "status",
                 "worker",
                 "path",
+                "dateexpires",
                 "dateretry",
                 "exceptiontype"]:
             if self.params.get(k):
@@ -72,7 +74,8 @@ class JobAction(Task):
 
         stats = {
             "requeued": 0,
-            "cancelled": 0
+            "cancelled": 0,
+            "deleted": 0
         }
 
         if action == "cancel":
@@ -153,7 +156,12 @@ class JobAction(Task):
                     self.collection.update({
                         "_id": {"$in": jobs_by_queue[queue]}
                     }, {"$set": updates}, multi=True)
-
-                set_queues_size({queue: len(jobs) for queue, jobs in jobs_by_queue.iteritems()})
-
+                if sys.version_info.major > 2:
+                    set_queues_size({queue: len(jobs) for queue, jobs in jobs_by_queue.items()})
+                else:
+                    set_queues_size({queue: len(jobs) for queue, jobs in jobs_by_queue.iteritems()})
+        elif action == 'delete':
+            amount_delete = self.collection.delete_many(query)
+            stats["deleted"] = amount_delete.deleted_count
         return stats
+

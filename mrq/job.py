@@ -21,9 +21,10 @@ import fnmatch
 import encodings
 import copyreg
 from . import context
+from pymongo import DESCENDING
 
 
-FINAL_STATUSES = {"timeout", "abort", "failed", "success", "interrupt", "retry", "maxretries", "maxconcurrency"}
+FINAL_STATUSES = {"timeout", "abort", "failed", "success", "interrupt", "retry", "maxretries", "maxconcurrency", "delayed"}
 TRANSIENT_STATUSES = {"cancel", "queued", "started"}
 
 
@@ -653,12 +654,20 @@ class Job(object):
             w=1
         )
 
+def get_latest_jobs_with_query(query):
+        jobs = context.connections.mongodb_jobs.mrq_jobs
+        tasks = jobs.find(query, sort=[('datequeued', DESCENDING)])
+        return tasks
+
+def get_latest_job_with_query(query):
+        jobs = context.connections.mongodb_jobs.mrq_jobs
+        task = jobs.find_one(query, sort=[('datequeued', DESCENDING)])
+        return task
 
 def get_job_result(job_id):
     job = Job(job_id)
     job.fetch(full_data={"result": 1, "status": 1, "_id": 0})
     return job.data
-
 
 def queue_raw_jobs(queue, params_list, **kwargs):
     """ Queue some jobs on a raw queue """
@@ -682,7 +691,7 @@ def set_queues_size(size_by_queues, action="incr"):
                 pipe.expire("queuesize:%s" % queue, context.get_current_config().get("queue_ttl"))
             pipe.execute()
 
-def queue_jobs(main_task_path, params_list, queue=None, batch_size=1000):
+def queue_jobs(main_task_path, params_list, delay=0, queue=None, batch_size=1000):
     """ Queue multiple jobs on a regular queue """
     if len(params_list) == 0:
         return []
@@ -702,14 +711,24 @@ def queue_jobs(main_task_path, params_list, queue=None, batch_size=1000):
 
         context.metric("jobs.status.queued", len(params_group))
 
+        jobs_data = []
+        for params in params_group:
+            job_data = {
+                "path": main_task_path,
+                "params": params,
+                "queue": queue,
+                "datequeued": datetime.datetime.utcnow(),
+                "status": "queued"
+            }
+            if delay and delay > 0:
+                dateretry = datetime.datetime.utcnow() + datetime.timedelta(seconds=delay)
+                job_data['status'] = 'delayed'
+                job_data['dateretry'] = dateretry
+
+            jobs_data.append(job_data)
+
         # Insert the job in MongoDB
-        job_ids = Job.insert([{
-            "path": main_task_path,
-            "params": params,
-            "queue": queue,
-            "datequeued": datetime.datetime.utcnow(),
-            "status": "queued"
-        } for params in params_group], w=1, return_jobs=False)
+        job_ids = Job.insert(jobs_data, w=1, return_jobs=False)
 
         all_ids += job_ids
 

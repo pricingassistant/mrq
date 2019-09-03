@@ -8,8 +8,9 @@ A **Job** is an instance of the execution of a Task. It must link to a specific 
 
 MRQ defines a list of statuses for jobs. A job can only be in one of them at a time.
 
-When everything goes fine, a job will go through 3 statuses:
+When everything goes fine, a job will go through 4 statuses:
 
+* ```delayed```: The Job has been created and it is delayed to be queued later.
 * ```queued```: The Job has been created and it is waiting to be dequeued by a Worker.
 * ```started```: A Worker has dequeued the job and started executing it.
 * ```success```: The job was successfully ran.
@@ -50,6 +51,11 @@ Queues a job. If `queue` is not provided, the default queue for that Task as def
 * `queue_jobs(main_task_path, params_list, queue=None, batch_size=1000)`
 
 Queues multiple jobs at once. Returns a list of IDs of the jobs.
+
+* `queue_job(main_task_path, params, delay=120, queue=None)`
+
+Create a job with `delayed` status, the job will be queued after of at least `delay` seconds. 
+Remember to add the base delayed job as explained in [Jobs maintenance](jobs-maintenance.md) to have `delayed` jobs actually queued.
 
 * `queue_raw_jobs(queue, params_list, batch_size=1000)`
 

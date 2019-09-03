@@ -35,6 +35,34 @@ class RequeueRetryJobs(Task):
         })
 
 
+class QueueDelayedJobs(Task):
+
+    """ Requeue jobs that were marked as delayed. """
+
+    max_concurrency = 1
+
+    def run(self, params):
+        return run_task("mrq.basetasks.utils.JobAction", {
+            "status": "delayed",
+            "dateretry": {"$lte": datetime.datetime.utcnow()},
+            "action": "requeue"
+        })
+
+
+class DeleteExpiresJobs(Task):
+
+    """ Delete jobs that were dateexpires is less than the current date time. """
+
+    max_concurrency = 1
+
+    def run(self, params):
+        return run_task("mrq.basetasks.utils.JobAction", {
+            "status": ["success","cancel"],
+            "dateexpires": {"$lte": datetime.datetime.utcnow()},
+            "action": "delete"
+        })
+
+
 class RequeueStartedJobs(Task):
 
     """ Requeue jobs that were marked as status=started and never finished.

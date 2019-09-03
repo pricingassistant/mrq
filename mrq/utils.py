@@ -11,7 +11,6 @@ from collections import deque
 from bson import ObjectId
 import uuid
 import shlex
-
 #
 # Utils are functions that should be independent from the rest of MRQ's codebase
 #

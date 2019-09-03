@@ -7,6 +7,13 @@ To do that, you should add these recurring scheduled jobs to your mrq-config.py:
 ```
 SCHEDULER_TASKS = [
 
+  # This will queue jobs in the 'delayed' status.
+  {
+    "path": "mrq.basetasks.cleaning.QueueDelayedJobs",
+    "params": {},
+    "interval": 60
+  },
+
   # This will requeue jobs in the 'retry' status, until they reach their max_retries.
   {
     "path": "mrq.basetasks.cleaning.RequeueRetryJobs",
