@@ -154,6 +154,6 @@ class JobAction(Task):
                         "_id": {"$in": jobs_by_queue[queue]}
                     }, {"$set": updates}, multi=True)
 
-                set_queues_size({queue: len(jobs) for queue, jobs in jobs_by_queue.iteritems()})
+                set_queues_size({queue: len(jobs) for queue, jobs in jobs_by_queue.items()})
 
         return stats
