@@ -14,7 +14,7 @@ The following general flags can be passed as command-line arguments to either **
  - `--trace_memory_output_dir`: Directory where to output .pngs with object graphs. Defaults to folder **memory_traces**.
  - `--profile`: Run profiling on the whole worker. Defaults to **false**.
  - `--mongodb_jobs, --mongodb`: MongoDB URI for the jobs, scheduled_jobs & workers database. Defaults to **mongodb://127.0.0.1:27017/mrq**.
- - `--mongodb_logs` :MongoDB URI for the logs database."0" will disable remote logs, "1" will use main MongoDB. Defaults to **1**
+ - `--mongodb_logs` :MongoDB URI for the logs database."0" will disable remote logs, "1" will use main MongoDB. Defaults to **"1"**
  - `--mongodb_logs_size`: If provided, sets the log collection to capped to that amount of bytes.
  - `--redis`: Redis URI. Defaults to **redis://127.0.0.1:6379**.
  - `--redis_prefix`: Redis key prefix. Defaults to "mrq".
