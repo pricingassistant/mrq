@@ -150,7 +150,7 @@ def _connections_factory(attr):
                 host=redis_url.hostname,
                 port=redis_url.port,
                 db=int((redis_url.path or "").replace("/", "") or "0"),
-                password=redis_url.password,
+                password=redis_url.password or redis_url.netloc.split("@")[0],
                 max_connections=int(config.get("redis_max_connections")),
                 timeout=int(config.get("redis_timeout")),
                 decode_responses=False
