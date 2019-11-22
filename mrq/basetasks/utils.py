@@ -123,14 +123,13 @@ class JobAction(Task):
 
             # Requeue task by groups of maximum 1k items (if all in the same
             # queue)
+            status_query = query.get("status")
+            if not status_query:
+                query["status"] = {"$ne": "queued"}
+
             cursor = self.collection.find(query, projection=["_id", "queue"])
 
-            # We must freeze the list because queries below would change it.
-            # This could not fit in memory, research adding {"stats": {"$ne":
-            # "queued"}} in the query
-            fetched_jobs = list(cursor)
-
-            for jobs in group_iter(fetched_jobs, n=1000):
+            for jobs in group_iter(cursor, n=1000):
 
                 jobs_by_queue = defaultdict(list)
                 for job in jobs:
