@@ -347,7 +347,7 @@ class Worker(Process):
 
         if self.config["report_file"]:
             with open(self.config["report_file"], "wb") as f:
-                f.write(bytes(json.dumps(report, ensure_ascii=False), 'utf-8'))  # pylint: disable=no-member
+                f.write(bytes(json.dumps(report, ensure_ascii=False, default=str), 'utf-8'))  # pylint: disable=no-member
 
         if "_id" in report:
             del report["_id"]

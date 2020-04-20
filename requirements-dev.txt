@@ -3,7 +3,7 @@ pylint==1.7.1
 pytest-cov==2.4.0
 pytest-instafail==0.3.0
 pytest-html==1.14.2
-pytest-httpbin==0.2.0
+pytest-httpbin==1.0.0
 pytest-timeout==1.2.0
 
 subprocess32>=3.2.7; python_version < '3.2'

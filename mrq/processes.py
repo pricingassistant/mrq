@@ -37,10 +37,10 @@ class Process(object):
                 self.shutdown_graceful()
 
         # First time CTRL-C, try to shutdown gracefully
-        gevent.signal(signal.SIGINT, request_shutdown_graceful)
+        gevent.signal_handler(signal.SIGINT, request_shutdown_graceful)
 
         # User (or Heroku) requests a stop now, just mark tasks as interrupted.
-        gevent.signal(signal.SIGTERM, request_shutdown_now)
+        gevent.signal_handler(signal.SIGTERM, request_shutdown_now)
 
 
 class ProcessPool(object):

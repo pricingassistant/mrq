@@ -1,4 +1,4 @@
-FROM debian:jessie
+FROM debian:buster-slim
 
 #
 # httpredir.debian.org is often unreliable
@@ -11,32 +11,35 @@ FROM debian:jessie
 #     deb http://security.debian.org jessie/updates main\n' \
 #     > /etc/apt/sources.list
 
-RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 0C49F3730359A14518585931BC711F9BA15703C6
-RUN echo "deb http://repo.mongodb.org/apt/debian jessie/mongodb-org/3.4 main" > /etc/apt/sources.list.d/mongodb-org-3.4.list
 RUN apt-get update && \
 	apt-get install -y --no-install-recommends \
 				curl \
 				gcc \
 				python-dev \
 				python-pip \
+				python-setuptools \
 				python3-pip \
     			python3-dev \
+    			python3-setuptools \
     			make \
     			git \
     			vim \
     			bzip2 \
-				mongodb-org \
 				nginx redis-server \
 				g++ \
 	&& \
 	apt-get clean -y && \
 	rm -rf /var/lib/apt/lists/*
 
-RUN curl -sL https://deb.nodesource.com/setup_7.x | bash -
+RUN curl -sL https://deb.nodesource.com/setup_12.x | bash -
 RUN apt-get install -y --no-install-recommends nodejs
 
+RUN curl -sL https://www.mongodb.org/static/pgp/server-4.2.asc | apt-key add -
+RUN echo "deb http://repo.mongodb.org/apt/debian buster/mongodb-org/4.2 main" > /etc/apt/sources.list.d/mongodb-org-4.2.list
+RUN apt-get update && apt-get install -y --no-install-recommends mongodb-org
+
 # Download pypy
-RUN curl -sL 'https://bitbucket.org/squeaky/portable-pypy/downloads/pypy-5.8-1-linux_x86_64-portable.tar.bz2' > /pypy.tar.bz2 && tar jxvf /pypy.tar.bz2 && rm -rf /pypy.tar.bz2 && mv /pypy-* /pypy
+RUN curl -sL 'https://github.com/squeaky-pl/portable-pypy/releases/download/pypy-7.2.0/pypy-7.2.0-linux_x86_64-portable.tar.bz2' > /pypy.tar.bz2 && tar jxvf /pypy.tar.bz2 && rm -rf /pypy.tar.bz2 && mv /pypy* /pypy
 
 # Upgrade pip
 RUN pip install --upgrade --ignore-installed pip
@@ -48,16 +51,16 @@ ADD requirements-base.txt /app/requirements-base.txt
 ADD requirements-dev.txt /app/requirements-dev.txt
 ADD requirements-dashboard.txt /app/requirements-dashboard.txt
 
-RUN pip3 install -r /app/requirements-heroku.txt && \
-	pip3 install -r /app/requirements-base.txt && \
-	pip3 install -r /app/requirements-dev.txt && \
-	pip3 install -r /app/requirements-dashboard.txt && \
+RUN python3 -m pip install -r /app/requirements-heroku.txt && \
+	python3 -m pip install -r /app/requirements-base.txt && \
+	python3 -m pip install -r /app/requirements-dev.txt && \
+	python3 -m pip install -r /app/requirements-dashboard.txt && \
 	rm -rf ~/.cache
 
-RUN pip install -r /app/requirements-heroku.txt && \
-	pip install -r /app/requirements-base.txt && \
-	pip install -r /app/requirements-dev.txt && \
-	pip install -r /app/requirements-dashboard.txt && \
+RUN python -m pip install -r /app/requirements-heroku.txt && \
+	python -m pip install -r /app/requirements-base.txt && \
+	python -m pip install -r /app/requirements-dev.txt && \
+	python -m pip install -r /app/requirements-dashboard.txt && \
 	rm -rf ~/.cache
 
 RUN /pypy/bin/pip install -r /app/requirements-heroku.txt && \

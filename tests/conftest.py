@@ -373,7 +373,7 @@ def httpstatic(request):
 
 @pytest.fixture(scope="function")
 def mongodb(request):
-    cmd = "mongod --smallfiles --noprealloc --nojournal"
+    cmd = "mongod --nojournal"
     if os.environ.get("STACK_STARTED"):
         cmd = "sleep 1h"
     return MongoFixture(request, cmd, wait_port=27017, quiet=True)
@@ -381,7 +381,7 @@ def mongodb(request):
 
 @pytest.fixture(scope="function")
 def mongodb_with_journal(request):
-    cmd = "mongod --smallfiles --noprealloc"
+    cmd = "mongod"
     if os.environ.get("STACK_STARTED"):
         cmd = "sleep 1h"
     return MongoFixture(request, cmd, wait_port=27017, quiet=True)

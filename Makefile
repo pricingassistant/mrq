@@ -56,7 +56,7 @@ dashboard:
 	python mrq/dashboard/app.py
 
 stack:
-	mongod --smallfiles --noprealloc --nojournal &
+	mongod &
 	redis-server &
 	python mrq/dashboard/app.py &
 
