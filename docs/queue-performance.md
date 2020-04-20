@@ -174,7 +174,7 @@ Redis should be at less than 1% CPU load, so we can definitely keep adding proce
 
 We are now close to 9000 jobs per second, maxing-out the local CPUs again!
 
-From there on, the sky is the limit! You should be able to run thousands of workers accross hundreds of machines before maxing-out a high-performance Redis instance.
+From there on, the sky is the limit! You should be able to run thousands of workers across hundreds of machines before maxing-out a high-performance Redis instance.
 
 Beyond that, using using multiple queues on a [Redis Cluster](https://redis.io/topics/cluster-tutorial) will definitely allow you to run several million jobs per second. If you do, please drop us a line ;-)
 
