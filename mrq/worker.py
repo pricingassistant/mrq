@@ -442,7 +442,7 @@ class Worker(Process):
                 # We might be dequeueing a new subqueue. Double check that we don't have anything more to do
                 outcome, dequeue_jobs = self.work_once(free_pool_slots=1, max_jobs=None)
 
-                if outcome is "wait" and dequeue_jobs == 0:
+                if outcome == "wait" and dequeue_jobs == 0:
                     break
 
     def work(self):
