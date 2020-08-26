@@ -140,6 +140,10 @@ def _connections_factory(attr):
 
             import redis as pyredis
 
+            ssl = False
+            if attr.startswith("rediss"):
+                ssl = True
+
             urllib.parse.uses_netloc.append('redis')
             redis_url = urllib.parse.urlparse(config_obj)
 
@@ -153,7 +157,8 @@ def _connections_factory(attr):
                 password=redis_url.password if redis_url.password is not None else redis_url.username,
                 max_connections=int(config.get("redis_max_connections")),
                 timeout=int(config.get("redis_timeout")),
-                decode_responses=False
+                decode_responses=False,
+                ssl=ssl
             )
             return pyredis.StrictRedis(connection_pool=redis_pool)
 
