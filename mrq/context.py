@@ -140,6 +140,7 @@ def _connections_factory(attr):
 
             import redis as pyredis
             import redis.connection as pyredisconnection
+            print(config)
 
             connection_class = pyredisconnection.Connection
             if attr.startswith("rediss"):
@@ -149,6 +150,7 @@ def _connections_factory(attr):
 
             urllib.parse.uses_netloc.append('redis')
             redis_url = urllib.parse.urlparse(config_obj)
+            print(redis_url)
 
             log.info("%s: Connecting to Redis at %s..." %
                      (attr, redis_url.hostname))
