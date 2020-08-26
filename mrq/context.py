@@ -144,6 +144,8 @@ def _connections_factory(attr):
             connection_class = pyredisconnection.Connection
             if attr.startswith("rediss"):
                 connection_class = pyredisconnection.SSLConnection
+            print(attr)
+            print(connection_class)
 
             urllib.parse.uses_netloc.append('redis')
             redis_url = urllib.parse.urlparse(config_obj)
