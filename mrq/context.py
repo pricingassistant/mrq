@@ -139,10 +139,11 @@ def _connections_factory(attr):
         if isinstance(config_obj, basestring):
 
             import redis as pyredis
+            import redis.connection as pyredisconnection
 
-            ssl = False
+            connection_class = pyredisconnection.Connection
             if attr.startswith("rediss"):
-                ssl = True
+                connection_class = pyredisconnection.SSLConnection
 
             urllib.parse.uses_netloc.append('redis')
             redis_url = urllib.parse.urlparse(config_obj)
@@ -158,7 +159,7 @@ def _connections_factory(attr):
                 max_connections=int(config.get("redis_max_connections")),
                 timeout=int(config.get("redis_timeout")),
                 decode_responses=False,
-                ssl=ssl
+                connection_class=connection_class
             )
             return pyredis.StrictRedis(connection_pool=redis_pool)
 
