@@ -34,9 +34,9 @@ RUN apt-get update && \
 RUN curl -sL https://deb.nodesource.com/setup_12.x | bash -
 RUN apt-get install -y --no-install-recommends nodejs
 
-RUN curl -sL https://www.mongodb.org/static/pgp/server-4.2.asc | apt-key add -
-RUN echo "deb http://repo.mongodb.org/apt/debian buster/mongodb-org/4.2 main" > /etc/apt/sources.list.d/mongodb-org-4.2.list
-RUN apt-get update && apt-get install -y --no-install-recommends mongodb-org
+RUN curl -sL https://www.mongodb.org/static/pgp/server-4.4.asc | apt-key add -
+RUN echo "deb http://repo.mongodb.org/apt/debian buster/mongodb-org/4.4 main" > /etc/apt/sources.list.d/mongodb-org-4.4.list
+RUN apt-get update && apt-get install -y mongodb-org
 
 # Download pypy
 RUN curl -sL 'https://github.com/squeaky-pl/portable-pypy/releases/download/pypy-7.2.0/pypy-7.2.0-linux_x86_64-portable.tar.bz2' > /pypy.tar.bz2 && tar jxvf /pypy.tar.bz2 && rm -rf /pypy.tar.bz2 && mv /pypy* /pypy
