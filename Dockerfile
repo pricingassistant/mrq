@@ -27,6 +27,7 @@ RUN apt-get update && \
     			bzip2 \
 				nginx redis-server \
 				g++ \
+				apt-utils \
 	&& \
 	apt-get clean -y && \
 	rm -rf /var/lib/apt/lists/*
