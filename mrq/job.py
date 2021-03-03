@@ -237,10 +237,14 @@ class Job(object):
             max_retries = self.max_retries
 
         if self.data.get("retry_count", 0) >= max_retries:
-            raise MaxRetriesInterrupt()
+            exc_max_retries = MaxRetriesInterrupt()
+            exc_max_retries.path = self.data.get("path")
+            self._attach_original_exception(exc_max_retries)
+            raise exc_max_retries
 
         exc = RetryInterrupt()
 
+        exc.path = self.data.get("path")
         exc.queue = queue or self.queue or self.data.get("queue") or "default"
         exc.retry_count = self.data.get("retry_count", 0) + 1
         exc.delay = delay
@@ -254,6 +258,7 @@ class Job(object):
     def abort(self):
         """ Aborts the current task mid-excution. """
         exc = AbortInterrupt()
+        exc.path = self.data.get("path")
         self._attach_original_exception(exc)
         raise exc
 
@@ -303,7 +308,10 @@ class Job(object):
                 # TODO: implement a semaphore
                 lock = context.connections.redis.lock(self.redis_max_concurrency_key, timeout=self.timeout + 5)
                 if not lock.acquire(blocking=True, blocking_timeout=0):
-                    raise MaxConcurrencyInterrupt()
+                    exc_max_concurrency = MaxConcurrencyInterrupt()
+                    exc_max_concurrency.path = self.data["path"]
+                    self._attach_original_exception(exc_max_concurrency)
+                    raise exc_max_concurrency
 
                 result = self.task.run_wrapped(self.data["params"])
 

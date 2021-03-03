@@ -662,35 +662,37 @@ class Worker(Process):
 
         set_current_job(job)
 
+        extra = {"mrq_job_id": str(job.id), "data": job.data}
+
         try:
             job.perform()
 
-        except MaxConcurrencyInterrupt:
-            self.log.error("Max concurrency reached")
+        except MaxConcurrencyInterrupt as e:
+            self.log.exception("MRQ Max concurrency reached: %s" % str(job.data['path']), extra = extra)
             job._save_status("maxconcurrency", exception=True)
 
-        except RetryInterrupt:
-            self.log.error("Caught retry")
+        except RetryInterrupt as e:
+            self.log.exception("MRQ Caught retry: %s" % str(job.data['path']), extra = extra)
             job.save_retry(sys.exc_info()[1])
 
-        except MaxRetriesInterrupt:
-            self.log.error("Max retries reached")
+        except MaxRetriesInterrupt as e:
+            self.log.exception("MRQ Max retries reached: %s" % str(job.data['path']), extra = extra)
             job._save_status("maxretries", exception=True)
 
-        except AbortInterrupt:
-            self.log.error("Caught abort")
+        except AbortInterrupt as e:
+            self.log.exception("MRQ Caught abort: %s" % str(job.data['path']), extra = extra)
             job.save_abort()
 
         except TimeoutInterrupt:
-            self.log.error("Job timeouted after %s seconds" % job.timeout)
+            self.log.exception("MRQ %s timeouted after %s seconds" % (str(job.data['path']), job.timeout), extra = extra)
             job._save_status("timeout", exception=True)
 
-        except JobInterrupt:
-            self.log.error("Job interrupted")
+        except JobInterrupt as e:
+            self.log.exception("MRQ Job interrupted: %s" % str(job.data['path']), extra = extra)
             job._save_status("interrupt", exception=True)
 
-        except Exception:
-            self.log.error("Job failed")
+        except Exception as e:
+            self.log.exception("MRQ Job failed: %s" % str(job.data['path']), extra = extra)
             job._save_status("failed", exception=True)
 
         finally:

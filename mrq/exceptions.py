@@ -24,22 +24,33 @@ class TimeoutInterrupt(_MrqInterrupt):
 
 
 class AbortInterrupt(_MrqInterrupt):
-    pass
+    path = None
+
+    def _get_exception_name(self):
+        return "%s" % (
+            self.path
+        )
 
 
 class RetryInterrupt(_MrqInterrupt):
     delay = None
     queue = None
     retry_count = 0
+    path = None
 
     def _get_exception_name(self):
         return "%s #%s: %s seconds, %s queue" % (
-            self.__class__.__name__, self.retry_count, self.delay, self.queue
+            self.path, self.retry_count, self.delay, self.queue
         )
 
 
 class MaxRetriesInterrupt(_MrqInterrupt):
-    pass
+    path = None
+
+    def _get_exception_name(self):
+        return "%s" % (
+            self.path
+        )
 
 
 class StopRequested(GreenletExit):
@@ -53,4 +64,9 @@ class JobInterrupt(GreenletExit):
 
 
 class MaxConcurrencyInterrupt(_MrqInterrupt):
-    pass
+    path = None
+
+    def _get_exception_name(self):
+        return "%s" % (
+            self.path
+        )
