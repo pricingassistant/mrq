@@ -38,7 +38,7 @@ class SafeFetchTask(Task):
       retry_current_job()
 ```
 
-Remember to add the base recurring jobs as explained in [Jobs maintenance](jobs-maintenance.md) to have `retry` jobs actuallt requeued.
+Remember to add the base recurring jobs as explained in [Jobs maintenance](jobs-maintenance.md) to have `retry` jobs actually requeued.
 
 ## Using your own base Task class
 

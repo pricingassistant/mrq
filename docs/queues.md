@@ -20,7 +20,7 @@ There are 4 types of raw queues. The type of a queue is determined by a suffix i
  * ```_sorted_set``` : The most powerful MRQ queue type, stored in a Redis ZSET. Allows you to order (and re-order) the tasks to be dequeued. Like ```_set```, task parameters will be unique.
  * ```_timed_set``` : A special case of ```_sorted_set```, where tasks are sorted with a UNIX timestamp. This means you can schedule tasks to be executed at a precise time in the future.
 
-Raw queues need a special entry in the configuration to unserialize their "raw" parameters in a regular dict of parameters. They also need to be linked to a regular queue ("default" if none) for providing visibility and retries, after they are dequeued from the raw queue.
+Raw queues need a special entry in the configuration to deserialize their "raw" parameters in a regular dict of parameters. They also need to be linked to a regular queue ("default" if none) for providing visibility and retries, after they are dequeued from the raw queue.
 
 This is an example of raw queue configuration:
 
