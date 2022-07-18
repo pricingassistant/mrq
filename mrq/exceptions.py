@@ -70,3 +70,7 @@ class MaxConcurrencyInterrupt(_MrqInterrupt):
         return "%s" % (
             self.path
         )
+
+
+class JobRuntimeError(_MrqInterrupt):
+    pass
