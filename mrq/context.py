@@ -13,6 +13,8 @@ import traceback
 from .utils import LazyObject, load_class_by_path
 from .config import get_config
 from .subpool import subpool_map, subpool_imap
+from .exceptions import JobRuntimeError
+
 
 # This should be MRQ's only Python object shared by all the jobs in the same process
 _GLOBAL_CONTEXT = {
@@ -113,10 +115,14 @@ def get_current_config():
     return _GLOBAL_CONTEXT["config"]
 
 
-def retry_current_job(delay=None, max_retries=None, queue=None):
+def retry_current_job(delay=None, max_retries=None, queue=None, exception=None):
     current_job = get_current_job()
     if current_job:
         current_job.retry(delay=delay, max_retries=max_retries, queue=queue)
+    elif exception:
+        raise JobRuntimeError("Error during MRQ task execution") from exception
+    else:
+        raise JobRuntimeError("Error during MRQ task execution")
 
 
 def abort_current_job():
