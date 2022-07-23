@@ -103,7 +103,7 @@ A regular Python logging object that should be used in your task code. It will m
 
 * `connections`
 
-A lazy-loaded object containing the worker's connections to MongoDB and Redis. You can implement your own connection factories to instanciate other services lazily.
+A lazy-loaded object containing the worker's connections to MongoDB and Redis. You can implement your own connection factories to instantiate other services lazily.
 
 * `run_task(path, params)`
 
