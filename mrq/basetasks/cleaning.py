@@ -27,7 +27,6 @@ class RequeueRetryJobs(Task):
     max_concurrency = 1
 
     def run(self, params):
-        print("IN")
         return run_task("mrq.basetasks.utils.JobAction", {
             "status": "retry",
             "dateretry": {"$lte": datetime.datetime.utcnow()},

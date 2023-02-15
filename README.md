@@ -150,6 +150,17 @@ This was a preview on the very basic features of MRQ. What makes it actually use
 These features will be demonstrated in a future example of a simple web crawler.
 
 
+## How to compile a new version of MRQ
+- Go to mrq/version.py file and update from 0.9.28.1 to 0.9.29 (for example)
+- Commit and pushes the last changes
+- Go to in the master branch (after merge pull request)
+- Execute the command `python setup.py sdist`
+- Make sure you have installed the python twine package (`pip install twine`).
+- Execute the twine command to upload the new version of mrq to pypi.org (`twine upload dist/mrq-custom-0.9.29.tar.gz`)
+- In the previous step you will be asked for the pypi.org credentials are in 1password, you must request them in #password_requests
+- Update all applications that use MRQ with this version in their requirements.txt
+
+
 # More
 
 Full documentation is available on [readthedocs](http://mrq.readthedocs.org/en/latest/)
