@@ -12,5 +12,5 @@ subprocess32>=3.2.7; python_version < '3.2'
 # Used to test IO tracing
 requests>=2.20.0
 
-mkdocs==0.15.3
+mkdocs==1.2.3
 mistune>=0.8.1
