@@ -8,7 +8,11 @@ import shlex
 import traceback
 from collections import defaultdict
 from bson import ObjectId
-from redis.lock import LuaLock
+try:
+    from redis.lock import LuaLock
+except ImportError:
+    # Change name to avoid NameError raised when use of LuaLock at line 147
+    from redis.lock import Lock as LuaLock
 from .processes import Process, ProcessPool
 from .utils import MovingETA, normalize_command
 from .queue import Queue

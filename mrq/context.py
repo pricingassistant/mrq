@@ -166,7 +166,7 @@ def _connections_factory(attr):
                 decode_responses=False,
                 connection_class=connection_class
             )
-            return pyredis.StrictRedis(connection_pool=redis_pool)
+            return pyredis.StrictRedis(connection_pool=redis_pool, ssl_cert_reqs=None)
 
         # Let's just assume we got a StrictRedis-like object!
         else:
