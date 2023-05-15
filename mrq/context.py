@@ -162,6 +162,7 @@ def _connections_factory(attr):
                 db=int((redis_url.path or "").replace("/", "") or "0"),
                 password=redis_url.password if redis_url.password is not None else redis_url.username,
                 max_connections=int(config.get("redis_max_connections")),
+                ssl_cert_reqs=None,
                 timeout=int(config.get("redis_timeout")),
                 decode_responses=False,
                 connection_class=connection_class

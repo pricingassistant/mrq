@@ -15,7 +15,11 @@ import sys
 import json as json_stdlib
 import ujson as json
 from bson import ObjectId
-from redis.lock import LuaLock
+try:
+    from redis.lock import LuaLock
+except ImportError:
+    # Change name to avoid NameError raised when use of LuaLock at line 147
+    from redis.lock import Lock as LuaLock
 from collections import defaultdict
 from mrq.utils import load_class_by_path
 
