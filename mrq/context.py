@@ -150,23 +150,27 @@ def _connections_factory(attr):
             connection_class = pyredisconnection.Connection
             urllib.parse.uses_netloc.append('redis')
             redis_url = urllib.parse.urlparse(config_obj)
-            if redis_url.scheme == "rediss":
-                connection_class = pyredisconnection.SSLConnection
-
+            
             log.info("%s: Connecting to Redis at %s..." %
                      (attr, redis_url.hostname))
 
-            redis_pool = pyredis.BlockingConnectionPool(
+            redis_params = dict(
                 host=redis_url.hostname,
                 port=redis_url.port,
                 db=int((redis_url.path or "").replace("/", "") or "0"),
                 password=redis_url.password if redis_url.password is not None else redis_url.username,
                 max_connections=int(config.get("redis_max_connections")),
-                ssl_cert_reqs=None,
                 timeout=int(config.get("redis_timeout")),
                 decode_responses=False,
                 connection_class=connection_class
             )
+
+            if redis_url.scheme == "rediss":
+                redis_params["connection_class"] = pyredisconnection.SSLConnection
+                redis_params["ssl_cert_reqs"] = "none"
+
+            redis_pool = pyredis.BlockingConnectionPool(**redis_params)
+
             return pyredis.StrictRedis(connection_pool=redis_pool)
 
         # Let's just assume we got a StrictRedis-like object!
